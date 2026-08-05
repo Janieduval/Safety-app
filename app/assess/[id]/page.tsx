@@ -15,6 +15,7 @@ import {
   FINAL_DECLARATIONS,
   CHANGE_CATEGORIES,
   RISK_RATINGS,
+  SIGNON_CONFIRMATION_TEXT,
 } from "@/lib/constants";
 
 const STEPS = [
@@ -29,6 +30,7 @@ const STEPS = [
   "newHazard",
   "declarations",
   "sign",
+  "teamSign",
   "review",
 ] as const;
 
@@ -144,7 +146,15 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           <DeclarationsStep assessment={assessment} save={save} readOnly={readOnly} />
         )}
         {step === "sign" && (
-          <PrimarySignStep assessment={assessment} reload={reload} readOnly={readOnly} />
+          <PrimarySignStep assessment={assessment} reload={reloadAssessment} readOnly={readOnly} />
+        )}
+        {step === "teamSign" && (
+          <TeamSignStep
+            assessment={assessment}
+            project={project}
+            reload={reloadAssessment}
+            readOnly={readOnly}
+          />
         )}
         {step === "review" && (
           <ReviewStep
@@ -1131,6 +1141,137 @@ function PrimarySignStep({ assessment, reload, readOnly }: any) {
             {error && <p className="text-red-700 text-sm font-medium">{error}</p>}
           </>
         )
+      )}
+    </div>
+  );
+}
+
+// ---------------- Team sign-on (in-flow, before submission) ----------------
+
+function TeamSignStep({ assessment, project, reload, readOnly }: any) {
+  const [query, setQuery] = useState("");
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [signError, setSignError] = useState<string | null>(null);
+
+  const alreadySignedIds = useMemo(
+    () => new Set(assessment.signOns.map((s: any) => s.workerId)),
+    [assessment]
+  );
+
+  const availableWorkers = useMemo(() => {
+    const list = project.workers.filter((w: any) => !alreadySignedIds.has(w.id));
+    if (!query.trim()) return list;
+    return list.filter((w: any) => w.name.toLowerCase().includes(query.toLowerCase()));
+  }, [project, query, alreadySignedIds]);
+
+  const capture = async (dataUrl: string) => {
+    if (!selectedWorkerId) return;
+    setSaving(true);
+    setSignError(null);
+    try {
+      const res = await fetch(`/api/assessments/${assessment.id}/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workerId: selectedWorkerId, signatureData: dataUrl }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Could not sign.");
+      }
+      setSelectedWorkerId(null);
+      setQuery("");
+      setConfirmed(false);
+      await reload();
+    } catch (e: any) {
+      setSignError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const otherSignOns = assessment.signOns.filter((s: any) => !s.isPrimary);
+
+  return (
+    <div className="space-y-4">
+      <SectionTitle>Team sign-on</SectionTitle>
+      <p className="text-sm text-neutral-600 -mt-3">
+        Anyone else on the crew who needs to sign onto this assessment can do that now, before
+        it's submitted for supervisor review. There's no fixed number — add as many as needed,
+        or skip this if it's just you.
+      </p>
+
+      <p className="text-sm font-medium text-neutral-700">
+        {assessment.signOns.length} signed on so far
+      </p>
+
+      {otherSignOns.length > 0 && (
+        <div className="space-y-2">
+          {otherSignOns.map((s: any) => (
+            <div
+              key={s.id}
+              className="flex items-center justify-between border border-neutral-200 rounded-lg p-3 bg-white"
+            >
+              <span className="font-medium text-neutral-800">{s.worker.name}</span>
+              <span className="text-xs text-neutral-500">
+                {new Date(s.signedAt).toLocaleTimeString("en-AU")}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!readOnly && (
+        <div className="border-t border-neutral-200 pt-4">
+          <input
+            type="text"
+            placeholder="Search a team member's name..."
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedWorkerId(null);
+            }}
+            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+          />
+          {query && !selectedWorkerId && (
+            <div className="mt-1 border border-neutral-200 rounded-lg divide-y bg-white max-h-48 overflow-y-auto">
+              {availableWorkers.map((w: any) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedWorkerId(w.id);
+                    setQuery(w.name);
+                  }}
+                  className="w-full text-left px-4 py-3 active:bg-neutral-100"
+                >
+                  {w.name}
+                </button>
+              ))}
+              {availableWorkers.length === 0 && (
+                <p className="p-3 text-sm text-neutral-500">No matching worker found.</p>
+              )}
+            </div>
+          )}
+
+          {selectedWorkerId && (
+            <div className="mt-4 space-y-3">
+              <p className="text-sm text-neutral-700">{SIGNON_CONFIRMATION_TEXT}</p>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  className="w-5 h-5"
+                />
+                I confirm I have reviewed and understood this assessment
+              </label>
+              {confirmed && <SignaturePad onCapture={capture} disabled={saving} />}
+              {signError && <p className="text-red-700 text-sm font-medium">{signError}</p>}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
