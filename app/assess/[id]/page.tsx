@@ -1083,12 +1083,14 @@ function DeclarationsStep({ assessment, save, readOnly }: any) {
 
 function PrimarySignStep({ assessment, reload, readOnly }: any) {
   const [signing, setSigning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const alreadySigned = assessment.signOns.some((s: any) => s.isPrimary);
 
   const capture = async (dataUrl: string) => {
     setSigning(true);
+    setError(null);
     try {
-      await fetch(`/api/assessments/${assessment.id}/sign`, {
+      const res = await fetch(`/api/assessments/${assessment.id}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1097,7 +1099,13 @@ function PrimarySignStep({ assessment, reload, readOnly }: any) {
           isPrimary: true,
         }),
       });
-      reload();
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Couldn't save the signature (error ${res.status}). Try again.`);
+      }
+      await reload();
+    } catch (e: any) {
+      setError(e.message ?? "Couldn't save the signature. Check your connection and try again.");
     } finally {
       setSigning(false);
     }
@@ -1115,7 +1123,12 @@ function PrimarySignStep({ assessment, reload, readOnly }: any) {
           Signed {new Date(assessment.signOns.find((s: any) => s.isPrimary).signedAt).toLocaleString("en-AU")}
         </div>
       ) : (
-        !readOnly && <SignaturePad onCapture={capture} disabled={signing} />
+        !readOnly && (
+          <>
+            <SignaturePad onCapture={capture} disabled={signing} />
+            {error && <p className="text-red-700 text-sm font-medium">{error}</p>}
+          </>
+        )
       )}
     </div>
   );
