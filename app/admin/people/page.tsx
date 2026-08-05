@@ -22,16 +22,31 @@ export default function ManagePeoplePage() {
   const [bulkSaving, setBulkSaving] = useState(false);
 
   const loadProjects = useCallback(async () => {
-    const res = await fetch("/api/admin/projects");
-    if (!res.ok) return;
-    const { projects } = await res.json();
-    setProjects(projects);
-    if (projects.length > 0 && !projectId) setProjectId(projects[0].id);
+    try {
+      const res = await fetch("/api/admin/projects");
+      if (!res.ok) {
+        setError(`Could not load projects (error ${res.status}). Try refreshing.`);
+        setLoading(false);
+        return;
+      }
+      const { projects } = await res.json();
+      setProjects(projects);
+      if (projects.length === 0) {
+        setError("No active projects found. Add one before managing workers.");
+        setLoading(false);
+      } else if (!projectId) {
+        setProjectId(projects[0].id);
+      }
+    } catch {
+      setError("Could not reach the server. Check your connection and refresh.");
+      setLoading(false);
+    }
   }, [projectId]);
 
   const loadPeople = useCallback(async () => {
-    if (!projectId) return;
+    if (!projectId) return; // loadProjects will have already stopped the loading state in this case
     setLoading(true);
+    setError(null);
     try {
       const [wRes, sRes] = await Promise.all([
         fetch(`/api/admin/workers?projectId=${projectId}`),
@@ -39,6 +54,11 @@ export default function ManagePeoplePage() {
       ]);
       if (wRes.ok) setWorkers((await wRes.json()).workers);
       if (sRes.ok) setSupervisors((await sRes.json()).supervisors);
+      if (!wRes.ok || !sRes.ok) {
+        setError("Some data failed to load. Try refreshing the page.");
+      }
+    } catch {
+      setError("Could not reach the server. Check your connection and refresh.");
     } finally {
       setLoading(false);
     }
