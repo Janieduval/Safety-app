@@ -12,16 +12,27 @@ export default function SignaturePad({
 }) {
   const padRef = useRef<SignatureCanvas>(null);
   const [empty, setEmpty] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const clear = () => {
     padRef.current?.clear();
     setEmpty(true);
+    setError(null);
   };
 
   const confirm = () => {
-    if (!padRef.current || padRef.current.isEmpty()) return;
-    const dataUrl = padRef.current.getTrimmedCanvas().toDataURL("image/png");
-    onCapture(dataUrl);
+    setError(null);
+    try {
+      if (!padRef.current || padRef.current.isEmpty()) {
+        setError("Please draw your signature before confirming.");
+        return;
+      }
+      const dataUrl = padRef.current.getCanvas().toDataURL("image/png");
+      onCapture(dataUrl);
+    } catch (err) {
+      console.error("Signature capture failed:", err);
+      setError("Couldn't save the signature. Try clearing and signing again.");
+    }
   };
 
   return (
@@ -34,6 +45,7 @@ export default function SignaturePad({
           onBegin={() => setEmpty(false)}
         />
       </div>
+      {error && <p className="text-red-700 text-sm font-medium mt-2">{error}</p>}
       <div className="flex gap-3 mt-3">
         <button
           type="button"
