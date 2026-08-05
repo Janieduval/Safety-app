@@ -1,0 +1,104 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Worker = { id: string; name: string };
+
+export default function StartAssessmentForm({
+  projectId,
+  workers,
+}: {
+  projectId: string;
+  workers: Worker[];
+}) {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<Worker | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return workers;
+    const q = query.toLowerCase();
+    return workers.filter((w) => w.name.toLowerCase().includes(q));
+  }, [query, workers]);
+
+  const start = async () => {
+    if (!selected) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/assessments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, completedByWorkerId: selected.id }),
+      });
+      if (!res.ok) throw new Error("Could not start a new assessment. Try again.");
+      const { assessment } = await res.json();
+      router.push(`/assess/${assessment.id}`);
+    } catch (e: any) {
+      setError(e.message ?? "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-semibold text-neutral-700 mb-1">
+          Select your name to start a new assessment
+        </label>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSelected(null);
+          }}
+          placeholder="Search your name..."
+          className="w-full rounded-lg border border-neutral-300 px-4 py-3 text-base"
+        />
+        {query && !selected && (
+          <div className="mt-1 border border-neutral-200 rounded-lg divide-y max-h-56 overflow-y-auto bg-white">
+            {filtered.length === 0 && (
+              <p className="p-3 text-neutral-500 text-sm">
+                No matching worker. Ask an administrator to add you to the active worker list.
+              </p>
+            )}
+            {filtered.map((w) => (
+              <button
+                key={w.id}
+                type="button"
+                onClick={() => {
+                  setSelected(w);
+                  setQuery(w.name);
+                }}
+                className="w-full text-left px-4 py-3 active:bg-neutral-100"
+              >
+                {w.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {error && <p className="text-red-700 text-sm font-medium">{error}</p>}
+
+      <button
+        type="button"
+        disabled={!selected || loading}
+        onClick={start}
+        className="w-full py-4 rounded-lg bg-emerald-700 text-white text-lg font-semibold disabled:bg-neutral-300 disabled:text-neutral-500 active:bg-emerald-800"
+      >
+        {loading ? "Starting..." : "Start new assessment"}
+      </button>
+
+      <p className="text-center text-sm text-neutral-500">
+        Already started an assessment today, or joining as a team member?
+        Ask the person who started it to open their link and add your signature there.
+      </p>
+    </div>
+  );
+}

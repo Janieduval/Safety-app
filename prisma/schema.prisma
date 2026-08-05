@@ -1,0 +1,367 @@
+// Daily Task Safety Awareness — Prisma schema
+// Uses Postgres so it works on serverless hosts (Vercel, etc.) where the
+// filesystem is ephemeral. For local dev against SQLite instead, change
+// provider back to "sqlite" and point DATABASE_URL at a local file.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Core project / people ----------
+
+model Project {
+  id         String   @id @default(uuid())
+  name       String
+  address    String
+  contractor String
+  qrSlug     String   @unique // used in the public URL, e.g. /blind-creek-solar-farm
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workers      Worker[]
+  supervisors  Supervisor[]
+  assessments  Assessment[]
+  swmsOptions  SwmsOption[]
+  ppeOptions   PpeOption[]
+  permitTypes  PermitType[]
+}
+
+model Worker {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  name      String
+  active    Boolean  @default(true)
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  assessmentsCompleted Assessment[] @relation("CompletedBy")
+  signOns              SignOn[]
+}
+
+model Supervisor {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  name      String
+  active    Boolean  @default(true)
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  reviews SupervisorReview[]
+}
+
+// ---------- Admin-managed option lists (project-scoped) ----------
+
+model SwmsOption {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+  label     String
+  active    Boolean @default(true)
+
+  assessmentLinks AssessmentSwms[]
+}
+
+model PpeOption {
+  id             String  @id @default(uuid())
+  projectId      String
+  project        Project @relation(fields: [projectId], references: [id])
+  label          String
+  preselected    Boolean @default(false)
+  active         Boolean @default(true)
+
+  assessmentLinks AssessmentPpe[]
+}
+
+model PermitType {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+  label     String
+  active    Boolean @default(true)
+
+  assessmentLinks AssessmentPermit[]
+}
+
+// Team is a fixed seeded list but stored as a table so admins can extend it later
+model TeamOption {
+  id     String  @id @default(uuid())
+  label  String  @unique
+  active Boolean @default(true)
+
+  assessments Assessment[]
+}
+
+// ---------- Assessment ----------
+
+enum AssessmentStatus {
+  draft
+  worker_completed
+  awaiting_supervisor_review
+  changes_required
+  approved
+  archived
+}
+
+model Assessment {
+  id        String            @id @default(uuid()) // used directly in the unguessable URL
+  projectId String
+  project   Project           @relation(fields: [projectId], references: [id])
+  status    AssessmentStatus  @default(draft)
+
+  dateTime         DateTime // defaults client-side to now, Australia/Sydney display
+  teamId           String?
+  team             TeamOption? @relation(fields: [teamId], references: [id])
+  otherTeamText    String?
+  location         String?
+  taskDescription  String?
+
+  completedByWorkerId String?
+  completedByWorker   Worker? @relation("CompletedBy", fields: [completedByWorkerId], references: [id])
+
+  // Step 1
+  step1Responses Step1Response[]
+
+  // SWMS / PPE / Permits
+  swms    AssessmentSwms[]
+  swmsOtherText String?
+  ppe     AssessmentPpe[]
+  ppeOtherText String?
+  permitRequired Boolean @default(false)
+  permits AssessmentPermit[]
+  permitOtherText String?
+
+  // Step 2.0
+  accessCheck   AccessCheck?
+  changeEntries ChangeEntry[]
+
+  // Step 2.1
+  hazardResponses HazardResponse[]
+
+  // Final
+  declarations Declaration[]
+  newHazardFlag NewHazardFlag?
+
+  signOns SignOn[]
+  supervisorReview SupervisorReview?
+
+  // Reassessment linkage: this assessment may be the origin of many reassessments
+  reassessments Reassessment[] @relation("OriginalAssessment")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@index([projectId, status])
+}
+
+// One row per Step 1 question per assessment — keeps original "No" visible even after resolution
+model Step1Response {
+  id            String     @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment @relation(fields: [assessmentId], references: [id])
+  questionKey   String     // e.g. "understand_task", "have_licences", ...
+  answer        Boolean?   // null = unanswered, never coerced to false
+  noDetails     String?
+  spokenToSupervisor Boolean @default(false)
+  resolvedAt    DateTime?
+  resolvedNote  String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([assessmentId, questionKey])
+}
+
+model AssessmentSwms {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  swmsOptionId String
+  swmsOption   SwmsOption @relation(fields: [swmsOptionId], references: [id])
+
+  @@unique([assessmentId, swmsOptionId])
+}
+
+model AssessmentPpe {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  ppeOptionId  String
+  ppeOption    PpeOption  @relation(fields: [ppeOptionId], references: [id])
+
+  @@unique([assessmentId, ppeOptionId])
+}
+
+model AssessmentPermit {
+  id             String      @id @default(uuid())
+  assessmentId   String
+  assessment     Assessment  @relation(fields: [assessmentId], references: [id])
+  permitTypeId   String
+  permitType     PermitType  @relation(fields: [permitTypeId], references: [id])
+  referenceNumber String?
+  issuedReviewedSigned Boolean @default(false)
+  attachmentUrl  String?
+
+  @@unique([assessmentId, permitTypeId])
+}
+
+model AccessCheck {
+  id             String     @id @default(uuid())
+  assessmentId   String     @unique
+  assessment     Assessment @relation(fields: [assessmentId], references: [id])
+  safe           Boolean?
+  details        String?
+  controlMeasure String?
+  supervisorReviewRequired Boolean @default(false)
+}
+
+model ChangeEntry {
+  id            String     @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment @relation(fields: [assessmentId], references: [id])
+  category      String
+  details       String
+  controls      String
+  photoUrl      String?
+  controlled    Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+}
+
+// One row per hazard question (11 questions), Yes/No, cards attached when Yes
+model HazardResponse {
+  id            String       @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment   @relation(fields: [assessmentId], references: [id])
+  questionKey   String       // e.g. "caught_in_on_between"
+  present       Boolean?     // null = unanswered
+  cards         HazardCard[]
+
+  @@unique([assessmentId, questionKey])
+}
+
+enum RiskRating {
+  low
+  medium
+  high
+  extreme
+}
+
+model HazardCard {
+  id                 String         @id @default(uuid())
+  hazardResponseId   String
+  hazardResponse     HazardResponse @relation(fields: [hazardResponseId], references: [id])
+  description        String
+  initialRisk        RiskRating
+  controls           String
+  responsiblePerson  String
+  controlConfirmed   Boolean        @default(false)
+  residualRisk       RiskRating
+  photoUrl           String?
+  comments           String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model Declaration {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  declarationKey String
+  checked      Boolean    @default(false) // never pre-checked at creation
+  checkedAt    DateTime?
+
+  @@unique([assessmentId, declarationKey])
+}
+
+model NewHazardFlag {
+  id                 String     @id @default(uuid())
+  assessmentId       String     @unique
+  assessment         Assessment @relation(fields: [assessmentId], references: [id])
+  present            Boolean?
+  description        String?
+  immediateControls  String?
+  supervisorResolutionNotes String?
+  swmsReviewRequired Boolean    @default(false)
+  resolved           Boolean    @default(false)
+}
+
+model SignOn {
+  id             String     @id @default(uuid())
+  assessmentId   String
+  assessment     Assessment @relation(fields: [assessmentId], references: [id])
+  workerId       String
+  worker         Worker     @relation(fields: [workerId], references: [id])
+  signatureData  String     // base64 PNG
+  confirmationText String
+  signedAt       DateTime   @default(now())
+  isPrimary      Boolean    @default(false) // true for the person who completed the assessment
+
+  @@unique([assessmentId, workerId]) // a worker cannot sign twice
+}
+
+model SupervisorReview {
+  id            String     @id @default(uuid())
+  assessmentId  String     @unique
+  assessment    Assessment @relation(fields: [assessmentId], references: [id])
+  supervisorId  String
+  supervisor    Supervisor @relation(fields: [supervisorId], references: [id])
+
+  taskUnderstood       Boolean @default(false)
+  hazardsAppropriate   Boolean @default(false)
+  controlsSuitable     Boolean @default(false)
+  workersCompetentFit  Boolean @default(false)
+  additionalHazardsDiscussed Boolean @default(false)
+  stopWorkResolved     Boolean @default(false)
+  highRiskReviewed     Boolean @default(false)
+  permitsConfirmed     Boolean @default(false)
+
+  comments           String?
+  additionalControls String?
+  decision           String   // "approved" | "changes_required"
+  signatureData      String
+  reviewedAt         DateTime @default(now())
+}
+
+// A reassessment links to the original approved assessment rather than mutating it
+model Reassessment {
+  id                    String     @id @default(uuid())
+  originalAssessmentId  String
+  originalAssessment    Assessment @relation("OriginalAssessment", fields: [originalAssessmentId], references: [id])
+  initiatedByWorkerId   String
+  dateTime              DateTime   @default(now())
+  whatChanged           String
+  newHazards            String?
+  newControls           String?
+  requiresSupervisorReview Boolean @default(true)
+  createdAt             DateTime   @default(now())
+}
+
+model AuditLog {
+  id           String     @id @default(uuid())
+  assessmentId String?
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id])
+  entityType   String
+  entityId     String
+  action       String     // e.g. "status_change", "field_edit", "sign_on"
+  actorName    String
+  beforeJson   String?
+  afterJson    String?
+  timestamp    DateTime   @default(now())
+}
+
+// ---------- Admin auth ----------
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
