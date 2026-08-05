@@ -16,6 +16,10 @@ export default function ManagePeoplePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkResult, setBulkResult] = useState<string | null>(null);
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const loadProjects = useCallback(async () => {
     const res = await fetch("/api/admin/projects");
@@ -69,6 +73,45 @@ export default function ManagePeoplePage() {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const addBulk = async () => {
+    const names = bulkText
+      .split("\n")
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+    if (names.length === 0 || !projectId) return;
+    setBulkSaving(true);
+    setBulkResult(null);
+    setError(null);
+    try {
+      const endpoint =
+        tab === "workers" ? "/api/admin/workers/bulk" : "/api/admin/supervisors/bulk";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, names }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Could not add these people.");
+      }
+      const result = await res.json();
+      setBulkResult(
+        `Added ${result.created} ${tab === "workers" ? "worker" : "supervisor"}${
+          result.created === 1 ? "" : "s"
+        }.` +
+          (result.skippedAsDuplicates > 0
+            ? ` Skipped ${result.skippedAsDuplicates} that already existed.`
+            : "")
+      );
+      setBulkText("");
+      await loadPeople();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBulkSaving(false);
     }
   };
 
@@ -161,6 +204,45 @@ export default function ManagePeoplePage() {
           </button>
         </div>
         {error && <p className="text-red-700 text-sm font-medium mt-2">{error}</p>}
+
+        <button
+          type="button"
+          onClick={() => setShowBulk((s) => !s)}
+          className="text-sm text-emerald-700 font-medium underline decoration-dotted mt-3"
+        >
+          {showBulk ? "Hide bulk add" : "Add many at once →"}
+        </button>
+
+        {showBulk && (
+          <div className="mt-3 border-t border-neutral-200 pt-3">
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">
+              Paste a list of names — one per line
+            </label>
+            <p className="text-xs text-neutral-500 mb-2">
+              If you have these in a spreadsheet, select the whole column of names, copy it,
+              and paste it directly into the box below — each row becomes its own name
+              automatically.
+            </p>
+            <textarea
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              rows={8}
+              placeholder={"Alex Nguyen\nBrianna Fields\nChris Doukas\n..."}
+              className="w-full rounded-lg border border-neutral-300 px-4 py-2 font-mono text-sm"
+            />
+            <button
+              type="button"
+              onClick={addBulk}
+              disabled={bulkSaving || !bulkText.trim()}
+              className="mt-2 px-5 py-2 rounded-lg bg-emerald-700 text-white font-medium disabled:opacity-40"
+            >
+              {bulkSaving ? "Adding..." : "Add all"}
+            </button>
+            {bulkResult && (
+              <p className="text-emerald-700 text-sm font-medium mt-2">{bulkResult}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {loading ? (
