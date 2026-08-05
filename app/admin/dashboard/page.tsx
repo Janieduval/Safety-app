@@ -45,7 +45,15 @@ export default async function AdminDashboard({
 
   return (
     <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-neutral-900 mb-4">Admin dashboard</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-neutral-900">Admin dashboard</h1>
+        <Link
+          href="/admin/people"
+          className="text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium"
+        >
+          Manage workers &amp; supervisors
+        </Link>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
         {statuses.map((s) => (
