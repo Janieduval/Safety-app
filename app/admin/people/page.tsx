@@ -73,7 +73,11 @@ export default function ManagePeoplePage() {
   }, [loadPeople]);
 
   const addPerson = async () => {
-    if (!newName.trim() || !projectId) return;
+    if (!newName.trim()) return;
+    if (!projectId) {
+      setError("No project is selected — refresh the page and try again.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -101,7 +105,11 @@ export default function ManagePeoplePage() {
       .split("\n")
       .map((n) => n.trim())
       .filter((n) => n.length > 0);
-    if (names.length === 0 || !projectId) return;
+    if (names.length === 0) return;
+    if (!projectId) {
+      setError("No project is selected — refresh the page and try again.");
+      return;
+    }
     setBulkSaving(true);
     setBulkResult(null);
     setError(null);
@@ -159,7 +167,7 @@ export default function ManagePeoplePage() {
         </Link>
       </div>
 
-      {projects.length > 1 && (
+      {projects.length > 1 ? (
         <div className="mb-4">
           <label className="block text-sm font-semibold text-neutral-700 mb-1">Project</label>
           <select
@@ -174,6 +182,14 @@ export default function ManagePeoplePage() {
             ))}
           </select>
         </div>
+      ) : projects.length === 1 ? (
+        <p className="text-sm text-neutral-500 mb-4">
+          Project: <span className="font-medium text-neutral-700">{projects[0].name}</span>
+        </p>
+      ) : (
+        <p className="text-sm text-red-700 font-medium mb-4">
+          No project found — this needs a project to exist before people can be added.
+        </p>
       )}
 
       <div className="flex gap-2 mb-5">
