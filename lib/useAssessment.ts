@@ -9,6 +9,25 @@ export function useAssessmentData(id: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Lightweight refresh used after most in-session actions (answering a
+  // question, adding a hazard card, etc). Only re-fetches the assessment
+  // itself — not the project's worker/SWMS/PPE lists, which don't change
+  // from these actions — and crucially does NOT toggle the page-level
+  // loading flag, so the screen doesn't flash back to a full loading state
+  // on every click.
+  const reloadAssessment = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/assessments/${id}`);
+      if (!res.ok) throw new Error("Could not load this assessment.");
+      const { assessment } = await res.json();
+      setAssessment(assessment);
+    } catch (e: any) {
+      setError(e.message ?? "Something went wrong.");
+    }
+  }, [id]);
+
+  // Full reload: assessment + project + teams, with the loading flag.
+  // Used only for the initial page load.
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -34,7 +53,7 @@ export function useAssessmentData(id: string) {
     reload();
   }, [reload]);
 
-  return { assessment, project, teams, loading, error, reload };
+  return { assessment, project, teams, loading, error, reload, reloadAssessment };
 }
 
 // Fire-and-forget autosave with basic status tracking for the UI.
