@@ -1,11 +1,9 @@
-
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +24,7 @@ function LoginForm() {
         const body = await res.json();
         throw new Error(body.error ?? "Login failed.");
       }
-      router.push(params.get("next") ?? "/admin/dashboard");
+      window.location.href = params.get("next") ?? "/admin/dashboard";
     } catch (e: any) {
       setError(e.message);
     } finally {
