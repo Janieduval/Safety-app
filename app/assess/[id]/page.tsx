@@ -7,6 +7,7 @@ import AutosaveStatus from "@/components/AutosaveStatus";
 import YesNoButtons from "@/components/YesNoButtons";
 import StopWorkWarning from "@/components/StopWorkWarning";
 import SignaturePad from "@/components/SignaturePad";
+import RiskLegend from "@/components/RiskLegend";
 import {
   STEP1_QUESTIONS,
   STOP_WORK_WARNING,
@@ -34,7 +35,7 @@ const STEPS = [
 export default function AssessmentWizard({ params }: { params: { id: string } }) {
   const { id } = params;
   const router = useRouter();
-  const { assessment, project, teams, loading, error, reload } = useAssessmentData(id);
+  const { assessment, project, teams, loading, error, reload, reloadAssessment } = useAssessmentData(id);
   const { save, status } = useAutosave(id);
   const [stepIndex, setStepIndex] = useState(0);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
@@ -131,10 +132,10 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           <AccessStep assessment={assessment} save={save} readOnly={readOnly} />
         )}
         {step === "changes" && (
-          <ChangesStep assessment={assessment} save={save} reload={reload} readOnly={readOnly} />
+          <ChangesStep assessment={assessment} save={save} reload={reloadAssessment} readOnly={readOnly} />
         )}
         {step === "hazards" && (
-          <HazardsStep assessment={assessment} save={save} reload={reload} readOnly={readOnly} />
+          <HazardsStep assessment={assessment} save={save} reload={reloadAssessment} readOnly={readOnly} />
         )}
         {step === "newHazard" && (
           <NewHazardStep assessment={assessment} save={save} readOnly={readOnly} />
@@ -889,6 +890,7 @@ function HazardCard({ card, save, reload, readOnly }: any) {
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
         />
       </Field>
+      <RiskLegend />
       <Field label="Initial risk rating">
         <RiskSelect value={local.initialRisk} onChange={(v) => commit({ initialRisk: v })} disabled={readOnly} />
       </Field>
