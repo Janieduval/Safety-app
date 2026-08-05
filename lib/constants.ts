@@ -134,6 +134,37 @@ export const SIGNON_CONFIRMATION_TEXT =
 
 export const RISK_RATINGS = ["low", "medium", "high", "extreme"] as const;
 
+export const RISK_RATING_DEFINITIONS: {
+  key: (typeof RISK_RATINGS)[number];
+  label: string;
+  description: string;
+}[] = [
+  {
+    key: "low",
+    label: "Low",
+    description:
+      "Unlikely to happen, and if it did, would only cause minor injury (e.g. first aid only).",
+  },
+  {
+    key: "medium",
+    label: "Medium",
+    description:
+      "Could plausibly happen and could cause an injury needing medical treatment beyond first aid.",
+  },
+  {
+    key: "high",
+    label: "High",
+    description:
+      "Likely to happen without further controls, and could cause a serious or long-term injury.",
+  },
+  {
+    key: "extreme",
+    label: "Extreme",
+    description:
+      "Could realistically result in death or permanent disability. Always requires supervisor intervention.",
+  },
+];
+
 export const SEED_TEAMS = [
   "Trucks",
   "Distribution",
