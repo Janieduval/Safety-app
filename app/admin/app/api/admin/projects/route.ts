@@ -1,25 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(req: NextRequest) {
-  const projectId = req.nextUrl.searchParams.get("projectId");
-  if (!projectId) {
-    return NextResponse.json({ error: "projectId is required" }, { status: 400 });
-  }
-  const workers = await prisma.worker.findMany({
-    where: { projectId },
-    orderBy: [{ archived: "asc" }, { active: "desc" }, { name: "asc" }],
+export async function GET() {
+  const projects = await prisma.project.findMany({
+    where: { active: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, qrSlug: true },
   });
-  return NextResponse.json({ workers });
-}
-
-export async function POST(req: NextRequest) {
-  const { projectId, name } = await req.json();
-  if (!projectId || !name?.trim()) {
-    return NextResponse.json({ error: "projectId and name are required" }, { status: 400 });
-  }
-  const worker = await prisma.worker.create({
-    data: { projectId, name: name.trim() },
-  });
-  return NextResponse.json({ worker });
+  return NextResponse.json({ projects });
 }
