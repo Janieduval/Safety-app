@@ -1206,6 +1206,15 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
         {assessment.signOns.length} signed on so far
       </p>
 
+      <a
+        href={`/api/assessments/${assessment.id}/pdf`}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-block text-sm text-emerald-700 font-medium underline decoration-dotted"
+      >
+        Download a PDF record of this assessment so far
+      </a>
+
       {otherSignOns.length > 0 && (
         <div className="space-y-2">
           {otherSignOns.map((s: any) => (
