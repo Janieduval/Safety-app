@@ -8,6 +8,7 @@ import YesNoButtons from "@/components/YesNoButtons";
 import StopWorkWarning from "@/components/StopWorkWarning";
 import SignaturePad from "@/components/SignaturePad";
 import RiskLegend from "@/components/RiskLegend";
+import { toSydneyInputValue, fromSydneyInputValue } from "@/lib/timezone";
 import {
   STEP1_QUESTIONS,
   STOP_WORK_WARNING,
@@ -206,8 +207,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // ---------------- Header ----------------
 
 function HeaderStep({ assessment, teams, save, readOnly }: any) {
-  const [local, setLocal] = useState({
-    dateTime: assessment.dateTime?.slice(0, 16) ?? "",
+const [local, setLocal]
     teamId: assessment.teamId ?? "",
     otherTeamText: assessment.otherTeamText ?? "",
     location: assessment.location ?? "",
@@ -219,10 +219,13 @@ function HeaderStep({ assessment, teams, save, readOnly }: any) {
     [local.teamId, teams]
   );
 
-  const commit = (patch: Partial<typeof local>) => {
+ const commit = (patch: Partial<typeof local>) => {
     const next = { ...local, ...patch };
     setLocal(next);
-    save("header", next);
+    save("header", {
+      ...next,
+      dateTime: next.dateTime ? fromSydneyInputValue(next.dateTime).toISOString() : next.dateTime,
+    });
   };
 
   return (
