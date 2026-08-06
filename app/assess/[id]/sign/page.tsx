@@ -51,6 +51,7 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
+  const [addingNew, setAddingNew] = useState(false);
 
   const alreadySignedIds = useMemo(
     () => new Set(assessment?.signOns?.map((s: any) => s.workerId) ?? []),
@@ -64,9 +65,40 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
     return list.filter((w: any) => w.name.toLowerCase().includes(query.toLowerCase()));
   }, [project, query, alreadySignedIds]);
 
+  const exactMatchExists = useMemo(
+    () => availableWorkers.some((w: any) => w.name.toLowerCase() === query.trim().toLowerCase()),
+    [availableWorkers, query]
+  );
+
   if (loading) return <p className="p-6 text-center text-neutral-500">Loading...</p>;
   if (error || !assessment || !project)
     return <p className="p-6 text-center text-red-700">{error ?? "Not found."}</p>;
+
+  const addNewWorker = async () => {
+    const trimmedName = query.trim();
+    if (!trimmedName) return;
+    setAddingNew(true);
+    setSignError(null);
+    try {
+      const res = await fetch("/api/workers/quick-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, name: trimmedName }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Could not add you as a new worker.");
+      }
+      const { worker } = await res.json();
+      await reloadAssessment();
+      setSelectedWorkerId(worker.id);
+      setQuery(worker.name);
+    } catch (e: any) {
+      setSignError(e.message);
+    } finally {
+      setAddingNew(false);
+    }
+  };
 
   const capture = async (dataUrl: string) => {
     if (!selectedWorkerId) return;
@@ -106,7 +138,7 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
 
       <StatusBanner status={assessment.status} />
 
-      <a
+      
         href={`/api/assessments/${assessment.id}/pdf`}
         target="_blank"
         rel="noreferrer"
@@ -159,6 +191,16 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
               ))}
               {availableWorkers.length === 0 && (
                 <p className="p-3 text-sm text-neutral-500">No matching worker found.</p>
+              )}
+              {!exactMatchExists && query.trim().length > 1 && (
+                <button
+                  type="button"
+                  onClick={addNewWorker}
+                  disabled={addingNew}
+                  className="w-full text-left px-4 py-3 text-emerald-700 font-medium active:bg-emerald-50 disabled:opacity-50"
+                >
+                  {addingNew ? "Adding..." : `+ Add "${query.trim()}" as a new worker`}
+                </button>
               )}
             </div>
           )}
