@@ -1,5 +1,4 @@
 "use client";
-
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -15,14 +14,47 @@ export default function StartAssessmentForm({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Worker | null>(null);
+  const [localWorkers, setLocalWorkers] = useState<Worker[]>(workers);
   const [loading, setLoading] = useState(false);
+  const [addingNew, setAddingNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return workers;
+    if (!query.trim()) return localWorkers;
     const q = query.toLowerCase();
-    return workers.filter((w) => w.name.toLowerCase().includes(q));
-  }, [query, workers]);
+    return localWorkers.filter((w) => w.name.toLowerCase().includes(q));
+  }, [query, localWorkers]);
+
+  const exactMatchExists = useMemo(
+    () => filtered.some((w) => w.name.toLowerCase() === query.trim().toLowerCase()),
+    [filtered, query]
+  );
+
+  const addNewWorker = async () => {
+    const trimmedName = query.trim();
+    if (!trimmedName) return;
+    setAddingNew(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/workers/quick-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, name: trimmedName }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Could not add you as a new worker.");
+      }
+      const { worker } = await res.json();
+      setLocalWorkers((prev) => [...prev, worker]);
+      setSelected(worker);
+      setQuery(worker.name);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setAddingNew(false);
+    }
+  };
 
   const start = async () => {
     if (!selected) return;
@@ -63,9 +95,7 @@ export default function StartAssessmentForm({
         {query && !selected && (
           <div className="mt-1 border border-neutral-200 rounded-lg divide-y max-h-56 overflow-y-auto bg-white">
             {filtered.length === 0 && (
-              <p className="p-3 text-neutral-500 text-sm">
-                No matching worker. Ask an administrator to add you to the active worker list.
-              </p>
+              <p className="p-3 text-neutral-500 text-sm">No matching worker found.</p>
             )}
             {filtered.map((w) => (
               <button
@@ -80,12 +110,20 @@ export default function StartAssessmentForm({
                 {w.name}
               </button>
             ))}
+            {!exactMatchExists && query.trim().length > 1 && (
+              <button
+                type="button"
+                onClick={addNewWorker}
+                disabled={addingNew}
+                className="w-full text-left px-4 py-3 text-emerald-700 font-medium active:bg-emerald-50 disabled:opacity-50"
+              >
+                {addingNew ? "Adding..." : `+ Add "${query.trim()}" as a new worker`}
+              </button>
+            )}
           </div>
         )}
       </div>
-
       {error && <p className="text-red-700 text-sm font-medium">{error}</p>}
-
       <button
         type="button"
         disabled={!selected || loading}
@@ -94,7 +132,6 @@ export default function StartAssessmentForm({
       >
         {loading ? "Starting..." : "Start new assessment"}
       </button>
-
       <p className="text-center text-sm text-neutral-500">
         Already started an assessment today, or joining as a team member?
         Ask the person who started it to open their link and add your signature there.
