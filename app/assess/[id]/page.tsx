@@ -1243,7 +1243,8 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
       </p>
 
       
-        href={`/api/assessments/${assessment.id}/pdf`}
+        <a
+          href={`/api/assessments/${assessment.id}/pdf`}
         target="_blank"
         rel="noreferrer"
         className="inline-block text-sm text-emerald-700 font-medium underline decoration-dotted"
@@ -1383,7 +1384,8 @@ function ReviewStep({ assessment, submitErrors, onSubmit, submitting, readOnly }
         <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 space-y-2">
           <p className="text-emerald-800 font-medium">This assessment has been approved.</p>
           
-            href={`/assess/${assessment.id}/reassess`}
+            <a
+              href={`/assess/${assessment.id}/reassess`}
             className="block text-center py-3 rounded-lg border-2 border-amber-600 text-amber-700 font-semibold"
           >
             Conditions have changed — reassess
