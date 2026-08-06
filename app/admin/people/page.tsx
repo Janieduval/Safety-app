@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 type Project = { id: string; name: string; qrSlug: string };
-type Person = { id: string; name: string; active: boolean; archived: boolean };
+type Person = {
+  id: string;
+  name: string;
+  active: boolean;
+  archived: boolean;
+  needsReview?: boolean;
+};
 
 export default function ManagePeoplePage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -157,6 +163,7 @@ export default function ManagePeoplePage() {
   const list = tab === "workers" ? workers : supervisors;
   const activeList = list.filter((p) => !p.archived);
   const archivedList = list.filter((p) => p.archived);
+  const reviewCount = activeList.filter((p) => p.needsReview).length;
 
   return (
     <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-2xl mx-auto">
@@ -187,202 +194,4 @@ export default function ManagePeoplePage() {
           Project: <span className="font-medium text-neutral-700">{projects[0].name}</span>
         </p>
       ) : (
-        <p className="text-sm text-red-700 font-medium mb-4">
-          No project found — this needs a project to exist before people can be added.
-        </p>
-      )}
-
-      <div className="flex gap-2 mb-5">
-        <button
-          type="button"
-          onClick={() => setTab("workers")}
-          className={`px-4 py-2 rounded-full text-sm font-medium border ${
-            tab === "workers"
-              ? "bg-neutral-900 text-white border-neutral-900"
-              : "bg-white text-neutral-700 border-neutral-300"
-          }`}
-        >
-          Workers
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("supervisors")}
-          className={`px-4 py-2 rounded-full text-sm font-medium border ${
-            tab === "supervisors"
-              ? "bg-neutral-900 text-white border-neutral-900"
-              : "bg-white text-neutral-700 border-neutral-300"
-          }`}
-        >
-          Supervisors
-        </button>
-      </div>
-
-      <div className="bg-white border border-neutral-200 rounded-lg p-4 mb-6">
-        <label className="block text-sm font-semibold text-neutral-700 mb-2">
-          Add a {tab === "workers" ? "worker" : "supervisor"}
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addPerson()}
-            placeholder="Full name"
-            className="flex-1 rounded-lg border border-neutral-300 px-4 py-2"
-          />
-          <button
-            type="button"
-            onClick={addPerson}
-            disabled={saving || !newName.trim()}
-            className="px-5 py-2 rounded-lg bg-emerald-700 text-white font-medium disabled:opacity-40"
-          >
-            Add
-          </button>
-        </div>
-        {error && <p className="text-red-700 text-sm font-medium mt-2">{error}</p>}
-
-        <button
-          type="button"
-          onClick={() => setShowBulk((s) => !s)}
-          className="text-sm text-emerald-700 font-medium underline decoration-dotted mt-3"
-        >
-          {showBulk ? "Hide bulk add" : "Add many at once →"}
-        </button>
-
-        {showBulk && (
-          <div className="mt-3 border-t border-neutral-200 pt-3">
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">
-              Paste a list of names — one per line
-            </label>
-            <p className="text-xs text-neutral-500 mb-2">
-              If you have these in a spreadsheet, select the whole column of names, copy it,
-              and paste it directly into the box below — each row becomes its own name
-              automatically.
-            </p>
-            <textarea
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              rows={8}
-              placeholder={"Alex Nguyen\nBrianna Fields\nChris Doukas\n..."}
-              className="w-full rounded-lg border border-neutral-300 px-4 py-2 font-mono text-sm"
-            />
-            <button
-              type="button"
-              onClick={addBulk}
-              disabled={bulkSaving || !bulkText.trim()}
-              className="mt-2 px-5 py-2 rounded-lg bg-emerald-700 text-white font-medium disabled:opacity-40"
-            >
-              {bulkSaving ? "Adding..." : "Add all"}
-            </button>
-            {bulkResult && (
-              <p className="text-emerald-700 text-sm font-medium mt-2">{bulkResult}</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {loading ? (
-        <p className="text-neutral-500 text-sm">Loading...</p>
-      ) : (
-        <>
-          <h2 className="font-semibold text-neutral-900 mb-2">
-            Active ({activeList.length})
-          </h2>
-          <div className="space-y-2 mb-6">
-            {activeList.length === 0 && (
-              <p className="text-sm text-neutral-500">
-                No active {tab === "workers" ? "workers" : "supervisors"} yet.
-              </p>
-            )}
-            {activeList.map((p) => (
-              <PersonRow key={p.id} person={p} onUpdate={(patch) => updatePerson(p.id, patch)} />
-            ))}
-          </div>
-
-          {archivedList.length > 0 && (
-            <>
-              <h2 className="font-semibold text-neutral-500 mb-2">
-                Archived ({archivedList.length})
-              </h2>
-              <div className="space-y-2">
-                {archivedList.map((p) => (
-                  <PersonRow
-                    key={p.id}
-                    person={p}
-                    onUpdate={(patch) => updatePerson(p.id, patch)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
-    </main>
-  );
-}
-
-function PersonRow({
-  person,
-  onUpdate,
-}: {
-  person: Person;
-  onUpdate: (patch: Partial<Person>) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(person.name);
-
-  return (
-    <div
-      className={`flex items-center justify-between border rounded-lg p-3 ${
-        person.archived ? "bg-neutral-100 border-neutral-200" : "bg-white border-neutral-200"
-      }`}
-    >
-      {editing ? (
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => {
-            setEditing(false);
-            if (name.trim() && name.trim() !== person.name) onUpdate({ name: name.trim() });
-          }}
-          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          autoFocus
-          className="flex-1 rounded border border-neutral-300 px-2 py-1 mr-3"
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className={`text-left flex-1 font-medium ${
-            person.archived ? "text-neutral-500" : "text-neutral-900"
-          }`}
-        >
-          {person.name}
-          {!person.active && !person.archived && (
-            <span className="ml-2 text-xs text-amber-700 font-semibold">INACTIVE</span>
-          )}
-        </button>
-      )}
-
-      <div className="flex gap-2 flex-shrink-0">
-        {!person.archived && (
-          <button
-            type="button"
-            onClick={() => onUpdate({ active: !person.active })}
-            className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
-          >
-            {person.active ? "Set inactive" : "Set active"}
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onUpdate({ archived: !person.archived })}
-          className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
-        >
-          {person.archived ? "Restore" : "Archive"}
-        </button>
-      </div>
-    </div>
-  );
-}
+        <p className="text-sm text-red-700
