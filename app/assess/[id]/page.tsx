@@ -1154,6 +1154,7 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
+  const [addingNew, setAddingNew] = useState(false);
 
   const alreadySignedIds = useMemo(
     () => new Set(assessment.signOns.map((s: any) => s.workerId)),
@@ -1165,6 +1166,37 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
     if (!query.trim()) return list;
     return list.filter((w: any) => w.name.toLowerCase().includes(query.toLowerCase()));
   }, [project, query, alreadySignedIds]);
+
+  const exactMatchExists = useMemo(
+    () => availableWorkers.some((w: any) => w.name.toLowerCase() === query.trim().toLowerCase()),
+    [availableWorkers, query]
+  );
+
+  const addNewWorker = async () => {
+    const trimmedName = query.trim();
+    if (!trimmedName) return;
+    setAddingNew(true);
+    setSignError(null);
+    try {
+      const res = await fetch("/api/workers/quick-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, name: trimmedName }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Could not add you as a new worker.");
+      }
+      const { worker } = await res.json();
+      await reload();
+      setSelectedWorkerId(worker.id);
+      setQuery(worker.name);
+    } catch (e: any) {
+      setSignError(e.message);
+    } finally {
+      setAddingNew(false);
+    }
+  };
 
   const capture = async (dataUrl: string) => {
     if (!selectedWorkerId) return;
@@ -1206,7 +1238,7 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
         {assessment.signOns.length} signed on so far
       </p>
 
-      <a
+      
         href={`/api/assessments/${assessment.id}/pdf`}
         target="_blank"
         rel="noreferrer"
@@ -1260,6 +1292,16 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
               ))}
               {availableWorkers.length === 0 && (
                 <p className="p-3 text-sm text-neutral-500">No matching worker found.</p>
+              )}
+              {!exactMatchExists && query.trim().length > 1 && (
+                <button
+                  type="button"
+                  onClick={addNewWorker}
+                  disabled={addingNew}
+                  className="w-full text-left px-4 py-3 text-emerald-700 font-medium active:bg-emerald-50 disabled:opacity-50"
+                >
+                  {addingNew ? "Adding..." : `+ Add "${query.trim()}" as a new worker`}
+                </button>
               )}
             </div>
           )}
@@ -1336,7 +1378,7 @@ function ReviewStep({ assessment, submitErrors, onSubmit, submitting, readOnly }
       {assessment.status === "approved" && (
         <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 space-y-2">
           <p className="text-emerald-800 font-medium">This assessment has been approved.</p>
-          <a
+          
             href={`/assess/${assessment.id}/reassess`}
             className="block text-center py-3 rounded-lg border-2 border-amber-600 text-amber-700 font-semibold"
           >
