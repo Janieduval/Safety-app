@@ -139,7 +139,8 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
       <StatusBanner status={assessment.status} />
 
       
-        href={`/api/assessments/${assessment.id}/pdf`}
+        <a
+          href={`/api/assessments/${assessment.id}/pdf`}
         target="_blank"
         rel="noreferrer"
         className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted"
