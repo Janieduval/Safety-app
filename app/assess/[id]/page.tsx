@@ -207,7 +207,8 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // ---------------- Header ----------------
 
 function HeaderStep({ assessment, teams, save, readOnly }: any) {
-const [local, setLocal]
+  const [local, setLocal] = useState({
+    dateTime: assessment.dateTime ? toSydneyInputValue(assessment.dateTime) : "",
     teamId: assessment.teamId ?? "",
     otherTeamText: assessment.otherTeamText ?? "",
     location: assessment.location ?? "",
@@ -219,7 +220,7 @@ const [local, setLocal]
     [local.teamId, teams]
   );
 
- const commit = (patch: Partial<typeof local>) => {
+  const commit = (patch: Partial<typeof local>) => {
     const next = { ...local, ...patch };
     setLocal(next);
     save("header", {
