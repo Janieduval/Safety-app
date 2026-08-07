@@ -20,6 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       signOns: { include: { worker: true }, orderBy: { signedAt: "asc" } },
       supervisorReview: { include: { supervisor: true } },
       reassessments: true,
+      changeAcknowledgments: { orderBy: { acknowledgedAt: "asc" } },
     },
   });
 
