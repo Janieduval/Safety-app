@@ -116,6 +116,7 @@ model Assessment {
   projectId String
   project   Project           @relation(fields: [projectId], references: [id])
   status    AssessmentStatus  @default(draft)
+  version   Int               @default(1)
 
   dateTime         DateTime // defaults client-side to now, Australia/Sydney display
   teamId           String?
@@ -159,11 +160,11 @@ model Assessment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  auditLogs AuditLog[]
+ auditLogs AuditLog[]
+  changeAcknowledgments ChangeAcknowledgment[]
 
   @@index([projectId, status])
 }
-
 // One row per Step 1 question per assessment — keeps original "No" visible even after resolution
 model Step1Response {
   id            String     @id @default(uuid())
@@ -329,6 +330,15 @@ model SupervisorReview {
   decision           String   // "approved" | "changes_required"
   signatureData      String
   reviewedAt         DateTime @default(now())
+}
+model ChangeAcknowledgment {
+  id             String     @id @default(uuid())
+  assessmentId   String
+  assessment     Assessment @relation(fields: [assessmentId], references: [id])
+  versionAtAck   Int
+  workerId       String
+  signatureData  String
+  acknowledgedAt DateTime   @default(now())
 }
 
 // A reassessment links to the original approved assessment rather than mutating it
