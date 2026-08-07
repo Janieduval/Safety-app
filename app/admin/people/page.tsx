@@ -161,7 +161,9 @@ export default function ManagePeoplePage() {
   };
 
   const list = tab === "workers" ? workers : supervisors;
-  const activeList = list.filter((p) => !p.archived);
+  const activeList = list
+    .filter((p) => !p.archived)
+    .sort((a, b) => (b.needsReview ? 1 : 0) - (a.needsReview ? 1 : 0));
   const archivedList = list.filter((p) => p.archived);
   const reviewCount = activeList.filter((p) => p.needsReview).length;
 
