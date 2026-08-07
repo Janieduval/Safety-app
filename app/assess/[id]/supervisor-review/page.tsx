@@ -75,7 +75,8 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
         Version {assessment.version} &middot; Completed by {assessment.completedByWorker?.name}
       </p>
 
-      
+      <a
+        
         href={`/api/assessments/${assessment.id}/pdf`}
         target="_blank"
         rel="noreferrer"
