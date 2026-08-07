@@ -164,6 +164,24 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           </div>
         )}
 
+        {assessment.status === "changes_required" && assessment.supervisorReview && (
+          <div className="mb-4 rounded-lg bg-amber-50 border-2 border-amber-400 p-4 text-amber-900 text-sm">
+            <p className="font-semibold mb-1">
+              Changes requested by {assessment.supervisorReview.supervisor?.name ?? "your supervisor"}
+              {assessment.version ? ` (Version ${assessment.version})` : ""}:
+            </p>
+            {assessment.supervisorReview.comments && <p>{assessment.supervisorReview.comments}</p>}
+            {assessment.supervisorReview.additionalControls && (
+              <p className="mt-1">
+                Additional controls requested: {assessment.supervisorReview.additionalControls}
+              </p>
+            )}
+            {!assessment.supervisorReview.comments && !assessment.supervisorReview.additionalControls && (
+              <p>No additional comments were left. Review each step for accuracy before resubmitting.</p>
+            )}
+          </div>
+        )}
+
         {step === "header" && (
           <HeaderStep assessment={assessment} teams={teams} save={save} readOnly={readOnly} />
         )}
@@ -217,7 +235,12 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           <HazardsStep assessment={assessment} save={save} reload={reloadAssessment} readOnly={readOnly} />
         )}
         {step === "newHazard" && (
-          <NewHazardStep assessment={assessment} save={save} readOnly={readOnly} onValidityChange={setStepValidity("newHazard")} />
+          <NewHazardStep
+            assessment={assessment}
+            save={save}
+            readOnly={readOnly}
+            onValidityChange={setStepValidity("newHazard")}
+          />
         )}
         {step === "declarations" && (
           <DeclarationsStep
@@ -238,7 +261,10 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
             readOnly={readOnly}
           />
         )}
-        {step === "review" && (
+        {step === "review" && assessment.status === "changes_required" && (
+          <ChangesAcknowledgmentStep assessment={assessment} reload={reloadAssessment} />
+        )}
+        {step === "review" && assessment.status !== "changes_required" && (
           <ReviewStep
             assessment={assessment}
             submitErrors={submitErrors}
@@ -1495,6 +1521,79 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
               {signError && <p className="text-red-700 text-sm font-medium">{signError}</p>}
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------- Changes acknowledgment (resubmit after changes required) ----------------
+
+function ChangesAcknowledgmentStep({ assessment, reload }: any) {
+  const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const capture = async (dataUrl: string) => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/assessments/${assessment.id}/resubmit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workerId: assessment.completedByWorkerId,
+          signatureData: dataUrl,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          body.error ?? (body.errors ? body.errors.join(", ") : "Could not resubmit.")
+        );
+      }
+      await reload();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <SectionTitle>Changes required</SectionTitle>
+      {assessment.supervisorReview && (
+        <div className="rounded-lg bg-amber-50 border border-amber-300 p-4 text-amber-900 text-sm">
+          <p className="font-semibold mb-1">
+            Requested by {assessment.supervisorReview.supervisor?.name ?? "your supervisor"}:
+          </p>
+          {assessment.supervisorReview.comments && <p>{assessment.supervisorReview.comments}</p>}
+          {assessment.supervisorReview.additionalControls && (
+            <p className="mt-1">
+              Additional controls: {assessment.supervisorReview.additionalControls}
+            </p>
+          )}
+        </div>
+      )}
+      <label className="flex items-start gap-3 border border-neutral-200 rounded-lg p-4 bg-white">
+        <input
+          type="checkbox"
+          checked={confirmed}
+          onChange={(e) => setConfirmed(e.target.checked)}
+          className="w-6 h-6 mt-0.5 flex-shrink-0"
+        />
+        <span className="text-neutral-900 font-medium text-sm">
+          I am aware of the changes required above and have addressed them in this assessment.
+        </span>
+      </label>
+      {confirmed && (
+        <div className="space-y-3">
+          <p className="text-sm text-neutral-700">
+            Sign below to resubmit this assessment as Version {assessment.version + 1}.
+          </p>
+          <SignaturePad onCapture={capture} disabled={submitting} />
+          {error && <p className="text-red-700 text-sm font-medium">{error}</p>}
         </div>
       )}
     </div>
