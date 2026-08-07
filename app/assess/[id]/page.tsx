@@ -27,6 +27,7 @@ const STEPS = [
   "permits",
   "access",
   "changes",
+  "hazardPause",
   "hazards",
   "newHazard",
   "declarations",
@@ -35,7 +36,18 @@ const STEPS = [
   "review",
 ] as const;
 
-const CRITICAL_STEPS = ["step1", "swms", "access", "hazards", "newHazard", "declarations", "sign"];
+const HAZARD_PAUSE_SECONDS = 20;
+
+const CRITICAL_STEPS = [
+  "step1",
+  "swms",
+  "access",
+  "hazardPause",
+  "hazards",
+  "newHazard",
+  "declarations",
+  "sign",
+];
 
 function computeHazardsValid(assessment: any): boolean {
   if (!assessment) return false;
@@ -194,16 +206,18 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
         {step === "changes" && (
           <ChangesStep assessment={assessment} save={save} reload={reloadAssessment} readOnly={readOnly} />
         )}
+        {step === "hazardPause" && (
+          <HazardPauseStep
+            key={readOnly ? "readonly" : stepIndex}
+            readOnly={readOnly}
+            onValidityChange={setStepValidity("hazardPause")}
+          />
+        )}
         {step === "hazards" && (
           <HazardsStep assessment={assessment} save={save} reload={reloadAssessment} readOnly={readOnly} />
         )}
         {step === "newHazard" && (
-          <NewHazardStep
-            assessment={assessment}
-            save={save}
-            readOnly={readOnly}
-            onValidityChange={setStepValidity("newHazard")}
-          />
+          <NewHazardStep assessment={assessment} save={save} readOnly={readOnly} onValidityChange={setStepValidity("newHazard")} />
         )}
         {step === "declarations" && (
           <DeclarationsStep
@@ -239,7 +253,9 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
         <div className="max-w-md mx-auto">
           {continueBlocked && (
             <p className="text-xs text-amber-700 font-medium mb-2 text-center">
-              Complete this step before continuing.
+              {step === "hazardPause"
+                ? "Take a moment to look around before continuing."
+                : "Complete this step before continuing."}
             </p>
           )}
           <div className="flex gap-3">
@@ -276,6 +292,40 @@ function CenteredMessage({ text, isError }: { text: string; isError?: boolean })
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="text-lg font-bold text-neutral-900 mb-3">{children}</h2>;
+}
+
+// ---------------- Hazard pause ----------------
+
+function HazardPauseStep({ readOnly, onValidityChange }: any) {
+  const [secondsLeft, setSecondsLeft] = useState(readOnly ? 0 : HAZARD_PAUSE_SECONDS);
+
+  useEffect(() => {
+    if (!onValidityChange) return;
+    if (secondsLeft <= 0) {
+      onValidityChange(true);
+      return;
+    }
+    onValidityChange(false);
+    const timer = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondsLeft]);
+
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
+      <p className="text-xl font-semibold text-neutral-900 mb-4">
+        Now, look around you.
+      </p>
+      <p className="text-neutral-700 text-base mb-10 max-w-xs">
+        Take in your work area. What could hurt you? What hazards do you see?
+      </p>
+      {secondsLeft > 0 ? (
+        <div className="text-6xl font-bold text-emerald-700 tabular-nums">{secondsLeft}</div>
+      ) : (
+        <div className="text-emerald-700 font-semibold">You can continue now.</div>
+      )}
+    </div>
+  );
 }
 
 // ---------------- Header ----------------
