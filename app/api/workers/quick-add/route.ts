@@ -1,31 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(req: NextRequest) {
-  const { projectId, name } = await req.json();
-  if (!projectId || !name?.trim()) {
-    return NextResponse.json({ error: "projectId and name are required" }, { status: 400 });
-  }
-  const trimmedName = name.trim();
-
-  // Avoid creating a duplicate if someone with this exact name already exists
-  const existing = await prisma.worker.findFirst({
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const assessments = await prisma.assessment.findMany({
     where: {
-      projectId,
-      archived: false,
-      name: { equals: trimmedName, mode: "insensitive" },
+      OR: [{ completedByWorkerId: params.id }, { signOns: { some: { workerId: params.id } } }],
     },
+    include: {
+      project: true,
+      team: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
   });
-  if (existing) {
-    return NextResponse.json({ worker: existing });
-  }
 
-  const worker = await prisma.worker.create({
-    data: {
-      projectId,
-      name: trimmedName,
-      needsReview: true,
-    },
-  });
-  return NextResponse.json({ worker });
+  return NextResponse.json({ assessments });
 }
