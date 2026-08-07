@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAssessmentData, useAutosave } from "@/lib/useAssessment";
 import AutosaveStatus from "@/components/AutosaveStatus";
 import YesNoButtons from "@/components/YesNoButtons";
@@ -74,6 +74,8 @@ function computeSignValid(assessment: any): boolean {
 export default function AssessmentWizard({ params }: { params: { id: string } }) {
   const { id } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const forceViewOnly = searchParams.get("view") === "1";
   const { assessment, project, teams, loading, error, reload, reloadAssessment } = useAssessmentData(id);
   const { save, status } = useAutosave(id);
   const [stepIndex, setStepIndex] = useState(0);
@@ -97,7 +99,7 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
   if (error) return <CenteredMessage text={error} isError />;
   if (!assessment || !project) return <CenteredMessage text="Assessment not found." isError />;
 
-  const readOnly = assessment.status !== "draft" && assessment.status !== "changes_required";
+  const readOnly = forceViewOnly || (assessment.status !== "draft" && assessment.status !== "changes_required");
   const step = STEPS[stepIndex];
 
   const isCriticalStep = CRITICAL_STEPS.includes(step);
@@ -157,7 +159,14 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
       </header>
 
       <div className="max-w-md mx-auto px-4 py-5">
-        {readOnly && (
+        {readOnly && forceViewOnly && (
+          <div className="mb-4 rounded-lg bg-blue-50 border border-blue-300 p-3 text-blue-800 text-sm font-medium">
+            You're viewing this assessment. Only the person who completed it can change its
+            contents — you can still add your signature on the Team sign-on step.
+          </div>
+        )}
+
+        {readOnly && !forceViewOnly && (
           <div className="mb-4 rounded-lg bg-amber-50 border border-amber-300 p-3 text-amber-800 text-sm font-medium">
             This assessment is {assessment.status.replace(/_/g, " ")} and can no longer be
             edited here.
@@ -258,11 +267,19 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
             assessment={assessment}
             project={project}
             reload={reloadAssessment}
-            readOnly={readOnly}
+            readOnly={forceViewOnly ? false : readOnly}
           />
         )}
-        {step === "review" && assessment.status === "changes_required" && (
+        {step === "review" && assessment.status === "changes_required" && !forceViewOnly && (
           <ChangesAcknowledgmentStep assessment={assessment} reload={reloadAssessment} />
+        )}
+        {step === "review" && assessment.status === "changes_required" && forceViewOnly && (
+          <div className="space-y-4">
+            <SectionTitle>Changes required</SectionTitle>
+            <p className="text-sm text-neutral-600">
+              This assessment can only be resubmitted by the person who completed it.
+            </p>
+          </div>
         )}
         {step === "review" && assessment.status !== "changes_required" && (
           <ReviewStep
