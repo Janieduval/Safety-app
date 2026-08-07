@@ -165,6 +165,22 @@ export const RISK_RATING_DEFINITIONS: {
   },
 ];
 
+export const SUPERVISOR_CHECKLIST = [
+  { key: "taskUnderstood", label: "The task is understood and appropriate for the crew." },
+  { key: "hazardsAppropriate", label: "The identified hazards are appropriate for the task." },
+  { key: "controlsSuitable", label: "The controls in place are suitable for the identified hazards." },
+  { key: "workersCompetentFit", label: "The workers involved are competent and fit for the task." },
+  {
+    key: "additionalHazardsDiscussed",
+    label: "Any additional hazards or changes have been discussed with the crew.",
+  },
+  { key: "stopWorkResolved", label: "Any stop-work items raised have been resolved." },
+  {
+    key: "highRiskReviewed",
+    label: "Any high or extreme residual risk ratings have been reviewed.",
+  },
+  { key: "permitsConfirmed", label: "Any required permits have been confirmed as issued and valid." },
+] as const;
 export const SEED_TEAMS = [
   "Trucks",
   "Distribution",
