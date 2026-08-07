@@ -35,6 +35,30 @@ const STEPS = [
   "review",
 ] as const;
 
+const CRITICAL_STEPS = ["step1", "swms", "access", "hazards", "newHazard", "declarations", "sign"];
+
+function computeHazardsValid(assessment: any): boolean {
+  if (!assessment) return false;
+  for (const hq of HAZARD_QUESTIONS) {
+    const r = assessment.hazardResponses.find((x: any) => x.questionKey === hq.key);
+    if (!r || r.present === null || r.present === undefined) return false;
+    if (r.present) {
+      const cards = r.cards ?? [];
+      if (cards.length === 0) return false;
+      for (const c of cards) {
+        if (!c.description?.trim() || !c.controls?.trim() || !c.responsiblePerson?.trim()) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+function computeSignValid(assessment: any): boolean {
+  return !!assessment?.signOns?.some((s: any) => s.isPrimary);
+}
+
 export default function AssessmentWizard({ params }: { params: { id: string } }) {
   const { id } = params;
   const router = useRouter();
@@ -43,6 +67,7 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
   const [stepIndex, setStepIndex] = useState(0);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [localValidity, setLocalValidity] = useState<Record<string, boolean>>({});
 
   // Warn before refresh/navigation while a draft is in progress
   useEffect(() => {
@@ -63,7 +88,23 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
   const readOnly = assessment.status !== "draft" && assessment.status !== "changes_required";
   const step = STEPS[stepIndex];
 
-  const goNext = () => setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
+  const isCriticalStep = CRITICAL_STEPS.includes(step);
+  let criticalStepValid = true;
+  if (!readOnly && isCriticalStep) {
+    if (step === "hazards") criticalStepValid = computeHazardsValid(assessment);
+    else if (step === "sign") criticalStepValid = computeSignValid(assessment);
+    else criticalStepValid = localValidity[step] === true;
+  }
+  const continueBlocked = !readOnly && isCriticalStep && !criticalStepValid;
+
+  const setStepValidity = (key: string) => (valid: boolean) => {
+    setLocalValidity((prev) => (prev[key] === valid ? prev : { ...prev, [key]: valid }));
+  };
+
+  const goNext = () => {
+    if (continueBlocked) return;
+    setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
+  };
   const goBack = () => setStepIndex((i) => Math.max(i - 1, 0));
 
   const handleSubmit = async () => {
@@ -115,10 +156,21 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           <HeaderStep assessment={assessment} teams={teams} save={save} readOnly={readOnly} />
         )}
         {step === "step1" && (
-          <Step1 assessment={assessment} save={save} readOnly={readOnly} />
+          <Step1
+            assessment={assessment}
+            save={save}
+            readOnly={readOnly}
+            onValidityChange={setStepValidity("step1")}
+          />
         )}
         {step === "swms" && (
-          <SwmsStep assessment={assessment} project={project} save={save} readOnly={readOnly} />
+          <SwmsStep
+            assessment={assessment}
+            project={project}
+            save={save}
+            readOnly={readOnly}
+            onValidityChange={setStepValidity("swms")}
+          />
         )}
         {step === "ppe" && (
           <PpeStep assessment={assessment} project={project} save={save} readOnly={readOnly} />
@@ -132,7 +184,12 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           />
         )}
         {step === "access" && (
-          <AccessStep assessment={assessment} save={save} readOnly={readOnly} />
+          <AccessStep
+            assessment={assessment}
+            save={save}
+            readOnly={readOnly}
+            onValidityChange={setStepValidity("access")}
+          />
         )}
         {step === "changes" && (
           <ChangesStep assessment={assessment} save={save} reload={reloadAssessment} readOnly={readOnly} />
@@ -141,10 +198,20 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           <HazardsStep assessment={assessment} save={save} reload={reloadAssessment} readOnly={readOnly} />
         )}
         {step === "newHazard" && (
-          <NewHazardStep assessment={assessment} save={save} readOnly={readOnly} />
+          <NewHazardStep
+            assessment={assessment}
+            save={save}
+            readOnly={readOnly}
+            onValidityChange={setStepValidity("newHazard")}
+          />
         )}
         {step === "declarations" && (
-          <DeclarationsStep assessment={assessment} save={save} readOnly={readOnly} />
+          <DeclarationsStep
+            assessment={assessment}
+            save={save}
+            readOnly={readOnly}
+            onValidityChange={setStepValidity("declarations")}
+          />
         )}
         {step === "sign" && (
           <PrimarySignStep assessment={assessment} reload={reloadAssessment} readOnly={readOnly} />
@@ -169,23 +236,30 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 px-4 py-3">
-        <div className="max-w-md mx-auto flex gap-3">
-          <button
-            type="button"
-            onClick={goBack}
-            disabled={stepIndex === 0}
-            className="flex-1 py-3 rounded-lg border border-neutral-400 font-medium text-neutral-700 disabled:opacity-40"
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={stepIndex === STEPS.length - 1}
-            className="flex-1 py-3 rounded-lg bg-emerald-700 text-white font-semibold disabled:opacity-40"
-          >
-            Continue
-          </button>
+        <div className="max-w-md mx-auto">
+          {continueBlocked && (
+            <p className="text-xs text-amber-700 font-medium mb-2 text-center">
+              Complete this step before continuing.
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={stepIndex === 0}
+              className="flex-1 py-3 rounded-lg border border-neutral-400 font-medium text-neutral-700 disabled:opacity-40"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={stepIndex === STEPS.length - 1 || continueBlocked}
+              className="flex-1 py-3 rounded-lg bg-emerald-700 text-white font-semibold disabled:opacity-40"
+            >
+              Continue
+            </button>
+          </div>
         </div>
       </nav>
     </main>
@@ -305,7 +379,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 // ---------------- Step 1 ----------------
 
-function Step1({ assessment, save, readOnly }: any) {
+function Step1({ assessment, save, readOnly, onValidityChange }: any) {
   const [responses, setResponses] = useState<Record<string, any>>(() => {
     const map: Record<string, any> = {};
     for (const r of assessment.step1Responses) map[r.questionKey] = r;
@@ -330,6 +404,20 @@ function Step1({ assessment, save, readOnly }: any) {
       spokenToSupervisor: next.spokenToSupervisor,
     });
   };
+
+  useEffect(() => {
+    if (!onValidityChange) return;
+    const valid = STEP1_QUESTIONS.every((q) => {
+      const r = responses[q.key];
+      if (!r || r.answer === null || r.answer === undefined) return false;
+      if (r.answer === false) {
+        return !!r.noDetails?.trim() && r.spokenToSupervisor === true;
+      }
+      return true;
+    });
+    onValidityChange(valid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [responses]);
 
   return (
     <div className="space-y-6">
@@ -381,7 +469,7 @@ function Step1({ assessment, save, readOnly }: any) {
 
 // ---------------- SWMS ----------------
 
-function SwmsStep({ assessment, project, save, readOnly }: any) {
+function SwmsStep({ assessment, project, save, readOnly, onValidityChange }: any) {
   const [selected, setSelected] = useState<string[]>(
     assessment.swms.map((s: any) => s.swmsOptionId)
   );
@@ -403,6 +491,13 @@ function SwmsStep({ assessment, project, save, readOnly }: any) {
   const filtered = project.swmsOptions.filter((o: any) =>
     o.label.toLowerCase().includes(query.toLowerCase())
   );
+
+  useEffect(() => {
+    if (!onValidityChange) return;
+    const valid = selected.length > 0 && (!isOtherSelected || !!otherText.trim());
+    onValidityChange(valid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, otherText, isOtherSelected]);
 
   return (
     <div className="space-y-4">
@@ -663,7 +758,7 @@ function PermitsStep({ assessment, project, save, readOnly }: any) {
 
 // ---------------- Access ----------------
 
-function AccessStep({ assessment, save, readOnly }: any) {
+function AccessStep({ assessment, save, readOnly, onValidityChange }: any) {
   const [state, setState] = useState({
     safe: assessment.accessCheck?.safe ?? null,
     details: assessment.accessCheck?.details ?? "",
@@ -675,6 +770,17 @@ function AccessStep({ assessment, save, readOnly }: any) {
     setState(next);
     save("accessCheck", next);
   };
+
+  useEffect(() => {
+    if (!onValidityChange) return;
+    let valid = false;
+    if (state.safe === true) valid = true;
+    else if (state.safe === false) {
+      valid = !!state.details?.trim() && !!state.controlMeasure?.trim();
+    }
+    onValidityChange(valid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <div className="space-y-4">
@@ -1014,7 +1120,7 @@ function riskColor(risk: string) {
 
 // ---------------- New hazard flag ----------------
 
-function NewHazardStep({ assessment, save, readOnly }: any) {
+function NewHazardStep({ assessment, save, readOnly, onValidityChange }: any) {
   const [state, setState] = useState({
     present: assessment.newHazardFlag?.present ?? null,
     description: assessment.newHazardFlag?.description ?? "",
@@ -1026,6 +1132,17 @@ function NewHazardStep({ assessment, save, readOnly }: any) {
     setState(next);
     save("newHazardFlag", next);
   };
+
+  useEffect(() => {
+    if (!onValidityChange) return;
+    let valid = false;
+    if (state.present === false) valid = true;
+    else if (state.present === true) {
+      valid = !!state.description?.trim() && !!state.immediateControls?.trim();
+    }
+    onValidityChange(valid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <div className="space-y-4">
@@ -1062,12 +1179,19 @@ function NewHazardStep({ assessment, save, readOnly }: any) {
 
 // ---------------- Declarations ----------------
 
-function DeclarationsStep({ assessment, save, readOnly }: any) {
+function DeclarationsStep({ assessment, save, readOnly, onValidityChange }: any) {
   const [checked, setChecked] = useState<Record<string, boolean>>(() => {
     const map: Record<string, boolean> = {};
     for (const d of assessment.declarations) map[d.declarationKey] = d.checked;
     return map;
   });
+
+  useEffect(() => {
+    if (!onValidityChange) return;
+    const valid = FINAL_DECLARATIONS.every((d) => checked[d.key] === true);
+    onValidityChange(valid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checked]);
 
   return (
     <div className="space-y-4">
@@ -1242,13 +1366,7 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
         {assessment.signOns.length} signed on so far
       </p>
 
-      
-        <a
-          href={`/api/assessments/${assessment.id}/pdf`}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-block text-sm text-emerald-700 font-medium underline decoration-dotted"
-      >
+      <a href={`/api/assessments/${assessment.id}/pdf`} target="_blank" rel="noreferrer" className="inline-block text-sm text-emerald-700 font-medium underline decoration-dotted">
         Download a PDF record of this assessment so far
       </a>
 
@@ -1383,11 +1501,7 @@ function ReviewStep({ assessment, submitErrors, onSubmit, submitting, readOnly }
       {assessment.status === "approved" && (
         <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 space-y-2">
           <p className="text-emerald-800 font-medium">This assessment has been approved.</p>
-          
-            <a
-              href={`/assess/${assessment.id}/reassess`}
-            className="block text-center py-3 rounded-lg border-2 border-amber-600 text-amber-700 font-semibold"
-          >
+          <a href={`/assess/${assessment.id}/reassess`} className="block text-center py-3 rounded-lg border-2 border-amber-600 text-amber-700 font-semibold">
             Conditions have changed — reassess
           </a>
         </div>
