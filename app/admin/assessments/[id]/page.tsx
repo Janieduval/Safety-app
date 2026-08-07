@@ -1,5 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { STEP1_QUESTIONS, HAZARD_QUESTIONS, FINAL_DECLARATIONS } from "@/lib/constants";
+
+const STEP1_LABELS: Record<string, string> = Object.fromEntries(
+  STEP1_QUESTIONS.map((q) => [q.key, q.label])
+);
+const HAZARD_LABELS: Record<string, string> = Object.fromEntries(
+  HAZARD_QUESTIONS.map((q) => [q.key, q.label])
+);
+const DECLARATION_LABELS: Record<string, string> = Object.fromEntries(
+  FINAL_DECLARATIONS.map((d) => [d.key, d.label])
+);
 
 export default async function AssessmentRecordPage({ params }: { params: { id: string } }) {
   const a = await prisma.assessment.findUnique({
@@ -33,6 +44,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
           <p className="text-xs text-neutral-500">
             Reference {a.id} · Status:{" "}
             <span className="font-semibold capitalize">{a.status.replace(/_/g, " ")}</span>
+            {" "}· Version {a.version}
           </p>
           <h1 className="text-2xl font-bold text-neutral-900 mt-1">{a.project.name}</h1>
           <p className="text-neutral-600">{a.project.address}</p>
@@ -45,7 +57,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
             Completed by {a.completedByWorker?.name}
           </p>
         </div>
-        <a
+        
           href={`/api/assessments/${a.id}/pdf`}
           target="_blank"
           rel="noreferrer"
@@ -59,7 +71,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
         <ul className="space-y-1 text-sm">
           {a.step1Responses.map((r) => (
             <li key={r.id}>
-              <span className="font-medium">{r.questionKey}:</span>{" "}
+              <span className="font-medium">{STEP1_LABELS[r.questionKey] ?? r.questionKey}:</span>{" "}
               {r.answer === null ? "Unanswered" : r.answer ? "Yes" : "No"}
               {r.answer === false && r.noDetails ? ` — ${r.noDetails}` : ""}
             </li>
@@ -125,7 +137,8 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
           {a.hazardResponses.map((r) => (
             <div key={r.id} className="text-sm">
               <p className="font-medium">
-                {r.questionKey}: {r.present === null ? "Unanswered" : r.present ? "Yes" : "No"}
+                {HAZARD_LABELS[r.questionKey] ?? r.questionKey}:{" "}
+                {r.present === null ? "Unanswered" : r.present ? "Yes" : "No"}
               </p>
               {r.cards.map((c) => (
                 <div key={c.id} className="ml-4 border-l-2 border-neutral-200 pl-3 mt-1">
@@ -157,7 +170,8 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
         <ul className="text-sm">
           {a.declarations.map((d) => (
             <li key={d.id}>
-              {d.declarationKey}: {d.checked ? "Confirmed" : "Not confirmed"}
+              {DECLARATION_LABELS[d.declarationKey] ?? d.declarationKey}:{" "}
+              {d.checked ? "Confirmed" : "Not confirmed"}
             </li>
           ))}
         </ul>
