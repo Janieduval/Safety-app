@@ -69,7 +69,8 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
             Completed by {a.completedByWorker?.name}
           </p>
         </div>
-        
+        <a
+          
           href={`/api/assessments/${a.id}/pdf`}
           target="_blank"
           rel="noreferrer"
