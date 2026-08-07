@@ -37,6 +37,18 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
 
   if (!a) notFound();
 
+  const actorNameMap: Record<string, string> = {};
+  if (a.completedByWorker) actorNameMap[a.completedByWorker.id] = a.completedByWorker.name;
+  for (const s of a.signOns) actorNameMap[s.worker.id] = s.worker.name;
+  if (a.supervisorReview?.supervisor) {
+    actorNameMap[a.supervisorReview.supervisor.id] = a.supervisorReview.supervisor.name;
+  }
+  const displayActor = (actorName: string) => {
+    if (actorNameMap[actorName]) return actorNameMap[actorName];
+    if (actorName === "worker") return "Worker";
+    return actorName;
+  };
+
   return (
     <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -204,7 +216,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
         <ul className="text-xs text-neutral-600 space-y-1">
           {a.auditLogs.map((log) => (
             <li key={log.id}>
-              {new Date(log.timestamp).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })} — {log.action} by {log.actorName}
+              {new Date(log.timestamp).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })} — {log.action} by {displayActor(log.actorName)}
             </li>
           ))}
         </ul>
