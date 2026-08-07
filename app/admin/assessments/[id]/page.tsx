@@ -49,7 +49,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
           <h1 className="text-2xl font-bold text-neutral-900 mt-1">{a.project.name}</h1>
           <p className="text-neutral-600">{a.project.address}</p>
           <p className="text-neutral-600 text-sm">
-            {new Date(a.dateTime).toLocaleString("en-AU")} · Team:{" "}
+            {new Date(a.dateTime).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })} · Team:{" "}
             {a.team?.label ?? a.otherTeamText ?? "—"} · Location: {a.location ?? "—"}
           </p>
           <p className="text-neutral-800 mt-2">{a.taskDescription}</p>
@@ -182,7 +182,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
           {a.signOns.map((s) => (
             <li key={s.id}>
               {s.worker.name} {s.isPrimary ? "(Primary)" : ""} —{" "}
-              {new Date(s.signedAt).toLocaleString("en-AU")}
+              {new Date(s.signedAt).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
             </li>
           ))}
         </ul>
@@ -192,7 +192,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
         <Section title="Supervisor review">
           <p className="text-sm">
             {a.supervisorReview.supervisor.name} — {a.supervisorReview.decision} —{" "}
-            {new Date(a.supervisorReview.reviewedAt).toLocaleString("en-AU")}
+            {new Date(a.supervisorReview.reviewedAt).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
           </p>
           {a.supervisorReview.comments && (
             <p className="text-sm mt-1">Comments: {a.supervisorReview.comments}</p>
@@ -204,7 +204,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
         <ul className="text-xs text-neutral-600 space-y-1">
           {a.auditLogs.map((log) => (
             <li key={log.id}>
-              {new Date(log.timestamp).toLocaleString("en-AU")} — {log.action} by {log.actorName}
+              {new Date(log.timestamp).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })} — {log.action} by {log.actorName}
             </li>
           ))}
         </ul>
