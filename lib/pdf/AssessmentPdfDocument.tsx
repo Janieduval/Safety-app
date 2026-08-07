@@ -1,4 +1,9 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import {
+  STEP1_QUESTIONS,
+  HAZARD_QUESTIONS,
+  FINAL_DECLARATIONS,
+} from "@/lib/constants";
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, fontFamily: "Helvetica" },
@@ -6,7 +11,7 @@ const styles = StyleSheet.create({
   h2: { fontSize: 12, fontWeight: 700, marginTop: 14, marginBottom: 6, borderBottom: "1 solid #333", paddingBottom: 2 },
   meta: { fontSize: 9, color: "#444", marginBottom: 2 },
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
-  label: { fontWeight: 700, width: 160 },
+  label: { fontWeight: 700, width: 300 },
   value: { flex: 1 },
   badge: { fontSize: 9, padding: "2 6", backgroundColor: "#111", color: "#fff", borderRadius: 3, alignSelf: "flex-start" },
   card: { border: "1 solid #ccc", borderRadius: 4, padding: 8, marginBottom: 6 },
@@ -19,6 +24,16 @@ function riskLabel(risk: string) {
   return risk.charAt(0).toUpperCase() + risk.slice(1);
 }
 
+const STEP1_LABELS: Record<string, string> = Object.fromEntries(
+  STEP1_QUESTIONS.map((q) => [q.key, q.label])
+);
+const HAZARD_LABELS: Record<string, string> = Object.fromEntries(
+  HAZARD_QUESTIONS.map((q) => [q.key, q.label])
+);
+const DECLARATION_LABELS: Record<string, string> = Object.fromEntries(
+  FINAL_DECLARATIONS.map((d) => [d.key, d.label])
+);
+
 export default function AssessmentPdfDocument({ assessment }: { assessment: any }) {
   const a = assessment;
 
@@ -28,6 +43,7 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
         <Text style={styles.h1}>Daily Task Safety Awareness</Text>
         <Text style={styles.meta}>Reference: {a.id}</Text>
         <Text style={styles.meta}>Status: {a.status.replace(/_/g, " ").toUpperCase()}</Text>
+        <Text style={styles.meta}>Version: {a.version ?? 1}</Text>
         <Text style={styles.meta}>
           Project: {a.project.name} — {a.project.address} — {a.project.contractor}
         </Text>
@@ -43,7 +59,7 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
         <Text style={styles.h2}>Step 1 — Plan the task</Text>
         {a.step1Responses.map((r: any) => (
           <View key={r.id} style={styles.row}>
-            <Text style={styles.label}>{r.questionKey}</Text>
+            <Text style={styles.label}>{STEP1_LABELS[r.questionKey] ?? r.questionKey}</Text>
             <Text style={[styles.value, r.answer === false ? styles.warn : {}]}>
               {r.answer === null ? "Unanswered" : r.answer ? "Yes" : "No"}
               {r.answer === false && r.noDetails ? ` — ${r.noDetails}` : ""}
@@ -92,7 +108,9 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
           .filter((r: any) => r.present)
           .map((r: any) => (
             <View key={r.id} wrap={false} style={{ marginBottom: 6 }}>
-              <Text style={{ fontWeight: 700 }}>{r.questionKey}: Yes</Text>
+              <Text style={{ fontWeight: 700 }}>
+                {HAZARD_LABELS[r.questionKey] ?? r.questionKey}: Yes
+              </Text>
               {r.cards.map((c: any) => (
                 <View key={c.id} style={styles.card}>
                   <Text>{c.description}</Text>
@@ -129,7 +147,8 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
         <Text style={styles.h2}>Declarations</Text>
         {a.declarations.map((d: any) => (
           <Text key={d.id}>
-            {d.declarationKey}: {d.checked ? "Confirmed" : "NOT CONFIRMED"}
+            {DECLARATION_LABELS[d.declarationKey] ?? d.declarationKey}:{" "}
+            {d.checked ? "Confirmed" : "NOT CONFIRMED"}
           </Text>
         ))}
 
@@ -144,6 +163,26 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
             {s.signatureData ? <Image src={s.signatureData} style={styles.signatureImg} /> : null}
           </View>
         ))}
+
+        {a.changeAcknowledgments?.length > 0 && (
+          <View wrap={false}>
+            <Text style={styles.h2}>Change acknowledgments</Text>
+            {a.changeAcknowledgments.map((ack: any) => (
+              <View key={ack.id} style={{ marginBottom: 8 }}>
+                <Text>
+                  Version {ack.versionAtAck} acknowledged —{" "}
+                  {new Date(ack.acknowledgedAt).toLocaleString("en-AU", {
+                    timeZone: "Australia/Sydney",
+                  })}
+                </Text>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                {ack.signatureData ? (
+                  <Image src={ack.signatureData} style={styles.signatureImg} />
+                ) : null}
+              </View>
+            ))}
+          </View>
+        )}
 
         {a.supervisorReview && (
           <View wrap={false}>
@@ -186,4 +225,3 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
     </Document>
   );
 }
-
