@@ -152,7 +152,7 @@ model Assessment {
   newHazardFlag NewHazardFlag?
 
   signOns SignOn[]
-  supervisorReview SupervisorReview?
+  supervisorReviews SupervisorReview[]
 
   // Reassessment linkage: this assessment may be the origin of many reassessments
   reassessments Reassessment[] @relation("OriginalAssessment")
@@ -301,18 +301,20 @@ model SignOn {
   assessment     Assessment @relation(fields: [assessmentId], references: [id])
   workerId       String
   worker         Worker     @relation(fields: [workerId], references: [id])
+  version        Int        @default(1)
   signatureData  String     // base64 PNG
   confirmationText String
   signedAt       DateTime   @default(now())
   isPrimary      Boolean    @default(false) // true for the person who completed the assessment
 
-  @@unique([assessmentId, workerId]) // a worker cannot sign twice
+  @@unique([assessmentId, workerId, version]) // a worker signs once per version
 }
 
 model SupervisorReview {
   id            String     @id @default(uuid())
-  assessmentId  String     @unique
+  assessmentId  String
   assessment    Assessment @relation(fields: [assessmentId], references: [id])
+  version       Int        @default(1)
   supervisorId  String
   supervisor    Supervisor @relation(fields: [supervisorId], references: [id])
 
@@ -328,8 +330,10 @@ model SupervisorReview {
   comments           String?
   additionalControls String?
   decision           String   // "approved" | "changes_required"
-  signatureData      String
+ signatureData      String
   reviewedAt         DateTime @default(now())
+
+  @@unique([assessmentId, version])
 }
 model ChangeAcknowledgment {
   id             String     @id @default(uuid())
