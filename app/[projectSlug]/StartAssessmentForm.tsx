@@ -260,7 +260,8 @@ export default function StartAssessmentForm({
                   );
                   return !today ? (
                     
-                      key={a.id}
+                      <a
+                        key={a.id}
                       href={href}
                       target="_blank"
                       rel="noreferrer"
