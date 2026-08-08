@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toSydneyInputValue } from "@/lib/timezone";
 
 type Worker = { id: string; name: string };
 
@@ -13,6 +14,12 @@ const STATUS_LABELS: Record<string, string> = {
   approved: "Approved",
   archived: "Archived",
 };
+
+function isSydneyToday(dateTime: string) {
+  const assessmentDate = toSydneyInputValue(dateTime).slice(0, 10);
+  const todayDate = toSydneyInputValue(new Date()).slice(0, 10);
+  return assessmentDate === todayDate;
+}
 
 export default function StartAssessmentForm({
   projectId,
@@ -215,37 +222,62 @@ export default function StartAssessmentForm({
             )}
             {!loadingAssessments && myAssessments && myAssessments.length > 0 && (
               <div className="space-y-2">
-                {myAssessments.map((a: any) => (
-                  <Link
-                    key={a.id}
-                    href={`/assess/${a.id}`}
-                    className="block border border-neutral-200 rounded-lg p-3 bg-white active:bg-neutral-50"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-neutral-900 text-sm">
-                        {a.team?.label ?? a.otherTeamText ?? a.project?.name ?? "Assessment"}
-                      </span>
-                      <span
-                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          a.status === "changes_required"
-                            ? "bg-amber-100 text-amber-800"
-                            : a.status === "draft"
-                            ? "bg-neutral-100 text-neutral-700"
-                            : a.status === "approved"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {STATUS_LABELS[a.status] ?? a.status}
-                      </span>
-                    </div>
-                    <p className="text-xs text-neutral-500 mt-1">
-                      {new Date(a.dateTime).toLocaleString("en-AU", {
-                        timeZone: "Australia/Sydney",
-                      })}
-                    </p>
-                  </Link>
-                ))}
+                {myAssessments.map((a: any) => {
+                  const today = isSydneyToday(a.dateTime);
+                  const isAuthor = a.completedByWorkerId === viewSelected.id;
+                  const href = !today
+                    ? `/api/assessments/${a.id}/pdf`
+                    : isAuthor
+                    ? `/assess/${a.id}`
+                    : `/assess/${a.id}?view=1`;
+                  const rowContent = (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-neutral-900 text-sm">
+                          {a.team?.label ?? a.otherTeamText ?? a.project?.name ?? "Assessment"}
+                        </span>
+                        <span
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            a.status === "changes_required"
+                              ? "bg-amber-100 text-amber-800"
+                              : a.status === "draft"
+                              ? "bg-neutral-100 text-neutral-700"
+                              : a.status === "approved"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {STATUS_LABELS[a.status] ?? a.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        {new Date(a.dateTime).toLocaleString("en-AU", {
+                          timeZone: "Australia/Sydney",
+                        })}
+                        {!today && " · Opens as PDF"}
+                      </p>
+                    </>
+                  );
+                  return !today ? (
+                    
+                      key={a.id}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block border border-neutral-200 rounded-lg p-3 bg-white active:bg-neutral-50"
+                    >
+                      {rowContent}
+                    </a>
+                  ) : (
+                    <Link
+                      key={a.id}
+                      href={href}
+                      className="block border border-neutral-200 rounded-lg p-3 bg-white active:bg-neutral-50"
+                    >
+                      {rowContent}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
