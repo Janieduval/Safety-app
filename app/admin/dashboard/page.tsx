@@ -118,6 +118,10 @@ export default async function AdminDashboard({
               if (a.newHazardFlag?.present) flags.push("New hazard");
               if (a.permits.length > 0 && a.permits.some((p) => !p.issuedReviewedSigned))
                 flags.push("Permit unverified");
+      const latestReview =
+                a.supervisorReviews.length > 0
+                  ? a.supervisorReviews[a.supervisorReviews.length - 1]
+                  : null;
 
               return (
                 <tr key={a.id} className="border-t border-neutral-100">
@@ -151,13 +155,18 @@ export default async function AdminDashboard({
                     >
                       View
                     </Link>
-                    {(a.status === "awaiting_supervisor_review" || a.status === "approved" || a.status === "changes_required") && (
+                    {a.status === "awaiting_supervisor_review" && (
                       <Link
                         href={`/assess/${a.id}/supervisor-review`}
                         className="text-amber-700 font-medium hover:underline ml-3"
                       >
                         Review
                       </Link>
+                    )}
+                    {(a.status === "approved" || a.status === "changes_required") && latestReview && (
+                      <span className="text-neutral-500 ml-3">
+                        Reviewed by {latestReview.supervisor?.name ?? "supervisor"}
+                      </span>
                     )}
                   </td>
                 </tr>
