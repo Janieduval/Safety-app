@@ -72,8 +72,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
           </p>
         </div>
         
-          <a
-            href={`/api/assessments/${a.id}/pdf`}
+          href={`/api/assessments/${a.id}/pdf`}
           target="_blank"
           rel="noreferrer"
           className="shrink-0 text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium"
