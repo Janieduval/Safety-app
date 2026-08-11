@@ -180,6 +180,10 @@ export const SUPERVISOR_CHECKLIST = [
     label: "Any high or extreme residual risk ratings have been reviewed.",
   },
   { key: "permitsConfirmed", label: "Any required permits have been confirmed as issued and valid." },
+  {
+    key: "commentsDiscussed",
+    label: "Any comments or notes added below have been discussed with the crew.",
+  },
 ] as const;
 export const SEED_TEAMS = [
   "Trucks",
