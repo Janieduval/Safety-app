@@ -36,6 +36,7 @@ const DECLARATION_LABELS: Record<string, string> = Object.fromEntries(
 
 export default function AssessmentPdfDocument({ assessment }: { assessment: any }) {
   const a = assessment;
+  const reviews = a.supervisorReviews ?? [];
 
   return (
     <Document>
@@ -156,7 +157,7 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
         {a.signOns.map((s: any) => (
           <View key={s.id} wrap={false} style={{ marginBottom: 8 }}>
             <Text>
-              {s.worker.name} {s.isPrimary ? "(Primary)" : ""} —{" "}
+              {s.worker.name} {s.isPrimary ? "(Primary)" : ""} · Version {s.version} —{" "}
               {new Date(s.signedAt).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
             </Text>
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
@@ -184,23 +185,27 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
           </View>
         )}
 
-        {a.supervisorReview && (
+        {reviews.length > 0 && (
           <View wrap={false}>
-            <Text style={styles.h2}>Supervisor review</Text>
-            <Text>
-              {a.supervisorReview.supervisor.name} — Decision:{" "}
-              {a.supervisorReview.decision.toUpperCase()} —{" "}
-              {new Date(a.supervisorReview.reviewedAt).toLocaleString("en-AU", {
-                timeZone: "Australia/Sydney",
-              })}
-            </Text>
-            {a.supervisorReview.comments ? <Text>Comments: {a.supervisorReview.comments}</Text> : null}
-            {a.supervisorReview.additionalControls ? (
-              <Text>Additional controls: {a.supervisorReview.additionalControls}</Text>
-            ) : null}
-            {a.supervisorReview.signatureData ? (
-              <Image src={a.supervisorReview.signatureData} style={styles.signatureImg} />
-            ) : null}
+            <Text style={styles.h2}>Version history — supervisor reviews</Text>
+            {reviews.map((r: any) => (
+              <View key={r.id} style={{ marginBottom: 8 }}>
+                <Text>
+                  Version {r.version} — {r.decision.toUpperCase()} —{" "}
+                  {r.supervisor.name} —{" "}
+                  {new Date(r.reviewedAt).toLocaleString("en-AU", {
+                    timeZone: "Australia/Sydney",
+                  })}
+                </Text>
+                {r.comments ? <Text>Comments: {r.comments}</Text> : null}
+                {r.additionalControls ? (
+                  <Text>Additional controls: {r.additionalControls}</Text>
+                ) : null}
+                {r.signatureData ? (
+                  <Image src={r.signatureData} style={styles.signatureImg} />
+                ) : null}
+              </View>
+            ))}
           </View>
         )}
 
