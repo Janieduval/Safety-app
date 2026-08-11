@@ -25,6 +25,7 @@ export default async function AdminDashboard({
       accessCheck: true,
       newHazardFlag: true,
       permits: true,
+      supervisorReviews: { include: { supervisor: true }, orderBy: { version: "asc" } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
