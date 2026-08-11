@@ -47,15 +47,17 @@ model Worker {
 }
 
 model Supervisor {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
+  name      String
+  pinHash   String?
   projectId String
   project   Project  @relation(fields: [projectId], references: [id])
-  name      String
   active    Boolean  @default(true)
   archived  Boolean  @default(false)
+  needsReview Boolean @default(false)
   createdAt DateTime @default(now())
 
-  reviews SupervisorReview[]
+  supervisorReviews SupervisorReview[]
 }
 
 // ---------- Admin-managed option lists (project-scoped) ----------
