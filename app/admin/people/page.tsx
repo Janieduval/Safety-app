@@ -10,6 +10,7 @@ type Person = {
   active: boolean;
   archived: boolean;
   needsReview?: boolean;
+  hasPin?: boolean;
 };
 
 export default function ManagePeoplePage() {
@@ -159,7 +160,23 @@ export default function ManagePeoplePage() {
     });
     await loadPeople();
   };
-
+ const setPin = async (id: string, pin: string) => {
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/supervisors/${id}/pin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Could not set the PIN.");
+      }
+      await loadPeople();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
   const list = tab === "workers" ? workers : supervisors;
   const activeList = list
     .filter((p) => !p.archived)
@@ -310,8 +327,14 @@ export default function ManagePeoplePage() {
                 No active {tab === "workers" ? "workers" : "supervisors"} yet.
               </p>
             )}
-            {activeList.map((p) => (
-              <PersonRow key={p.id} person={p} onUpdate={(patch) => updatePerson(p.id, patch)} />
+           {activeList.map((p) => (
+              <PersonRow
+                key={p.id}
+                person={p}
+                onUpdate={(patch) => updatePerson(p.id, patch)}
+                isSupervisor={tab === "supervisors"}
+                onSetPin={(pin) => setPin(p.id, pin)}
+              />
             ))}
           </div>
 
@@ -321,11 +344,13 @@ export default function ManagePeoplePage() {
                 Archived ({archivedList.length})
               </h2>
               <div className="space-y-2">
-                {archivedList.map((p) => (
+               {archivedList.map((p) => (
                   <PersonRow
                     key={p.id}
                     person={p}
                     onUpdate={(patch) => updatePerson(p.id, patch)}
+                    isSupervisor={tab === "supervisors"}
+                    onSetPin={(pin) => setPin(p.id, pin)}
                   />
                 ))}
               </div>
@@ -340,16 +365,34 @@ export default function ManagePeoplePage() {
 function PersonRow({
   person,
   onUpdate,
+  isSupervisor,
+  onSetPin,
 }: {
   person: Person;
   onUpdate: (patch: Partial<Person>) => void;
+  isSupervisor: boolean;
+  onSetPin: (pin: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(person.name);
+  const [settingPin, setSettingPin] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  const submitPin = () => {
+    if (!/^\d{4,6}$/.test(pin)) {
+      setPinError("PIN must be 4-6 digits.");
+      return;
+    }
+    onSetPin(pin);
+    setPin("");
+    setPinError(null);
+    setSettingPin(false);
+  };
 
   return (
     <div
-      className={`flex items-center justify-between border rounded-lg p-3 ${
+      className={`border rounded-lg p-3 ${
         person.needsReview
           ? "bg-amber-50 border-amber-300"
           : person.archived
@@ -357,64 +400,105 @@ function PersonRow({
           : "bg-white border-neutral-200"
       }`}
     >
-      {editing ? (
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => {
-            setEditing(false);
-            if (name.trim() && name.trim() !== person.name) onUpdate({ name: name.trim() });
-          }}
-          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          autoFocus
-          className="flex-1 rounded border border-neutral-300 px-2 py-1 mr-3"
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className={`text-left flex-1 font-medium ${
-            person.archived ? "text-neutral-500" : "text-neutral-900"
-          }`}
-        >
-          {person.name}
-          {person.needsReview && (
-            <span className="ml-2 text-xs text-amber-700 font-semibold">NEW — UNVERIFIED</span>
-          )}
-          {!person.active && !person.archived && (
-            <span className="ml-2 text-xs text-amber-700 font-semibold">INACTIVE</span>
-          )}
-        </button>
-      )}
-
-      <div className="flex gap-2 flex-shrink-0">
-        {person.needsReview && (
+      <div className="flex items-center justify-between">
+        {editing ? (
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              setEditing(false);
+              if (name.trim() && name.trim() !== person.name) onUpdate({ name: name.trim() });
+            }}
+            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            autoFocus
+            className="flex-1 rounded border border-neutral-300 px-2 py-1 mr-3"
+          />
+        ) : (
           <button
             type="button"
-            onClick={() => onUpdate({ needsReview: false })}
-            className="text-xs px-3 py-1.5 rounded-full border border-emerald-600 text-emerald-700 font-medium"
+            onClick={() => setEditing(true)}
+            className={`text-left flex-1 font-medium ${
+              person.archived ? "text-neutral-500" : "text-neutral-900"
+            }`}
           >
-            Confirm
+            {person.name}
+            {person.needsReview && (
+              <span className="ml-2 text-xs text-amber-700 font-semibold">NEW — UNVERIFIED</span>
+            )}
+            {!person.active && !person.archived && (
+              <span className="ml-2 text-xs text-amber-700 font-semibold">INACTIVE</span>
+            )}
+            {isSupervisor && (
+              <span
+                className={`ml-2 text-xs font-semibold ${
+                  person.hasPin ? "text-emerald-700" : "text-neutral-400"
+                }`}
+              >
+                {person.hasPin ? "PIN SET" : "NO PIN"}
+              </span>
+            )}
           </button>
         )}
-        {!person.archived && (
+
+        <div className="flex gap-2 flex-shrink-0">
+          {person.needsReview && (
+            <button
+              type="button"
+              onClick={() => onUpdate({ needsReview: false })}
+              className="text-xs px-3 py-1.5 rounded-full border border-emerald-600 text-emerald-700 font-medium"
+            >
+              Confirm
+            </button>
+          )}
+          {isSupervisor && (
+            <button
+              type="button"
+              onClick={() => setSettingPin((s) => !s)}
+              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
+            >
+              {person.hasPin ? "Change PIN" : "Set PIN"}
+            </button>
+          )}
+          {!person.archived && (
+            <button
+              type="button"
+              onClick={() => onUpdate({ active: !person.active })}
+              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
+            >
+              {person.active ? "Set inactive" : "Set active"}
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => onUpdate({ active: !person.active })}
+            onClick={() => onUpdate({ archived: !person.archived })}
             className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
           >
-            {person.active ? "Set inactive" : "Set active"}
+            {person.archived ? "Restore" : "Archive"}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={() => onUpdate({ archived: !person.archived })}
-          className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
-        >
-          {person.archived ? "Restore" : "Archive"}
-        </button>
+        </div>
       </div>
+
+      {settingPin && (
+        <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center gap-2">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="4-6 digit PIN"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm w-32"
+          />
+          <button
+            type="button"
+            onClick={submitPin}
+            className="text-xs px-3 py-1.5 rounded-full bg-emerald-700 text-white font-medium"
+          >
+            Save PIN
+          </button>
+          {pinError && <p className="text-xs text-red-700 font-medium">{pinError}</p>}
+        </div>
+      )}
     </div>
   );
 }
