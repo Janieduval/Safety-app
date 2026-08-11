@@ -78,8 +78,13 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
       </p>
 
       
-        href={`/api/assessments/${assessment.id}/pdf`}
+        <a href={`/api/assessments/${assessment.id}/pdf`}
         target="_blank"
+        rel="noreferrer"
+        className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted"
+      >
+        Download a PDF record of this assessment
+      </a>
         rel="noreferrer"
         className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted"
       >
