@@ -18,14 +18,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     decision: "approved" | "changes_required";
     signatureData: string;
   };
-
   if (!supervisorId || !signatureData || !decision) {
     return NextResponse.json(
       { error: "supervisorId, signatureData and decision are required" },
       { status: 400 }
     );
   }
-
   const assessment = await prisma.assessment.findUnique({ where: { id: params.id } });
   if (!assessment) {
     return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
@@ -36,7 +34,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { status: 409 }
     );
   }
-
   const requiredChecklistKeys = [
     "taskUnderstood",
     "hazardsAppropriate",
@@ -46,6 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     "stopWorkResolved",
     "highRiskReviewed",
     "permitsConfirmed",
+    "commentsDiscussed",
   ];
   const missing = requiredChecklistKeys.filter((k) => !checklist?.[k]);
   if (decision === "approved" && missing.length > 0) {
@@ -58,9 +56,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { status: 422 }
     );
   }
-
   await prisma.supervisorReview.upsert({
-    where: { assessmentId: params.id },
+    where: {
+      assessmentId_version: { assessmentId: params.id, version: assessment.version },
+    },
     update: {
       supervisorId,
       taskUnderstood: !!checklist.taskUnderstood,
@@ -79,6 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     },
     create: {
       assessmentId: params.id,
+      version: assessment.version,
       supervisorId,
       taskUnderstood: !!checklist.taskUnderstood,
       hazardsAppropriate: !!checklist.hazardsAppropriate,
@@ -94,14 +94,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       signatureData,
     },
   });
-
   const newStatus = decision === "approved" ? "approved" : "changes_required";
-
   const updated = await prisma.assessment.update({
     where: { id: params.id },
     data: { status: newStatus },
   });
-
   await prisma.auditLog.create({
     data: {
       assessmentId: params.id,
@@ -110,9 +107,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       action: "supervisor_review",
       actorName: supervisorId,
       beforeJson: JSON.stringify({ status: "awaiting_supervisor_review" }),
-      afterJson: JSON.stringify({ status: newStatus, decision, comments }),
+      afterJson: JSON.stringify({ status: newStatus, decision, comments, version: assessment.version }),
     },
   });
-
   return NextResponse.json({ ok: true, assessment: updated });
 }
