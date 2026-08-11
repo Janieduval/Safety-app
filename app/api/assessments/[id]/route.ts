@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       declarations: true,
       newHazardFlag: true,
       signOns: { include: { worker: true }, orderBy: { signedAt: "asc" } },
-      supervisorReview: { include: { supervisor: true } },
+      supervisorReviews: { include: { supervisor: true }, orderBy: { version: "asc" } },
       reassessments: true,
       changeAcknowledgments: { orderBy: { acknowledgedAt: "asc" } },
     },
