@@ -29,7 +29,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
       declarations: true,
       newHazardFlag: true,
       signOns: { include: { worker: true }, orderBy: { signedAt: "asc" } },
-      supervisorReview: { include: { supervisor: true } },
+      supervisorReviews: { include: { supervisor: true }, orderBy: { version: "asc" } },
       reassessments: true,
       auditLogs: { orderBy: { timestamp: "asc" } },
     },
@@ -37,11 +37,13 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
 
   if (!a) notFound();
 
+  const latestReview = a.supervisorReviews[a.supervisorReviews.length - 1] ?? null;
+
   const actorNameMap: Record<string, string> = {};
   if (a.completedByWorker) actorNameMap[a.completedByWorker.id] = a.completedByWorker.name;
   for (const s of a.signOns) actorNameMap[s.worker.id] = s.worker.name;
-  if (a.supervisorReview?.supervisor) {
-    actorNameMap[a.supervisorReview.supervisor.id] = a.supervisorReview.supervisor.name;
+  for (const r of a.supervisorReviews) {
+    if (r.supervisor) actorNameMap[r.supervisor.id] = r.supervisor.name;
   }
   const displayActor = (actorName: string) => {
     if (actorNameMap[actorName]) return actorNameMap[actorName];
@@ -69,8 +71,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
             Completed by {a.completedByWorker?.name}
           </p>
         </div>
-        <a
-          
+        
           href={`/api/assessments/${a.id}/pdf`}
           target="_blank"
           rel="noreferrer"
@@ -194,22 +195,32 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
         <ul className="text-sm space-y-1">
           {a.signOns.map((s) => (
             <li key={s.id}>
-              {s.worker.name} {s.isPrimary ? "(Primary)" : ""} —{" "}
+              {s.worker.name} {s.isPrimary ? "(Primary)" : ""} · Version {s.version} —{" "}
               {new Date(s.signedAt).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
             </li>
           ))}
         </ul>
       </Section>
 
-      {a.supervisorReview && (
-        <Section title="Supervisor review">
-          <p className="text-sm">
-            {a.supervisorReview.supervisor.name} — {a.supervisorReview.decision} —{" "}
-            {new Date(a.supervisorReview.reviewedAt).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
-          </p>
-          {a.supervisorReview.comments && (
-            <p className="text-sm mt-1">Comments: {a.supervisorReview.comments}</p>
-          )}
+      {a.supervisorReviews.length > 0 && (
+        <Section title="Version history — supervisor reviews">
+          <ul className="space-y-3 text-sm">
+            {a.supervisorReviews.map((r) => (
+              <li key={r.id} className="border border-neutral-200 rounded-lg p-3">
+                <p className="font-semibold">
+                  Version {r.version} — {r.decision.replace(/_/g, " ")}
+                </p>
+                <p className="text-neutral-600">
+                  {r.supervisor.name} —{" "}
+                  {new Date(r.reviewedAt).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
+                </p>
+                {r.comments && <p className="mt-1">Comments: {r.comments}</p>}
+                {r.additionalControls && (
+                  <p className="mt-1">Additional controls: {r.additionalControls}</p>
+                )}
+              </li>
+            ))}
+          </ul>
         </Section>
       )}
 
