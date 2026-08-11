@@ -29,7 +29,9 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
   if (error || !assessment || !project)
     return <p className="p-6 text-center text-red-700">{error ?? "Not found."}</p>;
 
-  const alreadyReviewed = !!assessment.supervisorReview && assessment.status !== "awaiting_supervisor_review";
+  const reviews = assessment.supervisorReviews ?? [];
+  const latestReview = reviews.length > 0 ? reviews[reviews.length - 1] : null;
+  const alreadyReviewed = !!latestReview && assessment.status !== "awaiting_supervisor_review";
   const notReady = assessment.status !== "awaiting_supervisor_review" && !alreadyReviewed;
 
   const checklistComplete = SUPERVISOR_CHECKLIST.every((c) => checklist[c.key]);
@@ -75,8 +77,7 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
         Version {assessment.version} &middot; Completed by {assessment.completedByWorker?.name}
       </p>
 
-      <a
-        
+      
         href={`/api/assessments/${assessment.id}/pdf`}
         target="_blank"
         rel="noreferrer"
@@ -84,6 +85,19 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
       >
         Download a PDF record of this assessment
       </a>
+
+      {reviews.length > 1 && (
+        <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-3">
+          <p className="text-xs font-semibold text-neutral-700 mb-1">Previous versions</p>
+          <ul className="text-xs text-neutral-600 space-y-1">
+            {reviews.slice(0, -1).map((r: any) => (
+              <li key={r.id}>
+                Version {r.version} — {r.decision.replace(/_/g, " ")} by {r.supervisor?.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {notReady && (
         <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm font-medium text-amber-800">
@@ -95,8 +109,8 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
       {alreadyReviewed && (
         <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
           This assessment was already reviewed by{" "}
-          {assessment.supervisorReview?.supervisor?.name ?? "a supervisor"} — decision:{" "}
-          <strong>{assessment.supervisorReview?.decision?.replace(/_/g, " ")}</strong>.
+          {latestReview?.supervisor?.name ?? "a supervisor"} — decision:{" "}
+          <strong>{latestReview?.decision?.replace(/_/g, " ")}</strong>.
         </div>
       )}
 
