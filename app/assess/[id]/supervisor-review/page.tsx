@@ -85,11 +85,7 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
       >
         Download a PDF record of this assessment
       </a>
-        rel="noreferrer"
-        className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted"
-      >
-        Download a PDF record of this assessment
-      </a>
+        
 
       {reviews.length > 1 && (
         <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-3">
