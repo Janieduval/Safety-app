@@ -153,11 +153,18 @@ export async function canApproveAssessment(assessmentId: string): Promise<Valida
   const errors: string[] = [];
   const assessment = await prisma.assessment.findUnique({
     where: { id: assessmentId },
-    include: { supervisorReview: true, newHazardFlag: true },
+    include: { supervisorReviews: true, newHazardFlag: true },
   });
   if (!assessment) return { ok: false, errors: ["Assessment not found."] };
 
-  if (!assessment.supervisorReview || assessment.supervisorReview.decision !== "approved") {
+  const latestReview =
+    assessment.supervisorReviews.length > 0
+      ? assessment.supervisorReviews.reduce((latest, r) =>
+          r.version > latest.version ? r : latest
+        )
+      : null;
+
+  if (!latestReview || latestReview.decision !== "approved") {
     errors.push("A completed supervisor review with an approval decision is required.");
   }
   if (assessment.newHazardFlag?.present && !assessment.newHazardFlag.resolved) {
