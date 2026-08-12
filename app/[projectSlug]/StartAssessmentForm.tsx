@@ -260,12 +260,12 @@ export default function StartAssessmentForm({
                         })}
                         {!today && " · Opens as PDF"}
                       </p>
-                      {a.status === "changes_required" && latestReview && (
-                        <details
-                          className="mt-2"
-                          onClick={(e) => e.preventDefault()}
-                        >
-                          <summary className="text-xs font-semibold text-amber-700 cursor-pointer">
+                   {a.status === "changes_required" && latestReview && (
+                        <details className="mt-2">
+                          <summary
+                            className="text-xs font-semibold text-amber-700 cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             View supervisor comments
                           </summary>
                           <div className="mt-1 text-xs text-neutral-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
