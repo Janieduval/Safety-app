@@ -48,16 +48,31 @@ export default async function AdminDashboard({
 
   return (
     <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-neutral-900">Admin dashboard</h1>
-        <Link
-          href="/admin/people"
-          className="text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium"
-        >
-          Manage workers &amp; supervisors
-        </Link>
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            href="/admin/people"
+            className="text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium"
+          >
+            Manage workers &amp; supervisors
+          </Link>
+          <Link
+            href="/supervisor/login"
+            className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
+          >
+            Supervisor login
+          </Link>
+          {projects[0] && (
+            <Link
+              href={`/${projects[0].qrSlug}`}
+              className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
+            >
+              Assessment access page
+            </Link>
+          )}
+        </div>
       </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
         {statuses.map((s) => (
           <Link
