@@ -58,7 +58,7 @@ export default async function AdminDashboard({
 
   return (
     <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-5xl mx-auto">
-    <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-neutral-900">Admin dashboard</h1>
         <div className="flex gap-2 flex-wrap">
           <Link
@@ -83,6 +83,7 @@ export default async function AdminDashboard({
           )}
         </div>
       </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
         {statuses.map((s) => (
           <Link
@@ -115,7 +116,7 @@ export default async function AdminDashboard({
           </Link>
         ))}
       </div>
-      
+
       <form action="/admin/dashboard" method="get" className="flex gap-2 mb-4">
         {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
         {searchParams.projectId && <input type="hidden" name="projectId" value={searchParams.projectId} />}
@@ -169,14 +170,15 @@ export default async function AdminDashboard({
               if (a.newHazardFlag?.present) flags.push("New hazard");
               if (a.permits.length > 0 && a.permits.some((p) => !p.issuedReviewedSigned))
                 flags.push("Permit unverified");
-      const latestReview =
+
+              const latestReview =
                 a.supervisorReviews.length > 0
                   ? a.supervisorReviews[a.supervisorReviews.length - 1]
                   : null;
 
               return (
                 <tr key={a.id} className="border-t border-neutral-100">
-                 <td
+                  <td
                     className={`p-3 whitespace-nowrap ${
                       isTodaySydney(a.dateTime) ? "bg-blue-50 font-semibold text-blue-900" : ""
                     }`}
