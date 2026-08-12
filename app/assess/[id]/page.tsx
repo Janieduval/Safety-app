@@ -1659,11 +1659,11 @@ function ReviewStep({ assessment, submitErrors, onSubmit, submitting, readOnly }
         </p>
       )}
 
-      {!readOnly && (
+     {!readOnly && (
         <button
           type="button"
           onClick={onSubmit}
-          disabled={submitting}
+          disabled={submitting || !primarySigned}
           className="w-full py-4 rounded-lg bg-emerald-700 text-white text-lg font-semibold disabled:opacity-50"
         >
           {submitting ? "Submitting..." : "Submit for supervisor review"}
