@@ -230,6 +230,10 @@ export default function StartAssessmentForm({
                     : isAuthor
                     ? `/assess/${a.id}`
                     : `/assess/${a.id}?view=1`;
+                  const latestReview =
+                    a.supervisorReviews && a.supervisorReviews.length > 0
+                      ? a.supervisorReviews[a.supervisorReviews.length - 1]
+                      : null;
                   const rowContent = (
                     <>
                       <div className="flex items-center justify-between">
@@ -256,6 +260,30 @@ export default function StartAssessmentForm({
                         })}
                         {!today && " · Opens as PDF"}
                       </p>
+                      {a.status === "changes_required" && latestReview && (
+                        <details
+                          className="mt-2"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <summary className="text-xs font-semibold text-amber-700 cursor-pointer">
+                            View supervisor comments
+                          </summary>
+                          <div className="mt-1 text-xs text-neutral-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                            <p className="font-medium">
+                              {latestReview.supervisor?.name ?? "Supervisor"}:
+                            </p>
+                            {latestReview.comments && <p className="mt-0.5">{latestReview.comments}</p>}
+                            {latestReview.additionalControls && (
+                              <p className="mt-0.5">
+                                Additional controls: {latestReview.additionalControls}
+                              </p>
+                            )}
+                            {!latestReview.comments && !latestReview.additionalControls && (
+                              <p className="mt-0.5">No additional comments were left.</p>
+                            )}
+                          </div>
+                        </details>
+                      )}
                     </>
                   );
                   return !today ? (
