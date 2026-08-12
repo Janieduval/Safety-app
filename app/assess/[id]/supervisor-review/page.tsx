@@ -2,12 +2,15 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAssessmentData } from "@/lib/useAssessment";
 import SignaturePad from "@/components/SignaturePad";
 import { SUPERVISOR_CHECKLIST } from "@/lib/constants";
 
 export default function SupervisorReviewPage({ params }: { params: { id: string } }) {
   const { assessment, project, loading, error, reload } = useAssessmentData(params.id);
+  const searchParams = useSearchParams();
+  const backHref = searchParams.get("from") === "supervisor" ? "/supervisor" : "/admin/dashboard";
   const [query, setQuery] = useState("");
   const [selectedSupervisorId, setSelectedSupervisorId] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
@@ -251,9 +254,9 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
         </>
       )}
 
-      <div className="mt-8 pt-5 border-t border-neutral-200">
+     <div className="mt-8 pt-5 border-t border-neutral-200">
         <Link
-          href="/admin/dashboard"
+          href={backHref}
           className="block text-center py-3 rounded-lg border border-neutral-400 text-neutral-700 font-medium"
         >
           Back to dashboard
