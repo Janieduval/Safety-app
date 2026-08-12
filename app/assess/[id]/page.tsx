@@ -173,18 +173,26 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           </div>
         )}
 
-        {assessment.status === "changes_required" && assessment.supervisorReview && (
-          <div className="mb-4 rounded-lg bg-amber-50 border-2 border-amber-400 p-4 text-amber-900 text-sm">
-            <p className="font-semibold mb-1">
-              Changes requested by {assessment.supervisorReview.supervisor?.name ?? "your supervisor"}
-              {assessment.version ? ` (Version ${assessment.version})` : ""}:
-            </p>
-            {assessment.supervisorReview.comments && <p>{assessment.supervisorReview.comments}</p>}
-            {assessment.supervisorReview.additionalControls && (
-              <p className="mt-1">
-                Additional controls requested: {assessment.supervisorReview.additionalControls}
-              </p>
-            )}
+       {assessment.status === "changes_required" && assessment.supervisorReviews?.length > 0 && (() => {
+  const latestReview = assessment.supervisorReviews[assessment.supervisorReviews.length - 1];
+  return (
+    <div className="mb-4 rounded-lg bg-amber-50 border-2 border-amber-400 p-4 text-amber-900 text-sm">
+      <p className="font-semibold mb-1">
+        Changes requested by {latestReview.supervisor?.name ?? "your supervisor"}
+        {assessment.version ? ` (Version ${assessment.version})` : ""}:
+      </p>
+      {latestReview.comments && <p>{latestReview.comments}</p>}
+      {latestReview.additionalControls && (
+        <p className="mt-1">
+          Additional controls requested: {latestReview.additionalControls}
+        </p>
+      )}
+      {!latestReview.comments && !latestReview.additionalControls && (
+        <p>No additional comments were left. Review each step for accuracy before resubmitting.</p>
+      )}
+    </div>
+  );
+})()}
             {!assessment.supervisorReview.comments && !assessment.supervisorReview.additionalControls && (
               <p>No additional comments were left. Review each step for accuracy before resubmitting.</p>
             )}
@@ -1580,17 +1588,22 @@ function ChangesAcknowledgmentStep({ assessment, reload }: any) {
   return (
     <div className="space-y-4">
       <SectionTitle>Changes required</SectionTitle>
-      {assessment.supervisorReview && (
-        <div className="rounded-lg bg-amber-50 border border-amber-300 p-4 text-amber-900 text-sm">
-          <p className="font-semibold mb-1">
-            Requested by {assessment.supervisorReview.supervisor?.name ?? "your supervisor"}:
-          </p>
-          {assessment.supervisorReview.comments && <p>{assessment.supervisorReview.comments}</p>}
-          {assessment.supervisorReview.additionalControls && (
-            <p className="mt-1">
-              Additional controls: {assessment.supervisorReview.additionalControls}
+     {assessment.supervisorReviews?.length > 0 && (() => {
+        const latestReview = assessment.supervisorReviews[assessment.supervisorReviews.length - 1];
+        return (
+          <div className="rounded-lg bg-amber-50 border border-amber-300 p-4 text-amber-900 text-sm">
+            <p className="font-semibold mb-1">
+              Requested by {latestReview.supervisor?.name ?? "your supervisor"}:
             </p>
-          )}
+            {latestReview.comments && <p>{latestReview.comments}</p>}
+            {latestReview.additionalControls && (
+              <p className="mt-1">
+                Additional controls: {latestReview.additionalControls}
+              </p>
+            )}
+          </div>
+        );
+      })()}
         </div>
       )}
       <label className="flex items-start gap-3 border border-neutral-200 rounded-lg p-4 bg-white">
