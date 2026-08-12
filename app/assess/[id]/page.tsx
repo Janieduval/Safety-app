@@ -31,9 +31,7 @@ const STEPS = [
   "hazards",
   "newHazard",
   "declarations",
-  "sign",
-  "teamSign",
-  "review",
+  "finish",
 ] as const;
 
 const HAZARD_PAUSE_SECONDS = 20;
@@ -46,7 +44,6 @@ const CRITICAL_STEPS = [
   "hazards",
   "newHazard",
   "declarations",
-  "sign",
 ];
 
 function computeHazardsValid(assessment: any): boolean {
@@ -106,7 +103,6 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
   let criticalStepValid = true;
   if (!readOnly && isCriticalStep) {
     if (step === "hazards") criticalStepValid = computeHazardsValid(assessment);
-    else if (step === "sign") criticalStepValid = computeSignValid(assessment);
     else criticalStepValid = localValidity[step] === true;
   }
   const continueBlocked = !readOnly && isCriticalStep && !criticalStepValid;
@@ -264,36 +260,42 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
             onValidityChange={setStepValidity("declarations")}
           />
         )}
-        {step === "sign" && (
-          <PrimarySignStep assessment={assessment} reload={reloadAssessment} readOnly={readOnly} />
-        )}
-        {step === "teamSign" && (
-          <TeamSignStep
-            assessment={assessment}
-            project={project}
-            reload={reloadAssessment}
-            readOnly={forceViewOnly ? false : readOnly}
-          />
-        )}
-        {step === "review" && assessment.status === "changes_required" && !forceViewOnly && (
-          <ChangesAcknowledgmentStep assessment={assessment} reload={reloadAssessment} />
-        )}
-        {step === "review" && assessment.status === "changes_required" && forceViewOnly && (
-          <div className="space-y-4">
-            <SectionTitle>Changes required</SectionTitle>
-            <p className="text-sm text-neutral-600">
-              This assessment can only be resubmitted by the person who completed it.
-            </p>
+        {step === "finish" && (
+          <div className="space-y-8">
+            <PrimarySignStep assessment={assessment} reload={reloadAssessment} readOnly={readOnly} />
+
+            <div className="border-t border-neutral-200 pt-6">
+              <TeamSignStep
+                assessment={assessment}
+                project={project}
+                reload={reloadAssessment}
+                readOnly={forceViewOnly ? false : readOnly}
+              />
+            </div>
+
+            <div className="border-t border-neutral-200 pt-6">
+              {assessment.status === "changes_required" && !forceViewOnly && (
+                <ChangesAcknowledgmentStep assessment={assessment} reload={reloadAssessment} />
+              )}
+              {assessment.status === "changes_required" && forceViewOnly && (
+                <div className="space-y-4">
+                  <SectionTitle>Changes required</SectionTitle>
+                  <p className="text-sm text-neutral-600">
+                    This assessment can only be resubmitted by the person who completed it.
+                  </p>
+                </div>
+              )}
+              {assessment.status !== "changes_required" && (
+                <ReviewStep
+                  assessment={assessment}
+                  submitErrors={submitErrors}
+                  onSubmit={handleSubmit}
+                  submitting={submitting}
+                  readOnly={readOnly}
+                />
+              )}
+            </div>
           </div>
-        )}
-        {step === "review" && assessment.status !== "changes_required" && (
-          <ReviewStep
-            assessment={assessment}
-            submitErrors={submitErrors}
-            onSubmit={handleSubmit}
-            submitting={submitting}
-            readOnly={readOnly}
-          />
         )}
       </div>
 
