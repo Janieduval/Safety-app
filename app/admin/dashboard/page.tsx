@@ -11,13 +11,18 @@ function isTodaySydney(dateTime: Date | string): boolean {
 export default async function AdminDashboard({
   searchParams,
 }: {
-  searchParams: { status?: string; projectId?: string };
+  searchParams: { status?: string; projectId?: string; worker?: string };
 }) {
   const projects = await prisma.project.findMany({ orderBy: { name: "asc" } });
 
   const where: any = {};
   if (searchParams.status) where.status = searchParams.status;
   if (searchParams.projectId) where.projectId = searchParams.projectId;
+  if (searchParams.worker?.trim()) {
+    where.completedByWorker = {
+      name: { contains: searchParams.worker.trim(), mode: "insensitive" },
+    };
+  }
 
   const assessments = await prisma.assessment.findMany({
     where,
@@ -110,6 +115,32 @@ export default async function AdminDashboard({
           </Link>
         ))}
       </div>
+      
+      <form action="/admin/dashboard" method="get" className="flex gap-2 mb-4">
+        {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
+        {searchParams.projectId && <input type="hidden" name="projectId" value={searchParams.projectId} />}
+        <input
+          type="text"
+          name="worker"
+          defaultValue={searchParams.worker ?? ""}
+          placeholder="Search by worker name..."
+          className="flex-1 max-w-xs rounded-lg border border-neutral-300 px-3 py-2 text-sm bg-white"
+        />
+        <button
+          type="submit"
+          className="text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium"
+        >
+          Search
+        </button>
+        {searchParams.worker && (
+          <Link
+            href={`/admin/dashboard${searchParams.status ? `?status=${searchParams.status}` : ""}`}
+            className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
+          >
+            Clear
+          </Link>
+        )}
+      </form>
 
       <div className="bg-white rounded-lg border border-neutral-200 overflow-x-auto">
         <table className="w-full text-sm">
