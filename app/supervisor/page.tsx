@@ -153,7 +153,11 @@ export default async function SupervisorDashboard({
 
               return (
                 <tr key={a.id} className="border-t border-neutral-100">
-                  <td className="p-3 whitespace-nowrap">
+                  <td
+                    className={`p-3 whitespace-nowrap ${
+                      isTodaySydney(a.dateTime) ? "bg-blue-50 font-semibold text-blue-900" : ""
+                    }`}
+                  >
                     {new Date(a.dateTime).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
                   </td>
                   <td className="p-3">{a.project.name}</td>
