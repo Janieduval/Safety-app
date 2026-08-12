@@ -140,49 +140,49 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
       : null;
 
   return (
-    <main className="min-h-dvh bg-neutral-50 pb-24">
-      <header className="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 z-10">
-        <div className="max-w-md mx-auto flex items-center justify-between">
+    <main ="min-h-dvh bg-neutral-50 pb-24">
+      <header ="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 z-10">
+        <div ="max-w-md mx-auto flex items-center justify-between">
           <div>
-            <p className="text-xs text-neutral-500">{project.name}</p>
-            <p className="text-sm font-semibold text-neutral-800">
+            <p ="text-xs text-neutral-500">{project.name}</p>
+            <p ="text-sm font-semibold text-neutral-800">
               Step {stepIndex + 1} of {STEPS.length}
             </p>
           </div>
           <AutosaveStatus status={status} />
         </div>
-        <div className="max-w-md mx-auto mt-2 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
+        <div ="max-w-md mx-auto mt-2 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-emerald-700 transition-all"
+            ="h-full bg-emerald-700 transition-all"
             style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
           />
         </div>
       </header>
 
-      <div className="max-w-md mx-auto px-4 py-5">
+      <div ="max-w-md mx-auto px-4 py-5">
         {readOnly && forceViewOnly && (
-          <div className="mb-4 rounded-lg bg-blue-50 border border-blue-300 p-3 text-blue-800 text-sm font-medium">
+          <div ="mb-4 rounded-lg bg-blue-50 border border-blue-300 p-3 text-blue-800 text-sm font-medium">
             You're viewing this assessment. Only the person who completed it can change its
             contents — you can still add your signature on the Team sign-on step.
           </div>
         )}
 
         {readOnly && !forceViewOnly && (
-          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-300 p-3 text-amber-800 text-sm font-medium">
+          <div ="mb-4 rounded-lg bg-amber-50 border border-amber-300 p-3 text-amber-800 text-sm font-medium">
             This assessment is {assessment.status.replace(/_/g, " ")} and can no longer be
             edited here.
           </div>
         )}
 
         {assessment.status === "changes_required" && latestSupervisorReview && (
-          <div className="mb-4 rounded-lg bg-amber-50 border-2 border-amber-400 p-4 text-amber-900 text-sm">
-            <p className="font-semibold mb-1">
+          <div ="mb-4 rounded-lg bg-amber-50 border-2 border-amber-400 p-4 text-amber-900 text-sm">
+            <p ="font-semibold mb-1">
               Changes requested by {latestSupervisorReview.supervisor?.name ?? "your supervisor"}
               {assessment.version ? ` (Version ${assessment.version})` : ""}:
             </p>
             {latestSupervisorReview.comments && <p>{latestSupervisorReview.comments}</p>}
             {latestSupervisorReview.additionalControls && (
-              <p className="mt-1">
+              <p ="mt-1">
                 Additional controls requested: {latestSupervisorReview.additionalControls}
               </p>
             )}
@@ -261,10 +261,10 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           />
         )}
         {step === "finish" && (
-          <div className="space-y-8">
+          <div ="space-y-8">
             <PrimarySignStep assessment={assessment} reload={reloadAssessment} readOnly={readOnly} />
 
-            <div className="border-t border-neutral-200 pt-6">
+            <div ="border-t border-neutral-200 pt-6">
               <TeamSignStep
                 assessment={assessment}
                 project={project}
@@ -273,14 +273,14 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
               />
             </div>
 
-            <div className="border-t border-neutral-200 pt-6">
+            <div ="border-t border-neutral-200 pt-6">
               {assessment.status === "changes_required" && !forceViewOnly && (
                 <ChangesAcknowledgmentStep assessment={assessment} reload={reloadAssessment} />
               )}
               {assessment.status === "changes_required" && forceViewOnly && (
-                <div className="space-y-4">
+                <div ="space-y-4">
                   <SectionTitle>Changes required</SectionTitle>
-                  <p className="text-sm text-neutral-600">
+                  <p ="text-sm text-neutral-600">
                     This assessment can only be resubmitted by the person who completed it.
                   </p>
                 </div>
@@ -673,7 +673,7 @@ function PpeStep({ assessment, project, save, readOnly }: any) {
     <div className="space-y-4">
       <SectionTitle>PPE required for today's task</SectionTitle>
       <p className="text-sm text-neutral-600 -mt-3">
-        Standard site PPE is preselected below — review and adjust for today's task.
+        Select the PPE required for today's task.
       </p>
       <div className="space-y-2">
         {project.ppeOptions.map((o: any) => (
