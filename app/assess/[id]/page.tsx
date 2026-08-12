@@ -138,6 +138,11 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
     }
   };
 
+  const latestSupervisorReview =
+    assessment.supervisorReviews && assessment.supervisorReviews.length > 0
+      ? assessment.supervisorReviews[assessment.supervisorReviews.length - 1]
+      : null;
+
   return (
     <main className="min-h-dvh bg-neutral-50 pb-24">
       <header className="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 z-10">
@@ -173,27 +178,19 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
           </div>
         )}
 
-       {assessment.status === "changes_required" && assessment.supervisorReviews?.length > 0 && (() => {
-  const latestReview = assessment.supervisorReviews[assessment.supervisorReviews.length - 1];
-  return (
-    <div className="mb-4 rounded-lg bg-amber-50 border-2 border-amber-400 p-4 text-amber-900 text-sm">
-      <p className="font-semibold mb-1">
-        Changes requested by {latestReview.supervisor?.name ?? "your supervisor"}
-        {assessment.version ? ` (Version ${assessment.version})` : ""}:
-      </p>
-      {latestReview.comments && <p>{latestReview.comments}</p>}
-      {latestReview.additionalControls && (
-        <p className="mt-1">
-          Additional controls requested: {latestReview.additionalControls}
-        </p>
-      )}
-      {!latestReview.comments && !latestReview.additionalControls && (
-        <p>No additional comments were left. Review each step for accuracy before resubmitting.</p>
-      )}
-    </div>
-  );
-})()}
-            {!assessment.supervisorReview.comments && !assessment.supervisorReview.additionalControls && (
+        {assessment.status === "changes_required" && latestSupervisorReview && (
+          <div className="mb-4 rounded-lg bg-amber-50 border-2 border-amber-400 p-4 text-amber-900 text-sm">
+            <p className="font-semibold mb-1">
+              Changes requested by {latestSupervisorReview.supervisor?.name ?? "your supervisor"}
+              {assessment.version ? ` (Version ${assessment.version})` : ""}:
+            </p>
+            {latestSupervisorReview.comments && <p>{latestSupervisorReview.comments}</p>}
+            {latestSupervisorReview.additionalControls && (
+              <p className="mt-1">
+                Additional controls requested: {latestSupervisorReview.additionalControls}
+              </p>
+            )}
+            {!latestSupervisorReview.comments && !latestSupervisorReview.additionalControls && (
               <p>No additional comments were left. Review each step for accuracy before resubmitting.</p>
             )}
           </div>
@@ -1559,6 +1556,11 @@ function ChangesAcknowledgmentStep({ assessment, reload }: any) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const latestSupervisorReview =
+    assessment.supervisorReviews && assessment.supervisorReviews.length > 0
+      ? assessment.supervisorReviews[assessment.supervisorReviews.length - 1]
+      : null;
+
   const capture = async (dataUrl: string) => {
     setSubmitting(true);
     setError(null);
@@ -1588,22 +1590,17 @@ function ChangesAcknowledgmentStep({ assessment, reload }: any) {
   return (
     <div className="space-y-4">
       <SectionTitle>Changes required</SectionTitle>
-     {assessment.supervisorReviews?.length > 0 && (() => {
-        const latestReview = assessment.supervisorReviews[assessment.supervisorReviews.length - 1];
-        return (
-          <div className="rounded-lg bg-amber-50 border border-amber-300 p-4 text-amber-900 text-sm">
-            <p className="font-semibold mb-1">
-              Requested by {latestReview.supervisor?.name ?? "your supervisor"}:
+      {latestSupervisorReview && (
+        <div className="rounded-lg bg-amber-50 border border-amber-300 p-4 text-amber-900 text-sm">
+          <p className="font-semibold mb-1">
+            Requested by {latestSupervisorReview.supervisor?.name ?? "your supervisor"}:
+          </p>
+          {latestSupervisorReview.comments && <p>{latestSupervisorReview.comments}</p>}
+          {latestSupervisorReview.additionalControls && (
+            <p className="mt-1">
+              Additional controls: {latestSupervisorReview.additionalControls}
             </p>
-            {latestReview.comments && <p>{latestReview.comments}</p>}
-            {latestReview.additionalControls && (
-              <p className="mt-1">
-                Additional controls: {latestReview.additionalControls}
-              </p>
-            )}
-          </div>
-        );
-      })()}
+          )}
         </div>
       )}
       <label className="flex items-start gap-3 border border-neutral-200 rounded-lg p-4 bg-white">
