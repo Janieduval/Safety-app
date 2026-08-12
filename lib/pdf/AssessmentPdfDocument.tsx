@@ -59,12 +59,28 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
 
         <Text style={styles.h2}>Step 1 — Plan the task</Text>
         {a.step1Responses.map((r: any) => (
-          <View key={r.id} style={styles.row}>
-            <Text style={styles.label}>{STEP1_LABELS[r.questionKey] ?? r.questionKey}</Text>
-            <Text style={[styles.value, r.answer === false ? styles.warn : {}]}>
-              {r.answer === null ? "Unanswered" : r.answer ? "Yes" : "No"}
-              {r.answer === false && r.noDetails ? ` — ${r.noDetails}` : ""}
-            </Text>
+          <View key={r.id} style={{ marginBottom: 3 }}>
+            <View style={styles.row}>
+              <Text style={styles.label}>{STEP1_LABELS[r.questionKey] ?? r.questionKey}</Text>
+              <Text style={[styles.value, r.answer === false ? styles.warn : {}]}>
+                {r.answer === null ? "Unanswered" : r.answer ? "Yes" : "No"}
+              </Text>
+            </View>
+            {r.answer === false && r.noDetails ? (
+              <Text style={{ fontSize: 9, marginLeft: 8 }}>Details: {r.noDetails}</Text>
+            ) : null}
+            {r.answer === false ? (
+              <Text
+                style={[
+                  { fontSize: 9, marginLeft: 8, fontWeight: 700 },
+                  r.spokenToSupervisor ? { color: "#15803d" } : styles.warn,
+                ]}
+              >
+                {r.spokenToSupervisor
+                  ? "✓ Confirmed: spoken with supervisor about this"
+                  : "NOT CONFIRMED — has not spoken with a supervisor"}
+              </Text>
+            ) : null}
           </View>
         ))}
 
