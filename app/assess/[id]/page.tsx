@@ -652,21 +652,10 @@ function SwmsStep({ assessment, project, save, readOnly, onValidityChange }: any
 // ---------------- PPE ----------------
 
 function PpeStep({ assessment, project, save, readOnly }: any) {
-  const [selected, setSelected] = useState<string[]>(() => {
-    const existing = assessment.ppe.map((p: any) => p.ppeOptionId);
-    if (existing.length > 0) return existing;
-    // preselect standard site PPE on first load
-    return project.ppeOptions.filter((o: any) => o.preselected).map((o: any) => o.id);
-  });
+  const [selected, setSelected] = useState<string[]>(() =>
+    assessment.ppe.map((p: any) => p.ppeOptionId)
+  );
   const [otherText, setOtherText] = useState(assessment.ppeOtherText ?? "");
-
-  useEffect(() => {
-    // persist the initial preselection once
-    if (assessment.ppe.length === 0 && selected.length > 0) {
-      save("ppe", { ppeOptionIds: selected, otherText });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const isOtherSelected = project.ppeOptions.some(
     (o: any) => selected.includes(o.id) && o.label === "Other"
