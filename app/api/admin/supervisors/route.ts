@@ -10,7 +10,11 @@ export async function GET(req: NextRequest) {
     where: { projectId },
     orderBy: [{ archived: "asc" }, { active: "desc" }, { name: "asc" }],
   });
-  return NextResponse.json({ supervisors });
+  const withHasPin = supervisors.map(({ pinHash, ...s }) => ({
+    ...s,
+    hasPin: !!pinHash,
+  }));
+  return NextResponse.json({ supervisors: withHasPin });
 }
 
 export async function POST(req: NextRequest) {
