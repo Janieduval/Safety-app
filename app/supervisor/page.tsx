@@ -6,7 +6,13 @@ import { verifySupervisorSessionToken } from "@/lib/supervisorSession";
 
 export const dynamic = "force-dynamic";
 
+function isTodaySydney(dateTime: Date | string): boolean {
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney" });
+  return fmt.format(new Date(dateTime)) === fmt.format(new Date());
+}
+
 export default async function SupervisorDashboard({
+
   searchParams,
 }: {
   searchParams: { status?: string; projectId?: string };
