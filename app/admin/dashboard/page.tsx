@@ -145,7 +145,11 @@ export default async function AdminDashboard({
 
               return (
                 <tr key={a.id} className="border-t border-neutral-100">
-                  <td className="p-3 whitespace-nowrap">
+                 <td
+                    className={`p-3 whitespace-nowrap ${
+                      isTodaySydney(a.dateTime) ? "bg-blue-50 font-semibold text-blue-900" : ""
+                    }`}
+                  >
                     {new Date(a.dateTime).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
                   </td>
                   <td className="p-3">{a.project.name}</td>
@@ -177,7 +181,7 @@ export default async function AdminDashboard({
                     </Link>
                     {a.status === "awaiting_supervisor_review" && (
                       <Link
-                        href={`/assess/${a.id}/supervisor-review`}
+                        href={`/assess/${a.id}/supervisor-review?from=admin`}
                         className="text-amber-700 font-medium hover:underline ml-3"
                       >
                         Review
