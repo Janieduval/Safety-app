@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const assessments = await prisma.assessment.findMany({
     where: {
@@ -9,10 +8,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     include: {
       project: true,
       team: true,
+      supervisorReviews: { include: { supervisor: true }, orderBy: { version: "asc" } },
     },
     orderBy: { createdAt: "desc" },
     take: 20,
   });
-
   return NextResponse.json({ assessments });
 }
