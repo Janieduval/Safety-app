@@ -33,9 +33,12 @@ export default async function SupervisorDashboard({
   if (searchParams.status) where.status = searchParams.status;
   if (searchParams.projectId) where.projectId = searchParams.projectId;
   if (searchParams.worker?.trim()) {
-    where.completedByWorker = {
-      name: { contains: searchParams.worker.trim(), mode: "insensitive" },
-    };
+    const term = searchParams.worker.trim();
+    where.OR = [
+      { completedByWorker: { name: { contains: term, mode: "insensitive" } } },
+      { team: { label: { contains: term, mode: "insensitive" } } },
+      { otherTeamText: { contains: term, mode: "insensitive" } },
+    ];
   }
 
   const assessments = await prisma.assessment.findMany({
@@ -129,7 +132,7 @@ export default async function SupervisorDashboard({
           type="text"
           name="worker"
           defaultValue={searchParams.worker ?? ""}
-          placeholder="Search by worker name..."
+          placeholder="Search by worker or team..."
           className="flex-1 max-w-xs rounded-lg border border-neutral-300 px-3 py-2 text-sm bg-white"
         />
         <button
