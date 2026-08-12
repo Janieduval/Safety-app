@@ -189,7 +189,7 @@ export default async function SupervisorDashboard({
                     </Link>
                     {a.status === "awaiting_supervisor_review" && (
                       <Link
-                        href={`/assess/${a.id}/supervisor-review`}
+                        href={`/assess/${a.id}/supervisor-review?from=supervisor`}
                         className="text-amber-700 font-medium hover:underline ml-3"
                       >
                         Review
