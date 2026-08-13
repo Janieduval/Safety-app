@@ -1,6 +1,9 @@
 // Builds a fresh assessment object shaped exactly like what the server
 // would return, so every wizard step component can read it the same way
 // whether the assessment is local (offline) or server-backed (online).
+import { getLocalAssessment, saveLocalAssessment } from "./offlineStore";
+import { SIGNON_CONFIRMATION_TEXT } from "./constants";
+
 export function buildSkeletonAssessment({
   localId,
   projectId,
@@ -238,4 +241,40 @@ export function applyLocalSection(current: any, section: string, data: any): any
   }
 
   return next;
+}
+
+// Mirrors the server's sign route (app/api/assessments/[id]/sign/route.ts):
+// rejects a duplicate sign-on for the same worker + version, otherwise
+// records a new local sign-on. Reads and writes the local record directly
+// since this isn't a "section" the wizard autosaves through — it's called
+// straight from the signature capture flow.
+export async function signLocalAssessment(
+  localId: string,
+  args: { workerId: string; workerName: string; signatureData: string; isPrimary?: boolean }
+): Promise<{ signOn: any }> {
+  const local = await getLocalAssessment(localId);
+  if (!local) {
+    throw new Error("This offline assessment could not be found on this device.");
+  }
+  const data = local.data;
+  const alreadySigned = (data.signOns ?? []).some(
+    (s: any) => s.workerId === args.workerId && s.version === data.version
+  );
+  if (alreadySigned) {
+    throw new Error("This worker has already signed this version of the assessment.");
+  }
+  const signOn = {
+    id: genLocalEntityId(),
+    assessmentId: localId,
+    workerId: args.workerId,
+    worker: { id: args.workerId, name: args.workerName },
+    version: data.version,
+    signatureData: args.signatureData,
+    confirmationText: SIGNON_CONFIRMATION_TEXT,
+    isPrimary: !!args.isPrimary,
+    signedAt: new Date().toISOString(),
+  };
+  const next = { ...data, signOns: [...(data.signOns ?? []), signOn] };
+  await saveLocalAssessment({ ...local, data: next });
+  return { signOn };
 }
