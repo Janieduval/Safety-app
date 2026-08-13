@@ -17,6 +17,20 @@ function yesterdaySydneyDateString(): string {
   return dt.toISOString().slice(0, 10);
 }
 
+// Collapses tabs/newlines/repeated whitespace into single spaces and trims.
+// Guards against data-entry issues (e.g. a tab character pasted into a name)
+// so filenames and downstream systems never see raw control characters.
+function cleanText(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.replace(/\s+/g, " ").trim();
+}
+
+// Strips characters that are invalid or awkward in filenames across
+// Windows/macOS/ACC (e.g. / \ : * ? " < > |), collapsing whitespace first.
+function toSafeFilenamePart(value: string): string {
+  return cleanText(value).replace(/[\\/:*?"<>|]/g, "-");
+}
+
 /**
  * GET /api/integrations/acc/assessments?date=YYYY-MM-DD
  *
@@ -54,17 +68,27 @@ export async function GET(req: NextRequest) {
 
   const baseUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`;
 
-  const results = matching.map((a) => ({
-    id: a.id,
-    date: sydneyDateString(a.dateTime),
-    dateTime: a.dateTime,
-    project: a.project.name,
-    team: a.team?.label ?? a.otherTeamText ?? null,
-    worker: a.completedByWorker?.name ?? null,
-    status: a.status,
-    version: a.version,
-    pdfUrl: `${baseUrl}/api/assessments/${a.id}/pdf`,
-  }));
+  const results = matching.map((a) => {
+    const workerName = cleanText(a.completedByWorker?.name) || "Unknown worker";
+    const teamName = cleanText(a.team?.label ?? a.otherTeamText) || "No team";
+    const dateStr = sydneyDateString(a.dateTime);
+    const filename = `${toSafeFilenamePart(workerName)} - ${toSafeFilenamePart(
+      teamName
+    )} - ${dateStr}.pdf`;
+
+    return {
+      id: a.id,
+      date: dateStr,
+      dateTime: a.dateTime,
+      project: a.project.name,
+      team: teamName,
+      worker: workerName,
+      status: a.status,
+      version: a.version,
+      pdfUrl: `${baseUrl}/api/assessments/${a.id}/pdf`,
+      filename,
+    };
+  });
 
   return NextResponse.json({ date: targetDate, count: results.length, assessments: results });
 }
