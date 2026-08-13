@@ -1,8 +1,9 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toSydneyInputValue } from "@/lib/timezone";
+import { saveProjectReference } from "@/lib/offlineStore";
 
 type Worker = { id: string; name: string };
 
@@ -23,9 +24,11 @@ function isSydneyToday(dateTime: string) {
 
 export default function StartAssessmentForm({
   projectId,
+  qrSlug,
   workers,
 }: {
   projectId: string;
+  qrSlug: string;
   workers: Worker[];
 }) {
   const router = useRouter();
@@ -40,6 +43,32 @@ export default function StartAssessmentForm({
   const [viewSelected, setViewSelected] = useState<Worker | null>(null);
   const [myAssessments, setMyAssessments] = useState<any[] | null>(null);
   const [loadingAssessments, setLoadingAssessments] = useState(false);
+
+  // Silently cache this project's full reference data (teams, SWMS
+  // options, PPE options, permit types, workers) on-device whenever this
+  // page loads with a connection. This is what lets a worker start and
+  // complete an assessment later with zero signal — without this, the
+  // wizard would have no options to show in its dropdowns while offline.
+  useEffect(() => {
+    fetch(`/api/projects/${qrSlug}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((result) => {
+        if (result?.project) {
+          saveProjectReference({
+            projectId,
+            cachedAt: new Date().toISOString(),
+            project: result.project,
+            teams: result.teams ?? [],
+          });
+        }
+      })
+      .catch(() => {
+        // Offline, or the request failed — nothing to do here. The wizard
+        // will fall back to whatever was cached the last time this page
+        // loaded successfully.
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return localWorkers;
@@ -260,7 +289,7 @@ export default function StartAssessmentForm({
                         })}
                         {!today && " · Opens as PDF"}
                       </p>
-                   {a.status === "changes_required" && latestReview && (
+                      {a.status === "changes_required" && latestReview && (
                         <details className="mt-2">
                           <summary
                             className="text-xs font-semibold text-amber-700 cursor-pointer"
@@ -287,9 +316,8 @@ export default function StartAssessmentForm({
                     </>
                   );
                   return !today ? (
-                    
-                      <a
-                        key={a.id}
+                    <a
+                      key={a.id}
                       href={href}
                       target="_blank"
                       rel="noreferrer"
