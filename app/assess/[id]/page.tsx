@@ -9,8 +9,8 @@ import StopWorkWarning from "@/components/StopWorkWarning";
 import SignaturePad from "@/components/SignaturePad";
 import RiskLegend from "@/components/RiskLegend";
 import { toSydneyInputValue, fromSydneyInputValue } from "@/lib/timezone";
-import { isLocalId } from "@/lib/offlineStore";
-import { signLocalAssessment } from "@/lib/offlineAssessment";
+import { isLocalId, getLocalAssessment, saveLocalAssessment } from "@/lib/offlineStore";
+import { signLocalAssessment, validateLocalAssessmentForSubmit } from "@/lib/offlineAssessment";
 import {
   STEP1_QUESTIONS,
   STOP_WORK_WARNING,
@@ -123,6 +123,23 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
     setSubmitting(true);
     setSubmitErrors([]);
     try {
+      if (isLocalId(id)) {
+        const { ok, errors } = validateLocalAssessmentForSubmit(assessment);
+        if (!ok) {
+          setSubmitErrors(errors);
+          return;
+        }
+        const local = await getLocalAssessment(id);
+        if (local) {
+          await saveLocalAssessment({
+            ...local,
+            syncStatus: "pending_submit",
+            data: { ...local.data, status: "awaiting_supervisor_review" },
+          });
+        }
+        await reload();
+        return;
+      }
       const res = await fetch(`/api/assessments/${id}/submit`, { method: "POST" });
       const body = await res.json();
       if (!res.ok) {
