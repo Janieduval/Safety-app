@@ -9,6 +9,8 @@ import StopWorkWarning from "@/components/StopWorkWarning";
 import SignaturePad from "@/components/SignaturePad";
 import RiskLegend from "@/components/RiskLegend";
 import { toSydneyInputValue, fromSydneyInputValue } from "@/lib/timezone";
+import { isLocalId } from "@/lib/offlineStore";
+import { signLocalAssessment } from "@/lib/offlineAssessment";
 import {
   STEP1_QUESTIONS,
   STOP_WORK_WARNING,
@@ -1319,18 +1321,27 @@ function PrimarySignStep({ assessment, reload, readOnly }: any) {
     setSigning(true);
     setError(null);
     try {
-      const res = await fetch(`/api/assessments/${assessment.id}/sign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      if (isLocalId(assessment.id)) {
+        await signLocalAssessment(assessment.id, {
           workerId: assessment.completedByWorkerId,
+          workerName: assessment.completedByWorker?.name ?? "Worker",
           signatureData: dataUrl,
           isPrimary: true,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `Couldn't save the signature (error ${res.status}). Try again.`);
+        });
+      } else {
+        const res = await fetch(`/api/assessments/${assessment.id}/sign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workerId: assessment.completedByWorkerId,
+            signatureData: dataUrl,
+            isPrimary: true,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error ?? `Couldn't save the signature (error ${res.status}). Try again.`);
+        }
       }
       await reload();
     } catch (e: any) {
@@ -1420,14 +1431,24 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
     setSaving(true);
     setSignError(null);
     try {
-      const res = await fetch(`/api/assessments/${assessment.id}/sign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workerId: selectedWorkerId, signatureData: dataUrl }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Could not sign.");
+      if (isLocalId(assessment.id)) {
+        const workerName =
+          project.workers.find((w: any) => w.id === selectedWorkerId)?.name ?? query;
+        await signLocalAssessment(assessment.id, {
+          workerId: selectedWorkerId,
+          workerName,
+          signatureData: dataUrl,
+        });
+      } else {
+        const res = await fetch(`/api/assessments/${assessment.id}/sign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workerId: selectedWorkerId, signatureData: dataUrl }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error ?? "Could not sign.");
+        }
       }
       setSelectedWorkerId(null);
       setQuery("");
