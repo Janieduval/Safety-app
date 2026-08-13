@@ -196,7 +196,14 @@ export default async function SupervisorDashboard({
                   <td className="p-3">{a.project.name}</td>
                   <td className="p-3">{a.completedByWorker?.name}</td>
                   <td className="p-3">{a.team?.label ?? a.otherTeamText ?? "—"}</td>
-                  <td className="p-3 capitalize">{a.status.replace(/_/g, " ")}</td>
+                  <td className="p-3">
+                    <span className="capitalize">{a.status.replace(/_/g, " ")}</span>
+                    {a.status === "awaiting_supervisor_review" && a.version > 1 && (
+                      <span className="block text-xs font-semibold text-blue-700 mt-0.5">
+                        Amended — v{a.version} ready for review
+                      </span>
+                    )}
+                  </td>
                   <td className="p-3">
                     {flags.length === 0 ? (
                       <span className="text-neutral-400">—</span>
