@@ -1,11 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { getLocalAssessment, saveLocalAssessment, getProjectReference } from "./offlineStore";
+import {
+  getLocalAssessment,
+  saveLocalAssessment,
+  getProjectReference,
+  isLocalId,
+} from "./offlineStore";
 import { applyLocalSection } from "./offlineAssessment";
-
-function isLocalId(id: string) {
-  return id.startsWith("local-");
-}
 
 export function useAssessmentData(id: string) {
   const [assessment, setAssessment] = useState<any>(null);
