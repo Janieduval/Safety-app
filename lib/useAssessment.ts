@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { getLocalAssessment, getProjectReference } from "./offlineStore";
+import { getLocalAssessment, saveLocalAssessment, getProjectReference } from "./offlineStore";
+import { applyLocalSection } from "./offlineAssessment";
 
 function isLocalId(id: string) {
   return id.startsWith("local-");
@@ -93,10 +94,15 @@ export function useAutosave(assessmentId: string) {
     async (section: string, data: any) => {
       setStatus("saving");
       if (isLocalId(assessmentId)) {
-        // Local persistence for each step lands in the next build step —
-        // wired up here so nothing crashes, but changes made offline
-        // won't yet be kept between steps. Coming very soon.
-        setStatus("saved");
+        try {
+          const local = await getLocalAssessment(assessmentId);
+          if (!local) throw new Error("not found");
+          const updatedData = applyLocalSection(local.data, section, data);
+          await saveLocalAssessment({ ...local, data: updatedData });
+          setStatus("saved");
+        } catch {
+          setStatus("error");
+        }
         return;
       }
       try {
