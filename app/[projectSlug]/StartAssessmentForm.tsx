@@ -3,7 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toSydneyInputValue } from "@/lib/timezone";
-import { saveProjectReference } from "@/lib/offlineStore";
+import {
+  saveProjectReference,
+  getProjectReference,
+  saveLocalAssessment,
+  newLocalAssessmentId,
+} from "@/lib/offlineStore";
+import { buildSkeletonAssessment } from "@/lib/offlineAssessment";
 
 type Worker = { id: string; name: string };
 
@@ -113,10 +119,45 @@ export default function StartAssessmentForm({
     }
   };
 
+  const startOffline = async () => {
+    if (!selected) return;
+    const ref = await getProjectReference(projectId);
+    if (!ref) {
+      throw new Error(
+        "Can't start offline yet — open this page once with a connection first, so this project's details are saved to your device."
+      );
+    }
+    const localId = newLocalAssessmentId();
+    const now = new Date().toISOString();
+    const skeleton = buildSkeletonAssessment({ localId, projectId, worker: selected });
+    await saveLocalAssessment({
+      id: localId,
+      isLocal: true,
+      createdAt: now,
+      updatedAt: now,
+      syncStatus: "draft",
+      data: skeleton,
+    });
+    router.push(`/assess/${localId}`);
+  };
+
   const start = async () => {
     if (!selected) return;
     setLoading(true);
     setError(null);
+
+    // No signal at all — skip the network attempt entirely.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        await startOffline();
+      } catch (e: any) {
+        setError(e.message ?? "Could not start an assessment offline.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch("/api/assessments", {
         method: "POST",
@@ -127,7 +168,17 @@ export default function StartAssessmentForm({
       const { assessment } = await res.json();
       router.push(`/assess/${assessment.id}`);
     } catch (e: any) {
-      setError(e.message ?? "Something went wrong.");
+      // A network-level failure (e.g. signal dropped mid-request) also
+      // falls back to starting the assessment entirely on-device.
+      if (e instanceof TypeError) {
+        try {
+          await startOffline();
+        } catch (offlineErr: any) {
+          setError(offlineErr.message ?? "Could not start an assessment. Try again.");
+        }
+      } else {
+        setError(e.message ?? "Something went wrong.");
+      }
     } finally {
       setLoading(false);
     }
