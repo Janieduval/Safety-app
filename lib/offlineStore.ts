@@ -92,6 +92,12 @@ export function newLocalAssessmentId(): string {
   return `local-${crypto.randomUUID()}`;
 }
 
+// Shared helper so every part of the app checks the same way whether an
+// assessment ID refers to an on-device (not yet synced) assessment.
+export function isLocalId(id: string): boolean {
+  return id.startsWith("local-");
+}
+
 // ---------------- Cached reference data ----------------
 
 export type CachedProjectReference = {
