@@ -2,7 +2,7 @@
 // would return, so every wizard step component can read it the same way
 // whether the assessment is local (offline) or server-backed (online).
 import { getLocalAssessment, saveLocalAssessment } from "./offlineStore";
-import { SIGNON_CONFIRMATION_TEXT } from "./constants";
+import { SIGNON_CONFIRMATION_TEXT, STEP1_QUESTIONS, HAZARD_QUESTIONS, FINAL_DECLARATIONS } from "./constants";
 
 export function buildSkeletonAssessment({
   localId,
@@ -277,4 +277,96 @@ export async function signLocalAssessment(
   const next = { ...data, signOns: [...(data.signOns ?? []), signOn] };
   await saveLocalAssessment({ ...local, data: next });
   return { signOn };
+}
+
+// Mirrors lib/validation.ts's canSubmitWorkerAssessment, but runs entirely
+// against the local, in-memory assessment — so a worker gets the same
+// "this can't be submitted yet" feedback offline as they would online,
+// rather than only finding out once signal returns and the real sync
+// (which still runs the authoritative server-side check) happens.
+export function validateLocalAssessmentForSubmit(data: any): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  for (const q of STEP1_QUESTIONS) {
+    const r = (data.step1Responses ?? []).find((x: any) => x.questionKey === q.key);
+    if (!r || r.answer === null || r.answer === undefined) {
+      errors.push(`Step 1: "${q.label}" has not been answered.`);
+      continue;
+    }
+    if (r.answer === false) {
+      if (!r.noDetails || !r.spokenToSupervisor) {
+        errors.push(
+          `Step 1: "${q.label}" was answered No and must include details and confirmation that a supervisor was spoken to before this can be submitted.`
+        );
+      }
+    }
+  }
+
+  if (!data.accessCheck || data.accessCheck.safe === null || data.accessCheck.safe === undefined) {
+    errors.push("Access route safety check has not been answered.");
+  } else if (data.accessCheck.safe === false) {
+    if (!data.accessCheck.details || !data.accessCheck.controlMeasure) {
+      errors.push(
+        "Unsafe access route requires details and a control/alternative route before submission."
+      );
+    }
+  }
+
+  if ((data.swms ?? []).length === 0) {
+    errors.push("At least one SWMS must be selected.");
+  }
+
+  if (data.permitRequired) {
+    if ((data.permits ?? []).length === 0) {
+      errors.push("A permit was marked required but none was selected.");
+    }
+    for (const p of data.permits ?? []) {
+      if (!p.issuedReviewedSigned) {
+        errors.push("All selected permits must be confirmed as issued, reviewed and signed.");
+      }
+    }
+  }
+
+  for (const hq of HAZARD_QUESTIONS) {
+    const hr = (data.hazardResponses ?? []).find((x: any) => x.questionKey === hq.key);
+    if (!hr || hr.present === null || hr.present === undefined) {
+      errors.push(`Hazard question "${hq.label}" has not been answered.`);
+      continue;
+    }
+    if (hr.present === true) {
+      if ((hr.cards ?? []).length === 0) {
+        errors.push(`Hazard question "${hq.label}" was answered Yes but has no hazard detail card.`);
+      }
+      for (const c of hr.cards ?? []) {
+        if (!c.description || !c.controls || !c.responsiblePerson) {
+          errors.push(`A hazard card under "${hq.label}" is missing required fields.`);
+        }
+        if (!c.controlConfirmed) {
+          errors.push(`A hazard card under "${hq.label}" has not confirmed its control is implemented.`);
+        }
+      }
+    }
+  }
+
+  if (data.newHazardFlag?.present) {
+    if (!data.newHazardFlag.description || !data.newHazardFlag.immediateControls) {
+      errors.push(
+        "A new hazard not covered by SWMS was flagged but is missing description or immediate controls."
+      );
+    }
+  }
+
+  for (const d of FINAL_DECLARATIONS) {
+    const rec = (data.declarations ?? []).find((x: any) => x.declarationKey === d.key);
+    if (!rec || !rec.checked) {
+      errors.push(`Declaration not confirmed: "${d.label}"`);
+    }
+  }
+
+  const primarySigned = (data.signOns ?? []).some((s: any) => s.isPrimary);
+  if (!primarySigned) {
+    errors.push("The person completing the assessment has not signed.");
+  }
+
+  return { ok: errors.length === 0, errors };
 }
