@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import OfflineSyncManager from "@/components/OfflineSyncManager";
+import DebugErrorOverlay from "@/components/DebugErrorOverlay";
 export const metadata: Metadata = {
   title: "Daily Task Safety Awareness",
   description: "Pre-task risk assessment for site workers",
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">
         <OfflineSyncManager />
+        <DebugErrorOverlay />
         {children}
       </body>
     </html>
