@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AssessmentWizardCore } from "../AssessmentWizardCore";
 
@@ -8,7 +9,7 @@ import { AssessmentWizardCore } from "../AssessmentWizardCore";
 // That's what makes it possible to cache in advance and actually open with
 // zero signal — the specific local assessment to load is passed as a
 // query string instead of being part of the address itself.
-export default function OfflineAssessmentPage() {
+function OfflineAssessmentInner() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
@@ -24,4 +25,18 @@ export default function OfflineAssessmentPage() {
   }
 
   return <AssessmentWizardCore id={id} />;
+}
+
+export default function OfflineAssessmentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-dvh flex items-center justify-center px-6">
+          <p className="text-center text-neutral-600">Loading...</p>
+        </div>
+      }
+    >
+      <OfflineAssessmentInner />
+    </Suspense>
+  );
 }
