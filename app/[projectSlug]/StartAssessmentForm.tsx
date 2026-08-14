@@ -8,7 +8,7 @@ import {
   getProjectReference,
   saveLocalAssessment,
   newLocalAssessmentId,
-  getPendingLocalAssessments,
+  getAllLocalAssessments,
 } from "@/lib/offlineStore";
 import { buildSkeletonAssessment } from "@/lib/offlineAssessment";
 import { AssessmentWizardCore } from "@/app/assess/AssessmentWizardCore";
@@ -63,8 +63,10 @@ export default function StartAssessmentForm({
   // assessment for this project, pick it back up automatically rather
   // than losing track of it.
   useEffect(() => {
-    getPendingLocalAssessments().then((pending) => {
-      const match = pending.find((p) => p.data?.projectId === projectId);
+    getAllLocalAssessments().then((all) => {
+      const match = all.find(
+        (p) => p.data?.projectId === projectId && p.syncStatus !== "synced"
+      );
       if (match) setOfflineAssessmentId(match.id);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
