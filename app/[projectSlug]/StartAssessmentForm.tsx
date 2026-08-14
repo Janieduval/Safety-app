@@ -75,12 +75,22 @@ export default function StartAssessmentForm({
       });
 
     // Also "warm" the service worker's cache for the fixed offline wizard
-    // page itself. Unlike a normal online assessment (which gets a real,
-    // reusable server ID), an offline-started one gets a brand-new address
-    // every time — impossible to have cached in advance. Routing through
-    // this one fixed address instead, and priming it here, is what makes
-    // it openable with zero signal even on the very first offline use.
-    fetch("/assess/offline").catch(() => {});
+    // page itself, using a hidden iframe rather than a plain fetch(). This
+    // matters: a service worker only treats a genuine page navigation as
+    // a cacheable "document" — a background fetch() doesn't count the
+    // same way, so it wouldn't actually be available when truly offline.
+    // Unlike a normal online assessment (which gets a real, reusable
+    // server ID), an offline-started one gets a brand-new address every
+    // time — impossible to have cached in advance. Routing through this
+    // one fixed address instead, and warming it here, is what makes it
+    // openable with zero signal even on the very first offline use.
+    const warmupFrame = document.createElement("iframe");
+    warmupFrame.style.display = "none";
+    warmupFrame.src = "/assess/offline";
+    warmupFrame.onload = () => {
+      warmupFrame.remove();
+    };
+    document.body.appendChild(warmupFrame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
