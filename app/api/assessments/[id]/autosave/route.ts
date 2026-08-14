@@ -20,6 +20,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = await req.json();
   const { section, data } = body as { section: string; data: any };
 
+  // Holds whatever row this section's write produced/touched, so the
+  // client can update its own state directly instead of having to make a
+  // second request just to find out what it already just created.
+  let result: any = null;
+
   switch (section) {
     case "header": {
       await prisma.assessment.update({
@@ -133,7 +138,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           },
         });
       } else {
-        await prisma.changeEntry.create({
+        result = await prisma.changeEntry.create({
           data: {
             assessmentId: params.id,
             category: data.category,
@@ -167,7 +172,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       // data: { hazardResponseId, id? (existing card), description, initialRisk, controls,
       //         responsiblePerson, controlConfirmed, residualRisk, photoUrl?, comments? }
       if (data.id) {
-        await prisma.hazardCard.update({
+        result = await prisma.hazardCard.update({
           where: { id: data.id },
           data: {
             description: data.description,
@@ -181,7 +186,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           },
         });
       } else {
-        await prisma.hazardCard.create({
+        result = await prisma.hazardCard.create({
           data: {
             hazardResponseId: data.hazardResponseId,
             description: data.description ?? "",
@@ -241,5 +246,5 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     data: { updatedAt: new Date() },
   });
 
-  return NextResponse.json({ ok: true, savedAt: new Date().toISOString() });
+  return NextResponse.json({ ok: true, savedAt: new Date().toISOString(), result });
 }
