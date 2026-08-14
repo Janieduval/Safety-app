@@ -82,10 +82,13 @@ export async function getAllLocalAssessments(): Promise<LocalAssessment[]> {
   );
 }
 
-// Anything not yet successfully synced — used by the sync engine (2E).
+// Only assessments the worker has actually hit Submit on — never a
+// still-in-progress draft. Syncing (and then deleting the local copy of)
+// an assessment someone is actively filling out would be a serious bug,
+// even if signal briefly and incorrectly appears to return.
 export async function getPendingLocalAssessments(): Promise<LocalAssessment[]> {
   const all = await getAllLocalAssessments();
-  return all.filter((a) => a.syncStatus !== "synced");
+  return all.filter((a) => a.syncStatus === "pending_submit" || a.syncStatus === "sync_error");
 }
 
 export function newLocalAssessmentId(): string {
