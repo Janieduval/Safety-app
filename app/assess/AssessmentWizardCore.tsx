@@ -1085,16 +1085,37 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
                     key={card.id}
                     card={card}
                     save={save}
-                    reload={reload}
                     readOnly={readOnly}
+                    onRemoved={() => {
+                      setResponses((prev) => ({
+                        ...prev,
+                        [hq.key]: {
+                          ...prev[hq.key],
+                          cards: (prev[hq.key]?.cards ?? []).filter(
+                            (c: any) => c.id !== card.id
+                          ),
+                        },
+                      }));
+                    }}
                   />
                 ))}
                 {!readOnly && (
                   <button
                     type="button"
                     onClick={async () => {
-                      await save("hazardCard", { hazardResponseId: r.id });
-                      reload();
+                      const { result } = await save("hazardCard", { hazardResponseId: r.id });
+                      if (result) {
+                        setResponses((prev) => ({
+                          ...prev,
+                          [hq.key]: {
+                            ...prev[hq.key],
+                            cards: [...(prev[hq.key]?.cards ?? []), result],
+                          },
+                        }));
+                      } else {
+                        // Fallback, only if something unexpected happened
+                        reload();
+                      }
                     }}
                     className="w-full py-2.5 rounded-lg border-2 border-dashed border-neutral-400 text-neutral-700 font-medium"
                   >
@@ -1110,7 +1131,7 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
   );
 }
 
-function HazardCard({ card, save, reload, readOnly }: any) {
+function HazardCard({ card, save, onRemoved, readOnly }: any) {
   const [local, setLocal] = useState({
     description: card.description ?? "",
     initialRisk: card.initialRisk ?? "low",
@@ -1190,9 +1211,9 @@ function HazardCard({ card, save, reload, readOnly }: any) {
       {!readOnly && (
         <button
           type="button"
-          onClick={async () => {
-            await save("deleteHazardCard", { id: card.id });
-            reload();
+          onClick={() => {
+            onRemoved();
+            save("deleteHazardCard", { id: card.id });
           }}
           className="text-sm text-red-700 font-medium"
         >
