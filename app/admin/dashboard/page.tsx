@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import ArchiveButton from "@/components/ArchiveButton";
 
 export const dynamic = "force-dynamic";
 
@@ -222,6 +223,7 @@ export default async function AdminDashboard({
                     >
                       View
                     </Link>
+                    {a.status !== "archived" && <ArchiveButton assessmentId={a.id} />}
                     {a.status === "awaiting_supervisor_review" && (
                       <Link
                         href={`/assess/${a.id}/supervisor-review?from=admin`}
