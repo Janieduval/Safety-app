@@ -27,7 +27,11 @@ export function useAssessmentData(id: string) {
         if (!local) throw new Error("This offline assessment could not be found on this device.");
         setAssessment(local.data);
       } catch (e: any) {
-        setError(e.message ?? "Something went wrong.");
+        setError(
+          e.message === "This offline assessment could not be found on this device."
+            ? e.message
+            : "Couldn't load this offline assessment from your device. Try reopening the app."
+        );
       }
       return;
     }
@@ -59,7 +63,11 @@ export function useAssessmentData(id: string) {
           );
         }
       } catch (e: any) {
-        setError(e.message ?? "Something went wrong.");
+        setError(
+          e.message === "This offline assessment could not be found on this device."
+            ? e.message
+            : "Couldn't load this offline assessment from your device. Try reopening the app."
+        );
       } finally {
         setLoading(false);
       }
