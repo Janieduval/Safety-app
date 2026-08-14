@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toSydneyInputValue } from "@/lib/timezone";
@@ -8,8 +8,10 @@ import {
   getProjectReference,
   saveLocalAssessment,
   newLocalAssessmentId,
+  getPendingLocalAssessments,
 } from "@/lib/offlineStore";
 import { buildSkeletonAssessment } from "@/lib/offlineAssessment";
+import { AssessmentWizardCore } from "@/app/assess/AssessmentWizardCore";
 
 type Worker = { id: string; name: string };
 
@@ -49,6 +51,24 @@ export default function StartAssessmentForm({
   const [viewSelected, setViewSelected] = useState<Worker | null>(null);
   const [myAssessments, setMyAssessments] = useState<any[] | null>(null);
   const [loadingAssessments, setLoadingAssessments] = useState(false);
+
+  // The ID of an offline assessment currently being filled out, rendered
+  // in place on this exact page — never as a separate navigation. iOS's
+  // standalone "add to home screen" apps have a well-known history of
+  // unreliable offline caching for anything beyond the very first page
+  // load, so the only fully dependable fix is to never need a second one.
+  const [offlineAssessmentId, setOfflineAssessmentId] = useState<string | null>(null);
+
+  // If the app was closed (or reloaded) mid-way through an offline
+  // assessment for this project, pick it back up automatically rather
+  // than losing track of it.
+  useEffect(() => {
+    getPendingLocalAssessments().then((pending) => {
+      const match = pending.find((p) => p.data?.projectId === projectId);
+      if (match) setOfflineAssessmentId(match.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Silently cache this project's full reference data (teams, SWMS
   // options, PPE options, permit types, workers) on-device whenever this
@@ -156,13 +176,10 @@ export default function StartAssessmentForm({
       syncStatus: "draft",
       data: skeleton,
     });
-    // A hard navigation, not router.push(). Next.js's smooth in-app page
-    // transitions fetch a special, differently-shaped request behind the
-    // scenes to get the new page's content — one the service worker's
-    // offline cache was never going to satisfy, no matter how well warmed.
-    // A full page reload uses the plain, standard request type that
-    // offline caching is actually built for.
-    window.location.href = `/assess/offline?id=${localId}`;
+    // No navigation of any kind — the wizard renders right here, on this
+    // exact already-loaded page. This is what makes it reliable with zero
+    // signal: there's nothing new for the phone to try to load.
+    setOfflineAssessmentId(localId);
   };
 
   const start = async () => {
@@ -221,7 +238,13 @@ export default function StartAssessmentForm({
   };
 
   return (
-    <div className="space-y-8">
+    <>
+      {offlineAssessmentId ? (
+        <Suspense fallback={<p className="text-center text-neutral-500 p-6">Loading...</p>}>
+          <AssessmentWizardCore id={offlineAssessmentId} />
+        </Suspense>
+      ) : (
+        <div className="space-y-8">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-1">
@@ -415,6 +438,8 @@ export default function StartAssessmentForm({
           </div>
         )}
       </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
