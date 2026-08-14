@@ -96,11 +96,14 @@ export function useAssessmentData(id: string) {
   return { assessment, project, teams, loading, error, reload, reloadAssessment };
 }
 
-// Fire-and-forget autosave with basic status tracking for the UI.
+// Fire-and-forget autosave with basic status tracking for the UI. Returns
+// whatever row the save produced (e.g. a newly created hazard card), so a
+// caller that needs it — like "add a hazard card" — can update its own
+// state directly instead of making a second request just to find out.
 export function useAutosave(assessmentId: string) {
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const save = useCallback(
-    async (section: string, data: any) => {
+    async (section: string, data: any): Promise<{ ok: boolean; result: any }> => {
       setStatus("saving");
       if (isLocalId(assessmentId)) {
         try {
@@ -109,10 +112,22 @@ export function useAutosave(assessmentId: string) {
           const updatedData = applyLocalSection(local.data, section, data);
           await saveLocalAssessment({ ...local, data: updatedData });
           setStatus("saved");
+          let result: any = null;
+          if (section === "hazardCard") {
+            const hr = updatedData.hazardResponses.find(
+              (r: any) => r.id === data.hazardResponseId
+            );
+            if (hr) {
+              result = data.id
+                ? hr.cards.find((c: any) => c.id === data.id)
+                : hr.cards[hr.cards.length - 1];
+            }
+          }
+          return { ok: true, result };
         } catch {
           setStatus("error");
+          return { ok: false, result: null };
         }
-        return;
       }
       try {
         const res = await fetch(`/api/assessments/${assessmentId}/autosave`, {
@@ -121,9 +136,12 @@ export function useAutosave(assessmentId: string) {
           body: JSON.stringify({ section, data }),
         });
         if (!res.ok) throw new Error("save failed");
+        const body = await res.json().catch(() => ({}));
         setStatus("saved");
+        return { ok: true, result: body.result ?? null };
       } catch {
         setStatus("error");
+        return { ok: false, result: null };
       }
     },
     [assessmentId]
