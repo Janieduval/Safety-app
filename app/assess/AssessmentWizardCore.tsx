@@ -1026,8 +1026,34 @@ function ChangesStep({ assessment, save, reload, readOnly }: any) {
 // ---------------- Hazards ----------------
 
 function HazardsStep({ assessment, save, reload, readOnly }: any) {
-  const responseFor = (key: string) =>
-    assessment.hazardResponses.find((r: any) => r.questionKey === key);
+  // Local state so the Yes/No buttons update the instant you tap them,
+  // the same way Step 1 already works — instead of waiting for a full
+  // save-then-reload round trip before the button even changes color.
+  // Saving still happens in the background exactly as before; this just
+  // stops the UI from blocking on it.
+  const [responses, setResponses] = useState<Record<string, any>>(() => {
+    const map: Record<string, any> = {};
+    for (const r of assessment.hazardResponses) map[r.questionKey] = r;
+    return map;
+  });
+
+  // Stay in sync with the parent's copy too — this matters after adding
+  // or removing a hazard card, which still needs a real reload to pick up
+  // the server-generated card ID.
+  useEffect(() => {
+    const map: Record<string, any> = {};
+    for (const r of assessment.hazardResponses) map[r.questionKey] = r;
+    setResponses(map);
+  }, [assessment.hazardResponses]);
+
+  const setPresent = (key: string, present: boolean) => {
+    setResponses((prev) => ({
+      ...prev,
+      [key]: { ...(prev[key] ?? { questionKey: key, cards: [] }), present },
+    }));
+    save("hazardResponse", { questionKey: key, present });
+    reload();
+  };
 
   return (
     <div className="space-y-6">
@@ -1038,7 +1064,7 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
       </p>
 
       {HAZARD_QUESTIONS.map((hq) => {
-        const r = responseFor(hq.key);
+        const r = responses[hq.key];
         return (
           <div key={hq.key} className="border border-neutral-200 rounded-lg p-4 bg-white">
             <p className="font-medium text-neutral-900">{hq.label}</p>
@@ -1049,10 +1075,7 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
               <YesNoButtons
                 value={r?.present ?? null}
                 disabled={readOnly}
-                onChange={async (v) => {
-                  await save("hazardResponse", { questionKey: hq.key, present: v });
-                  reload();
-                }}
+                onChange={(v) => setPresent(hq.key, v)}
               />
             </div>
             {r?.present && (
