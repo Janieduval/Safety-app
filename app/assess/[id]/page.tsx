@@ -70,8 +70,7 @@ function computeSignValid(assessment: any): boolean {
   return !!assessment?.signOns?.some((s: any) => s.isPrimary);
 }
 
-export default function AssessmentWizard({ params }: { params: { id: string } }) {
-  const { id } = params;
+export function AssessmentWizardCore({ id }: { id: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const forceViewOnly = searchParams.get("view") === "1";
@@ -349,6 +348,14 @@ export default function AssessmentWizard({ params }: { params: { id: string } })
       </nav>
     </main>
   );
+}
+
+// Thin wrapper for the online, dynamic route (/assess/[id]) — the shared
+// implementation lives in AssessmentWizardCore above, so the offline route
+// (/assess/offline, a fixed URL that can actually be cached in advance)
+// can reuse it too.
+export default function AssessmentWizard({ params }: { params: { id: string } }) {
+  return <AssessmentWizardCore id={params.id} />;
 }
 
 function CenteredMessage({ text, isError }: { text: string; isError?: boolean }) {
