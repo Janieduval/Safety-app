@@ -156,7 +156,13 @@ export default function StartAssessmentForm({
       syncStatus: "draft",
       data: skeleton,
     });
-    router.push(`/assess/offline?id=${localId}`);
+    // A hard navigation, not router.push(). Next.js's smooth in-app page
+    // transitions fetch a special, differently-shaped request behind the
+    // scenes to get the new page's content — one the service worker's
+    // offline cache was never going to satisfy, no matter how well warmed.
+    // A full page reload uses the plain, standard request type that
+    // offline caching is actually built for.
+    window.location.href = `/assess/offline?id=${localId}`;
   };
 
   const start = async () => {
