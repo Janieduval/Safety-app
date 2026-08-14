@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { AssessmentWizardCore } from "../[id]/page";
+import { AssessmentWizardCore } from "../AssessmentWizardCore";
 
 // This route's address never changes (unlike /assess/[id], where every
 // offline-started assessment gets a brand-new, never-seen-before address).
