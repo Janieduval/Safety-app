@@ -73,6 +73,14 @@ export default function StartAssessmentForm({
         // will fall back to whatever was cached the last time this page
         // loaded successfully.
       });
+
+    // Also "warm" the service worker's cache for the fixed offline wizard
+    // page itself. Unlike a normal online assessment (which gets a real,
+    // reusable server ID), an offline-started one gets a brand-new address
+    // every time — impossible to have cached in advance. Routing through
+    // this one fixed address instead, and priming it here, is what makes
+    // it openable with zero signal even on the very first offline use.
+    fetch("/assess/offline").catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -138,7 +146,7 @@ export default function StartAssessmentForm({
       syncStatus: "draft",
       data: skeleton,
     });
-    router.push(`/assess/${localId}`);
+    router.push(`/assess/offline?id=${localId}`);
   };
 
   const start = async () => {
