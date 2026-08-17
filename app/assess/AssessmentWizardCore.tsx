@@ -243,6 +243,7 @@ export function AssessmentWizardCore({ id }: { id: string }) {
         {step === "hazards" && (
           <HazardsStep
             assessment={assessment}
+            teams={teams}
             save={save}
             reload={reloadAssessment}
             readOnly={readOnly}
@@ -1012,7 +1013,7 @@ function ChangesStep({ assessment, save, reload, readOnly }: any) {
 
 // ---------------- Hazards ----------------
 
-function HazardsStep({ assessment, save, reload, readOnly, onValidityChange }: any) {
+function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChange }: any) {
   // Local state so the Yes/No buttons update the instant you tap them,
   // the same way Step 1 already works — instead of waiting for a full
   // save-then-reload round trip before the button even changes color.
@@ -1105,6 +1106,11 @@ function HazardsStep({ assessment, save, reload, readOnly, onValidityChange }: a
                     card={card}
                     save={save}
                     readOnly={readOnly}
+                    questionKey={hq.key}
+                    teamId={assessment.teamId}
+                    teams={teams}
+                    workerId={assessment.completedByWorkerId}
+                    assessmentId={assessment.id}
                     onUpdate={(patch: any) => {
                       setResponses((prev) => ({
                         ...prev,
@@ -1169,7 +1175,18 @@ function HazardsStep({ assessment, save, reload, readOnly, onValidityChange }: a
   );
 }
 
-function HazardCard({ card, save, onRemoved, onUpdate, readOnly }: any) {
+function HazardCard({
+  card,
+  save,
+  onRemoved,
+  onUpdate,
+  readOnly,
+  questionKey,
+  teamId,
+  teams,
+  workerId,
+  assessmentId,
+}: any) {
   const [local, setLocal] = useState({
     description: card.description ?? "",
     initialRisk: card.initialRisk ?? "low",
@@ -1179,6 +1196,8 @@ function HazardCard({ card, save, onRemoved, onUpdate, readOnly }: any) {
     residualRisk: card.residualRisk ?? "low",
     comments: card.comments ?? "",
   });
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const commit = (patch: Partial<typeof local>) => {
     const next = { ...local, ...patch };
@@ -1190,18 +1209,93 @@ function HazardCard({ card, save, onRemoved, onUpdate, readOnly }: any) {
     onUpdate?.(next);
   };
 
+  const team = teams?.find((t: any) => t.id === teamId);
+  const teamTemplates = (team?.hazardTemplates ?? []).filter(
+    (t: any) => t.questionKey === questionKey
+  );
+  const matchingSuggestions = local.description.trim()
+    ? teamTemplates.filter((t: any) =>
+        t.description.toLowerCase().includes(local.description.trim().toLowerCase())
+      )
+    : teamTemplates;
+
+  const applySuggestion = (template: any) => {
+    commit({
+      description: template.description,
+      controls: template.controls,
+      initialRisk: template.initialRisk,
+      residualRisk: template.residualRisk,
+      // Never carried over — must be confirmed fresh every time.
+      responsiblePerson: local.responsiblePerson,
+      controlConfirmed: false,
+    });
+    setShowSuggestions(false);
+  };
+
+  const canOfferSave =
+    !readOnly &&
+    !!teamId &&
+    !!local.description.trim() &&
+    !!local.controls.trim() &&
+    !isLocalId(assessmentId); // saving a new template needs a connection
+
+  const saveForNextTime = async () => {
+    setSaveState("saving");
+    try {
+      const res = await fetch("/api/hazard-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId,
+          questionKey,
+          description: local.description,
+          controls: local.controls,
+          initialRisk: local.initialRisk,
+          residualRisk: local.residualRisk,
+          createdByWorkerId: workerId,
+        }),
+      });
+      if (!res.ok) throw new Error("failed");
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  };
+
   const highRisk = local.residualRisk === "high" || local.residualRisk === "extreme";
 
   return (
     <div className="bg-neutral-50 border border-neutral-300 rounded-lg p-3 space-y-3">
       <Field label="Hazard description">
-        <textarea
-          value={local.description}
-          disabled={readOnly}
-          onChange={(e) => commit({ description: e.target.value })}
-          rows={2}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
-        />
+        <div className="relative">
+          <textarea
+            value={local.description}
+            disabled={readOnly}
+            onChange={(e) => commit({ description: e.target.value })}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            rows={2}
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
+          />
+          {showSuggestions && matchingSuggestions.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full border border-neutral-200 rounded-lg divide-y bg-white max-h-56 overflow-y-auto shadow-lg">
+              {matchingSuggestions.map((t: any) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onMouseDown={() => applySuggestion(t)}
+                  className="w-full text-left px-3 py-2 active:bg-neutral-100"
+                >
+                  <p className="text-sm font-medium text-neutral-900">{t.description}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">Controls: {t.controls}</p>
+                  {t.needsReview && (
+                    <span className="text-xs text-amber-700 font-semibold">Pending review</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </Field>
       <RiskLegend />
       <Field label="Initial risk rating">
@@ -1216,6 +1310,28 @@ function HazardCard({ card, save, onRemoved, onUpdate, readOnly }: any) {
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
         />
       </Field>
+      {canOfferSave && saveState === "idle" && (
+        <button
+          type="button"
+          onClick={saveForNextTime}
+          className="text-sm text-emerald-700 font-medium underline decoration-dotted"
+        >
+          + Save this as a reusable answer{team?.label ? ` for ${team.label}` : ""}
+        </button>
+      )}
+      {saveState === "saving" && (
+        <p className="text-sm text-neutral-500">Saving...</p>
+      )}
+      {saveState === "saved" && (
+        <p className="text-sm text-emerald-700 font-medium">
+          ✓ Saved — visible to your team now, pending admin review
+        </p>
+      )}
+      {saveState === "error" && (
+        <p className="text-sm text-red-700 font-medium">
+          Couldn't save this right now. Check your connection and try again.
+        </p>
+      )}
       <Field label="Person responsible for the control">
         <input
           type="text"
