@@ -48,24 +48,6 @@ const CRITICAL_STEPS = [
   "declarations",
 ];
 
-function computeHazardsValid(assessment: any): boolean {
-  if (!assessment) return false;
-  for (const hq of HAZARD_QUESTIONS) {
-    const r = assessment.hazardResponses.find((x: any) => x.questionKey === hq.key);
-    if (!r || r.present === null || r.present === undefined) return false;
-    if (r.present) {
-      const cards = r.cards ?? [];
-      if (cards.length === 0) return false;
-      for (const c of cards) {
-        if (!c.description?.trim() || !c.controls?.trim() || !c.responsiblePerson?.trim()) {
-          return false;
-        }
-      }
-    }
-  }
-  return true;
-}
-
 function computeSignValid(assessment: any): boolean {
   return !!assessment?.signOns?.some((s: any) => s.isPrimary);
 }
@@ -103,8 +85,7 @@ export function AssessmentWizardCore({ id }: { id: string }) {
   const isCriticalStep = CRITICAL_STEPS.includes(step);
   let criticalStepValid = true;
   if (!readOnly && isCriticalStep) {
-    if (step === "hazards") criticalStepValid = computeHazardsValid(assessment);
-    else criticalStepValid = localValidity[step] === true;
+    criticalStepValid = localValidity[step] === true;
   }
   const continueBlocked = !readOnly && isCriticalStep && !criticalStepValid;
 
@@ -260,7 +241,13 @@ export function AssessmentWizardCore({ id }: { id: string }) {
           />
         )}
         {step === "hazards" && (
-          <HazardsStep assessment={assessment} save={save} reload={reloadAssessment} readOnly={readOnly} />
+          <HazardsStep
+            assessment={assessment}
+            save={save}
+            reload={reloadAssessment}
+            readOnly={readOnly}
+            onValidityChange={setStepValidity("hazards")}
+          />
         )}
         {step === "newHazard" && (
           <NewHazardStep
@@ -1025,7 +1012,7 @@ function ChangesStep({ assessment, save, reload, readOnly }: any) {
 
 // ---------------- Hazards ----------------
 
-function HazardsStep({ assessment, save, reload, readOnly }: any) {
+function HazardsStep({ assessment, save, reload, readOnly, onValidityChange }: any) {
   // Local state so the Yes/No buttons update the instant you tap them,
   // the same way Step 1 already works — instead of waiting for a full
   // save-then-reload round trip before the button even changes color.
@@ -1045,6 +1032,38 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
     for (const r of assessment.hazardResponses) map[r.questionKey] = r;
     setResponses(map);
   }, [assessment.hazardResponses]);
+
+  // Report validity from THIS component's own local state — the same
+  // reliably up-to-date source the visible cards are drawn from — rather
+  // than a separate copy elsewhere that can fall out of sync. This is
+  // what actually decides whether "Continue" is enabled.
+  useEffect(() => {
+    if (!onValidityChange) return;
+    let valid = true;
+    for (const hq of HAZARD_QUESTIONS) {
+      const r = responses[hq.key];
+      if (!r || r.present === null || r.present === undefined) {
+        valid = false;
+        break;
+      }
+      if (r.present) {
+        const cards = r.cards ?? [];
+        if (cards.length === 0) {
+          valid = false;
+          break;
+        }
+        for (const c of cards) {
+          if (!c.description?.trim() || !c.controls?.trim() || !c.responsiblePerson?.trim()) {
+            valid = false;
+            break;
+          }
+        }
+        if (!valid) break;
+      }
+    }
+    onValidityChange(valid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [responses]);
 
   const setPresent = (key: string, present: boolean) => {
     setResponses((prev) => ({
@@ -1086,6 +1105,17 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
                     card={card}
                     save={save}
                     readOnly={readOnly}
+                    onUpdate={(patch: any) => {
+                      setResponses((prev) => ({
+                        ...prev,
+                        [hq.key]: {
+                          ...prev[hq.key],
+                          cards: (prev[hq.key]?.cards ?? []).map((c: any) =>
+                            c.id === card.id ? { ...c, ...patch } : c
+                          ),
+                        },
+                      }));
+                    }}
                     onRemoved={() => {
                       setResponses((prev) => ({
                         ...prev,
@@ -1096,6 +1126,10 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
                           ),
                         },
                       }));
+                      // Keep the parent's copy in sync in the background —
+                      // it's what the Continue button's validity check
+                      // reads from, so this must never be skipped.
+                      reload();
                     }}
                   />
                 ))}
@@ -1112,10 +1146,14 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
                             cards: [...(prev[hq.key]?.cards ?? []), result],
                           },
                         }));
-                      } else {
-                        // Fallback, only if something unexpected happened
-                        reload();
                       }
+                      // Always sync the parent in the background, whether
+                      // or not the fast path above ran — the Continue
+                      // button's validity check reads from the parent's
+                      // copy, not from this component's local state, so
+                      // skipping this is what caused Continue to get
+                      // stuck even when everything was actually filled in.
+                      reload();
                     }}
                     className="w-full py-2.5 rounded-lg border-2 border-dashed border-neutral-400 text-neutral-700 font-medium"
                   >
@@ -1131,7 +1169,7 @@ function HazardsStep({ assessment, save, reload, readOnly }: any) {
   );
 }
 
-function HazardCard({ card, save, onRemoved, readOnly }: any) {
+function HazardCard({ card, save, onRemoved, onUpdate, readOnly }: any) {
   const [local, setLocal] = useState({
     description: card.description ?? "",
     initialRisk: card.initialRisk ?? "low",
@@ -1146,6 +1184,10 @@ function HazardCard({ card, save, onRemoved, readOnly }: any) {
     const next = { ...local, ...patch };
     setLocal(next);
     save("hazardCard", { id: card.id, ...next });
+    // Tell HazardsStep right away too — it's what decides whether
+    // Continue is enabled, and needs to see every keystroke, not just
+    // cards being added or removed.
+    onUpdate?.(next);
   };
 
   const highRisk = local.residualRisk === "high" || local.residualRisk === "extreme";
