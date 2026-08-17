@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
 export async function GET(
   _req: NextRequest,
   { params }: { params: { slug: string } }
@@ -15,15 +14,18 @@ export async function GET(
       permitTypes: { where: { active: true }, orderBy: { label: "asc" } },
     },
   });
-
   if (!project || !project.active) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
-
   const teams = await prisma.teamOption.findMany({
     where: { active: true },
     orderBy: { label: "asc" },
+    include: {
+      hazardTemplates: {
+        where: { active: true },
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
-
   return NextResponse.json({ project, teams });
 }
