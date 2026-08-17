@@ -1219,6 +1219,10 @@ function HazardCard({
       )
     : teamTemplates;
 
+  const exactMatch = teamTemplates.find(
+    (t: any) => t.description.trim().toLowerCase() === local.description.trim().toLowerCase()
+  );
+
   const applySuggestion = (template: any) => {
     commit({
       description: template.description,
@@ -1310,7 +1314,7 @@ function HazardCard({
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
         />
       </Field>
-      {canOfferSave && saveState === "idle" && (
+      {canOfferSave && saveState === "idle" && !exactMatch && (
         <button
           type="button"
           onClick={saveForNextTime}
@@ -1318,6 +1322,11 @@ function HazardCard({
         >
           + Save this as a reusable answer{team?.label ? ` for ${team.label}` : ""}
         </button>
+      )}
+      {canOfferSave && saveState === "idle" && exactMatch && (
+        <p className="text-sm text-neutral-500">
+          ✓ Already saved for this team — selecting it from the dropdown keeps it fresh.
+        </p>
       )}
       {saveState === "saving" && (
         <p className="text-sm text-neutral-500">Saving...</p>
