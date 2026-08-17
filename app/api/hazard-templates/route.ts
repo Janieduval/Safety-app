@@ -33,17 +33,44 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const template = await prisma.hazardTemplate.create({
-    data: {
+  const trimmedDescription = description.trim();
+  const trimmedControls = controls.trim();
+
+  // Avoid piling up near-identical duplicates: if this team already has a
+  // saved answer with the exact same wording for this hazard question,
+  // refresh its controls/risk rather than creating a new entry.
+  const existing = await prisma.hazardTemplate.findFirst({
+    where: {
       teamId,
       questionKey,
-      description: description.trim(),
-      controls: controls.trim(),
-      initialRisk: (initialRisk as any) ?? "low",
-      residualRisk: (residualRisk as any) ?? "low",
-      createdByWorkerId: createdByWorkerId ?? null,
+      active: true,
+      description: { equals: trimmedDescription, mode: "insensitive" },
     },
   });
 
-  return NextResponse.json({ template });
+  let template;
+  if (existing) {
+    template = await prisma.hazardTemplate.update({
+      where: { id: existing.id },
+      data: {
+        controls: trimmedControls,
+        initialRisk: (initialRisk as any) ?? existing.initialRisk,
+        residualRisk: (residualRisk as any) ?? existing.residualRisk,
+      },
+    });
+  } else {
+    template = await prisma.hazardTemplate.create({
+      data: {
+        teamId,
+        questionKey,
+        description: trimmedDescription,
+        controls: trimmedControls,
+        initialRisk: (initialRisk as any) ?? "low",
+        residualRisk: (residualRisk as any) ?? "low",
+        createdByWorkerId: createdByWorkerId ?? null,
+      },
+    });
+  }
+
+  return NextResponse.json({ template, updated: !!existing });
 }
