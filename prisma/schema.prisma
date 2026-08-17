@@ -44,6 +44,7 @@ model Worker {
 
   assessmentsCompleted Assessment[] @relation("CompletedBy")
   signOns              SignOn[]
+  hazardTemplatesCreated HazardTemplate[]
 }
 
 model Supervisor {
@@ -100,6 +101,27 @@ model TeamOption {
   active Boolean @default(true)
 
   assessments Assessment[]
+  hazardTemplates HazardTemplate[]
+}
+
+// Reusable hazard/control answers, scoped per team, so recurring hazards
+// don't need retyping from scratch every day. Suggested (not forced) when
+// a worker starts typing a hazard description for that team.
+model HazardTemplate {
+  id                String      @id @default(uuid())
+  teamId            String
+  team              TeamOption  @relation(fields: [teamId], references: [id])
+  questionKey       String      // matches HAZARD_QUESTIONS key, e.g. "working_at_heights"
+  description       String
+  controls          String
+  initialRisk       RiskRating
+  residualRisk       RiskRating
+  needsReview       Boolean     @default(true) // visible immediately, flagged for admin review
+  active            Boolean     @default(true) // admin can retire a bad/outdated one
+  createdByWorkerId String?
+  createdByWorker   Worker?     @relation(fields: [createdByWorkerId], references: [id])
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 // ---------- Assessment ----------
