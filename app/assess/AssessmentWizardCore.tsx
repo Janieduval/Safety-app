@@ -1066,12 +1066,15 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [responses]);
 
-  const setPresent = (key: string, present: boolean) => {
+  const setPresent = async (key: string, present: boolean) => {
     setResponses((prev) => ({
       ...prev,
       [key]: { ...(prev[key] ?? { questionKey: key, cards: [] }), present },
     }));
-    save("hazardResponse", { questionKey: key, present });
+    // Wait for the save to genuinely finish before refreshing from the
+    // server — reloading too early can pull back the pre-click answer and
+    // make the button appear to "undo itself".
+    await save("hazardResponse", { questionKey: key, present });
     reload();
   };
 
@@ -1105,6 +1108,7 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
                     key={card.id}
                     card={card}
                     save={save}
+                    reload={reload}
                     readOnly={readOnly}
                     questionKey={hq.key}
                     teamId={assessment.teamId}
@@ -1123,6 +1127,11 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
                       }));
                     }}
                     onRemoved={() => {
+                      // Local removal only — kept instant for a responsive
+                      // feel. The parent refresh happens separately, only
+                      // once the deletion has actually been saved (see the
+                      // Remove button below), so a too-early refresh can't
+                      // pull the card back in.
                       setResponses((prev) => ({
                         ...prev,
                         [hq.key]: {
@@ -1132,10 +1141,6 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
                           ),
                         },
                       }));
-                      // Keep the parent's copy in sync in the background —
-                      // it's what the Continue button's validity check
-                      // reads from, so this must never be skipped.
-                      reload();
                     }}
                   />
                 ))}
@@ -1178,6 +1183,7 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
 function HazardCard({
   card,
   save,
+  reload,
   onRemoved,
   onUpdate,
   readOnly,
@@ -1422,9 +1428,10 @@ function HazardCard({
       {!readOnly && (
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
             onRemoved();
-            save("deleteHazardCard", { id: card.id });
+            await save("deleteHazardCard", { id: card.id });
+            reload();
           }}
           className="text-sm text-red-700 font-medium"
         >
