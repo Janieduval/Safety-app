@@ -1198,6 +1198,13 @@ function HazardCard({
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  // Tracks which saved answer (if any) the current text started from, so
+  // edits can update that same entry instead of creating an unrelated one.
+  const [selectedTemplate, setSelectedTemplate] = useState<{
+    id: string;
+    description: string;
+    controls: string;
+  } | null>(null);
 
   const commit = (patch: Partial<typeof local>) => {
     const next = { ...local, ...patch };
@@ -1207,6 +1214,12 @@ function HazardCard({
     // Continue is enabled, and needs to see every keystroke, not just
     // cards being added or removed.
     onUpdate?.(next);
+    if (patch.description !== undefined || patch.controls !== undefined) {
+      setSaveState("idle");
+      if (!next.description.trim()) {
+        setSelectedTemplate(null);
+      }
+    }
   };
 
   const team = teams?.find((t: any) => t.id === teamId);
@@ -1219,9 +1232,16 @@ function HazardCard({
       )
     : teamTemplates;
 
-  const exactMatch = teamTemplates.find(
-    (t: any) => t.description.trim().toLowerCase() === local.description.trim().toLowerCase()
-  );
+  const exactMatch =
+    !selectedTemplate &&
+    teamTemplates.find(
+      (t: any) => t.description.trim().toLowerCase() === local.description.trim().toLowerCase()
+    );
+
+  const hasChangedFromSelected =
+    selectedTemplate &&
+    (local.description.trim() !== selectedTemplate.description.trim() ||
+      local.controls.trim() !== selectedTemplate.controls.trim());
 
   const applySuggestion = (template: any) => {
     commit({
@@ -1232,6 +1252,11 @@ function HazardCard({
       // Never carried over — must be confirmed fresh every time.
       responsiblePerson: local.responsiblePerson,
       controlConfirmed: false,
+    });
+    setSelectedTemplate({
+      id: template.id,
+      description: template.description,
+      controls: template.controls,
     });
     setShowSuggestions(false);
   };
@@ -1250,6 +1275,7 @@ function HazardCard({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: selectedTemplate?.id,
           teamId,
           questionKey,
           description: local.description,
@@ -1260,7 +1286,13 @@ function HazardCard({
         }),
       });
       if (!res.ok) throw new Error("failed");
+      const { template } = await res.json();
       setSaveState("saved");
+      setSelectedTemplate({
+        id: template.id,
+        description: template.description,
+        controls: template.controls,
+      });
     } catch {
       setSaveState("error");
     }
@@ -1314,7 +1346,7 @@ function HazardCard({
           className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
         />
       </Field>
-      {canOfferSave && saveState === "idle" && !exactMatch && (
+      {canOfferSave && saveState === "idle" && !selectedTemplate && !exactMatch && (
         <button
           type="button"
           onClick={saveForNextTime}
@@ -1323,10 +1355,22 @@ function HazardCard({
           + Save this as a reusable answer{team?.label ? ` for ${team.label}` : ""}
         </button>
       )}
-      {canOfferSave && saveState === "idle" && exactMatch && (
+      {canOfferSave && saveState === "idle" && !selectedTemplate && exactMatch && (
         <p className="text-sm text-neutral-500">
           ✓ Already saved for this team — selecting it from the dropdown keeps it fresh.
         </p>
+      )}
+      {canOfferSave && saveState === "idle" && selectedTemplate && hasChangedFromSelected && (
+        <button
+          type="button"
+          onClick={saveForNextTime}
+          className="text-sm text-emerald-700 font-medium underline decoration-dotted"
+        >
+          Update saved answer{team?.label ? ` for ${team.label}` : ""}
+        </button>
+      )}
+      {canOfferSave && saveState === "idle" && selectedTemplate && !hasChangedFromSelected && (
+        <p className="text-sm text-neutral-500">Using a saved answer for this team.</p>
       )}
       {saveState === "saving" && (
         <p className="text-sm text-neutral-500">Saving...</p>
