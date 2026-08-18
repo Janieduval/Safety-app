@@ -37,6 +37,7 @@ export function buildSkeletonAssessment({
     accessCheck: null,
     changeEntries: [],
     hazardResponses: [],
+    hazardPauseCompleted: false,
     newHazardFlag: null,
     declarations: [],
     signOns: [],
@@ -147,6 +148,11 @@ export function applyLocalSection(current: any, section: string, data: any): any
 
     case "deleteChangeEntry": {
       next.changeEntries = next.changeEntries.filter((c: any) => c.id !== data.id);
+      break;
+    }
+
+    case "hazardPause": {
+      next.hazardPauseCompleted = !!data.completed;
       break;
     }
 
