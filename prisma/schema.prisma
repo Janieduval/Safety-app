@@ -164,9 +164,10 @@ model Assessment {
   permits AssessmentPermit[]
   permitOtherText String?
 
-  // Step 2.0
+    // Step 2.0
   accessCheck   AccessCheck?
   changeEntries ChangeEntry[]
+  hasChangesNoted Boolean?
 
     // Step 2.1
   hazardResponses HazardResponse[]
