@@ -157,6 +157,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       break;
     }
 
+        case "hazardPause": {
+      await prisma.assessment.update({
+        where: { id: params.id },
+        data: { hazardPauseCompleted: !!data.completed },
+      });
+      break;
+    }
+
     case "hazardResponse": {
       // data: { questionKey, present }
       await prisma.hazardResponse.update({
