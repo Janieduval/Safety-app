@@ -168,8 +168,9 @@ model Assessment {
   accessCheck   AccessCheck?
   changeEntries ChangeEntry[]
 
-  // Step 2.1
+    // Step 2.1
   hazardResponses HazardResponse[]
+  hazardPauseCompleted Boolean @default(false)
 
   // Final
   declarations Declaration[]
