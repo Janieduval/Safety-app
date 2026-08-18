@@ -1025,14 +1025,27 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
     return map;
   });
 
-  // Stay in sync with the parent's copy too — this matters after adding
-  // or removing a hazard card, which still needs a real reload to pick up
-  // the server-generated card ID.
+  // Stay in sync with the parent's copy too — mainly relevant on first
+  // load. Nothing within this step calls reload() mid-interaction anymore
+  // (see setPresent and the card add/remove handlers below) — that was
+  // the actual cause of Yes/No answers and cards appearing to vanish: a
+  // slightly slower background check could arrive after a newer click and
+  // silently overwrite it.
   useEffect(() => {
     const map: Record<string, any> = {};
     for (const r of assessment.hazardResponses) map[r.questionKey] = r;
     setResponses(map);
   }, [assessment.hazardResponses]);
+
+  // A single catch-up refresh only when leaving this step entirely (not
+  // during it), so the rest of the app eventually has a fresh copy —
+  // without any risk of it landing mid-click.
+  useEffect(() => {
+    return () => {
+      reload();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Report validity from THIS component's own local state — the same
   // reliably up-to-date source the visible cards are drawn from — rather
@@ -1071,12 +1084,48 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
       ...prev,
       [key]: { ...(prev[key] ?? { questionKey: key, cards: [] }), present },
     }));
-    // Wait for the save to genuinely finish before refreshing from the
-    // server — reloading too early can pull back the pre-click answer and
-    // make the button appear to "undo itself".
+    // No reload here — this step's own state already reflects everything
+    // needed (the buttons, and the Continue validity check), so there's
+    // nothing left to catch up on. A background reload here was the
+    // actual cause of answers appearing to "undo themselves": a slightly
+    // slower one could arrive after a later click and overwrite it.
     await save("hazardResponse", { questionKey: key, present });
-    reload();
   };
+
+  // A plain-English list of exactly what's still missing — with 11
+  // separate questions to scroll through, it's easy to miss answering
+  // just one, and "Complete this step before continuing" alone gives no
+  // clue which one. This spells it out.
+  const missingItems = useMemo(() => {
+    const items: string[] = [];
+    for (const hq of HAZARD_QUESTIONS) {
+      const r = responses[hq.key];
+      if (!r || r.present === null || r.present === undefined) {
+        items.push(`"${hq.label}" — not yet answered (Yes/No)`);
+        continue;
+      }
+      if (r.present) {
+        const cards = r.cards ?? [];
+        if (cards.length === 0) {
+          items.push(`"${hq.label}" — answered Yes but has no hazard detail card yet`);
+          continue;
+        }
+        cards.forEach((c: any, idx: number) => {
+          const cardLabel = cards.length > 1 ? ` (card ${idx + 1})` : "";
+          if (!c.description?.trim()) {
+            items.push(`"${hq.label}"${cardLabel} — hazard description is empty`);
+          }
+          if (!c.controls?.trim()) {
+            items.push(`"${hq.label}"${cardLabel} — controls field is empty`);
+          }
+          if (!c.responsiblePerson?.trim()) {
+            items.push(`"${hq.label}"${cardLabel} — person responsible is empty`);
+          }
+        });
+      }
+    }
+    return items;
+  }, [responses]);
 
   return (
     <div className="space-y-6">
@@ -1085,6 +1134,17 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
         Look around your work area and think through every step of the task. "Yes" means the
         hazard is present or could occur. "No" means it isn't relevant to today's work.
       </p>
+
+      {missingItems.length > 0 && (
+        <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4">
+          <p className="font-semibold text-amber-900 mb-1">Still needed before you can continue:</p>
+          <ul className="list-disc list-inside text-sm text-amber-800 space-y-0.5">
+            {missingItems.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {HAZARD_QUESTIONS.map((hq) => {
         const r = responses[hq.key];
@@ -1158,13 +1218,9 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
                           },
                         }));
                       }
-                      // Always sync the parent in the background, whether
-                      // or not the fast path above ran — the Continue
-                      // button's validity check reads from the parent's
-                      // copy, not from this component's local state, so
-                      // skipping this is what caused Continue to get
-                      // stuck even when everything was actually filled in.
-                      reload();
+                      // No reload needed — the server already handed back
+                      // the real card, and Continue's validity check reads
+                      // this component's own state directly.
                     }}
                     className="w-full py-2.5 rounded-lg border-2 border-dashed border-neutral-400 text-neutral-700 font-medium"
                   >
@@ -1431,7 +1487,6 @@ function HazardCard({
           onClick={async () => {
             onRemoved();
             await save("deleteHazardCard", { id: card.id });
-            reload();
           }}
           className="text-sm text-red-700 font-medium"
         >
