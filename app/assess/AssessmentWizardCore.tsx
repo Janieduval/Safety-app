@@ -236,6 +236,8 @@ export function AssessmentWizardCore({ id }: { id: string }) {
         {step === "hazardPause" && (
           <HazardPauseStep
             key={readOnly ? "readonly" : stepIndex}
+            assessment={assessment}
+            save={save}
             readOnly={readOnly}
             onValidityChange={setStepValidity("hazardPause")}
           />
@@ -352,13 +354,21 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 // ---------------- Hazard pause ----------------
 
-function HazardPauseStep({ readOnly, onValidityChange }: any) {
-  const [secondsLeft, setSecondsLeft] = useState(readOnly ? 0 : HAZARD_PAUSE_SECONDS);
+function HazardPauseStep({ assessment, save, readOnly, onValidityChange }: any) {
+  const alreadyCompleted = !!assessment?.hazardPauseCompleted;
+  const [secondsLeft, setSecondsLeft] = useState(
+    readOnly || alreadyCompleted ? 0 : HAZARD_PAUSE_SECONDS
+  );
 
   useEffect(() => {
     if (!onValidityChange) return;
     if (secondsLeft <= 0) {
       onValidityChange(true);
+      // Only persist the first time it's genuinely completed — not on
+      // every mount once it's already saved as done.
+      if (!alreadyCompleted && !readOnly) {
+        save?.("hazardPause", { completed: true });
+      }
       return;
     }
     onValidityChange(false);
