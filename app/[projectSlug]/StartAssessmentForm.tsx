@@ -303,8 +303,8 @@ export default function StartAssessmentForm({
           {loading ? "Starting..." : "Start new assessment"}
         </button>
         <p className="text-center text-sm text-neutral-500">
-          Already started an assessment today, or joining as a team member?
-          Ask the person who started it to open their link and add your signature there.
+          Already started an assessment today, or joining as a team member? Search for it below
+          to sign on.
         </p>
       </div>
 
@@ -354,9 +354,16 @@ export default function StartAssessmentForm({
                 {myAssessments.map((a: any) => {
                   const today = isSydneyToday(a.dateTime);
                   const isAuthor = a.completedByWorkerId === viewSelected.id;
+                  const stillEditable = a.status === "draft" || a.status === "changes_required";
+                  // Full edit access only when it's genuinely the author
+                  // continuing their own unfinished work. Everyone else —
+                  // and even the author once it's been submitted — gets
+                  // the safe "view + sign-on only" mode, so anyone who
+                  // searches today's assessment can still add their
+                  // signature, regardless of who started it.
                   const href = !today
                     ? `/api/assessments/${a.id}/pdf`
-                    : isAuthor
+                    : isAuthor && stillEditable
                     ? `/assess/${a.id}`
                     : `/assess/${a.id}?view=1`;
                   const latestReview =
