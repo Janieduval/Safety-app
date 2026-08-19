@@ -192,7 +192,7 @@ export function AssessmentWizardCore({ id }: { id: string }) {
         )}
 
         {step === "header" && (
-          <HeaderStep assessment={assessment} teams={teams} save={save} readOnly={readOnly} />
+          <HeaderStep assessment={assessment} teams={teams} save={save} reload={reloadAssessment} readOnly={readOnly} />
         )}
         {step === "step1" && (
           <Step1
@@ -396,7 +396,7 @@ function HazardPauseStep({ assessment, save, readOnly, onValidityChange }: any) 
 
 // ---------------- Header ----------------
 
-function HeaderStep({ assessment, teams, save, readOnly }: any) {
+function HeaderStep({ assessment, teams, save, reload, readOnly }: any) {
   const [local, setLocal] = useState({
     dateTime: assessment.dateTime ? toSydneyInputValue(assessment.dateTime) : "",
     teamId: assessment.teamId ?? "",
@@ -410,13 +410,20 @@ function HeaderStep({ assessment, teams, save, readOnly }: any) {
     [local.teamId, teams]
   );
 
-  const commit = (patch: Partial<typeof local>) => {
+  const commit = async (patch: Partial<typeof local>) => {
     const next = { ...local, ...patch };
     setLocal(next);
-    save("header", {
+    await save("header", {
       ...next,
       dateTime: next.dateTime ? fromSydneyInputValue(next.dateTime).toISOString() : next.dateTime,
     });
+    // Other steps (like hazard suggestions) read the team directly from
+    // the shared assessment data, not from this form's own local state —
+    // without this, selecting a team here would never actually reach
+    // them, even though it saved correctly.
+    if (patch.teamId !== undefined) {
+      reload?.();
+    }
   };
 
   return (
