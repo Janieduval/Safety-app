@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useAssessmentData } from "@/lib/useAssessment";
+import SignaturePad from "@/components/SignaturePad";
+import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
 
 export default function ReassessPage({ params }: { params: { id: string } }) {
   const { assessment, project, loading, error } = useAssessmentData(params.id);
@@ -12,6 +14,7 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
   const [newControls, setNewControls] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [newVersion, setNewVersion] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const workers = useMemo(() => {
@@ -34,7 +37,7 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const submit = async () => {
+  const submit = async (signatureData: string) => {
     if (!workerId || !whatChanged) return;
     setSubmitting(true);
     setFormError(null);
@@ -47,12 +50,14 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
           whatChanged,
           newHazards,
           newControls,
+          signatureData,
         }),
       });
+      const respBody = await res.json();
       if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error ?? "Could not submit reassessment.");
+        throw new Error(respBody.error ?? "Could not submit reassessment.");
       }
+      setNewVersion(respBody.version ?? null);
       setDone(true);
     } catch (e: any) {
       setFormError(e.message);
@@ -64,9 +69,15 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
   if (done) {
     return (
       <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-md mx-auto">
-        <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 text-emerald-800 font-medium">
-          Reassessment recorded and linked to the original approved assessment. It requires
-          supervisor review before work continues.
+        <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 text-emerald-800 font-medium space-y-2">
+          <p>
+            Reassessment recorded{newVersion ? ` as version ${newVersion}` : ""} — signed and
+            sent to your supervisor for review.
+          </p>
+          <p className="font-normal text-sm">
+            Anyone who already signed the original needs to sign again for this version.
+          </p>
+          <CopySignOnLinkButton assessmentId={params.id} />
         </div>
       </main>
     );
@@ -76,8 +87,8 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
     <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-md mx-auto">
       <h1 className="text-xl font-bold text-neutral-900">Conditions have changed — reassess</h1>
       <p className="text-neutral-600 text-sm mt-1">
-        This creates a new record linked to the original approved assessment for{" "}
-        {project.name}. The original approval is kept as-is.
+        This creates version {assessment.version + 1} of this assessment for {project.name},
+        with your notes on what changed. Your team will need to sign again for this version.
       </p>
 
       <div className="mt-5 space-y-4">
@@ -150,14 +161,18 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
 
         {formError && <p className="text-red-700 text-sm font-medium">{formError}</p>}
 
-        <button
-          type="button"
-          disabled={!workerId || !whatChanged || submitting}
-          onClick={submit}
-          className="w-full py-4 rounded-lg bg-emerald-700 text-white text-lg font-semibold disabled:opacity-40"
-        >
-          {submitting ? "Submitting..." : "Submit reassessment"}
-        </button>
+        {workerId && whatChanged.trim() ? (
+          <div className="space-y-2">
+            <p className="text-sm text-neutral-700">
+              Sign below to confirm and submit this reassessment.
+            </p>
+            <SignaturePad onCapture={submit} disabled={submitting} />
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-500 text-center">
+            Enter your name and what's changed to continue to signing.
+          </p>
+        )}
       </div>
     </main>
   );
