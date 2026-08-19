@@ -8,6 +8,7 @@ import YesNoButtons from "@/components/YesNoButtons";
 import StopWorkWarning from "@/components/StopWorkWarning";
 import SignaturePad from "@/components/SignaturePad";
 import RiskLegend from "@/components/RiskLegend";
+import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
 import { toSydneyInputValue, fromSydneyInputValue } from "@/lib/timezone";
 import { isLocalId, getLocalAssessment, saveLocalAssessment } from "@/lib/offlineStore";
 import { signLocalAssessment, validateLocalAssessmentForSubmit } from "@/lib/offlineAssessment";
@@ -2031,8 +2032,19 @@ function ReviewStep({ assessment, submitErrors, onSubmit, submitting, readOnly }
       )}
 
       {assessment.status === "awaiting_supervisor_review" && (
-        <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 text-emerald-800 font-medium">
-          Submitted — awaiting supervisor review. You can now invite team members to sign on.
+        <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 text-emerald-800 font-medium space-y-2">
+          <p>Submitted — awaiting supervisor review.</p>
+          {assessment.version > 1 ? (
+            <>
+              <p className="font-normal text-sm">
+                This is version {assessment.version} — anyone who already signed needs to
+                sign again for this version.
+              </p>
+              <CopySignOnLinkButton assessmentId={assessment.id} />
+            </>
+          ) : (
+            <p className="font-normal text-sm">You can now invite team members to sign on.</p>
+          )}
         </div>
       )}
 
