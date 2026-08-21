@@ -13,6 +13,7 @@
     "db:seed": "prisma db seed"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
     "@prisma/client": "6.19.3",
     "@react-pdf/renderer": "^4.5.1",
     "bcryptjs": "^3.0.3",
