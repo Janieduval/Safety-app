@@ -47,19 +47,31 @@ export async function GET(req: NextRequest, { params }: { params: { date: string
   const zip = new JSZip();
 
   // Reuses the existing, already-working PDF endpoint for each assessment
-  // rather than duplicating PDF-generation logic here — one internal
-  // request per assessment, bundled together into a single ZIP.
-  for (const a of matching) {
-    const workerName = cleanText(a.completedByWorker?.name) || "Unknown worker";
-    const teamName = cleanText(a.team?.label ?? a.otherTeamText) || "No team";
-    const filename = `${toSafeFilenamePart(workerName)} - ${toSafeFilenamePart(
-      teamName
-    )} - ${targetDate}.pdf`;
+  // rather than duplicating PDF-generation logic here — but generates all
+  // of them at once (not one after another), since waiting for each PDF
+  // to finish before starting the next made this painfully slow on any
+  // day with more than a couple of assessments.
+  const results = await Promise.all(
+    matching.map(async (a) => {
+      const workerName = cleanText(a.completedByWorker?.name) || "Unknown worker";
+      const teamName = cleanText(a.team?.label ?? a.otherTeamText) || "No team";
+      const filename = `${toSafeFilenamePart(workerName)} - ${toSafeFilenamePart(
+        teamName
+      )} - ${targetDate}.pdf`;
 
-    const pdfRes = await fetch(`${baseUrl}/api/assessments/${a.id}/pdf`);
-    if (!pdfRes.ok) continue; // skip any single failure rather than failing the whole zip
-    const buffer = await pdfRes.arrayBuffer();
-    zip.file(filename, buffer);
+      try {
+        const pdfRes = await fetch(`${baseUrl}/api/assessments/${a.id}/pdf`);
+        if (!pdfRes.ok) return null; // skip any single failure rather than failing the whole zip
+        const buffer = await pdfRes.arrayBuffer();
+        return { filename, buffer };
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  for (const r of results) {
+    if (r) zip.file(r.filename, r.buffer);
   }
 
   const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
