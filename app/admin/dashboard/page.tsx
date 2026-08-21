@@ -78,6 +78,12 @@ export default async function AdminDashboard({
           >
             Saved hazard answers
           </Link>
+                    <Link
+            href="/admin/export"
+            className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
+          >
+            Export assessments
+          </Link>
           <Link
             href="/supervisor/login"
             className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
