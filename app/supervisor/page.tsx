@@ -93,6 +93,12 @@ export default async function SupervisorDashboard({
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+           <Link
+     href="/stats"
+     className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
+   >
+     View statistics
+   </Link>
         {statuses.map((s) => (
           <Link
             key={s}
