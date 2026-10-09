@@ -189,6 +189,7 @@ model Assessment {
   auditLogs AuditLog[]
   changeAcknowledgments ChangeAcknowledgment[]
 
+
   @@index([projectId, status])
 }
 
@@ -398,6 +399,18 @@ model AuditLog {
   beforeJson   String?
   afterJson    String?
   timestamp    DateTime   @default(now())
+}
+model PushSubscription {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  endpoint     String
+  p256dh       String
+  auth         String
+  createdAt    DateTime   @default(now())
+
+  @@unique([endpoint, assessmentId])
+  @@index([assessmentId])
 }
 
 // ---------- Admin auth ----------
