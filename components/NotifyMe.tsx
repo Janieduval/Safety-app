@@ -29,17 +29,27 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   });
 }
 
-// Finds the app's background service, registering it if it isn't there yet.
-async function getReadyRegistration(): Promise<ServiceWorkerRegistration> {
-  let reg = await navigator.serviceWorker.getRegistration();
-  if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
-  if (!reg.active) {
-    reg = await withTimeout(
-      navigator.serviceWorker.ready,
-      10000,
-      "the app's background service isn't ready yet"
-    );
-  }
+// Registers (or finds) the dedicated notification service and waits until it's running.
+async function getPushRegistration(): Promise<ServiceWorkerRegistration> {
+  const reg = await navigator.serviceWorker.register("/push-sw.js", {
+    scope: "/push-scope/",
+  });
+  if (reg.active) return reg;
+  const worker = reg.installing ?? reg.waiting;
+  if (!worker) throw new Error("the notification service didn't start");
+  await withTimeout(
+    new Promise<void>((resolve, reject) => {
+      const check = () => {
+        if (worker.state === "activated") resolve();
+        else if (worker.state === "redundant")
+          reject(new Error("the notification service failed to start"));
+      };
+      worker.addEventListener("statechange", check);
+      check();
+    }),
+    15000,
+    "the notification service took too long to start"
+  );
   return reg;
 }
 
@@ -74,7 +84,7 @@ export default function NotifyMe({ assessmentId }: { assessmentId: string }) {
     }
     if (Notification.permission === "granted") {
       // Already allowed on this phone: quietly attach it to this JSAFE too.
-      getReadyRegistration()
+      getPushRegistration()
         .then((reg) => reg.pushManager.getSubscription())
         .then(async (sub) => {
           if (sub) {
@@ -99,7 +109,7 @@ export default function NotifyMe({ assessmentId }: { assessmentId: string }) {
         setState("denied");
         return;
       }
-      const reg = await getReadyRegistration();
+      const reg = await getPushRegistration();
       const sub =
         (await reg.pushManager.getSubscription()) ??
         (await withTimeout(
