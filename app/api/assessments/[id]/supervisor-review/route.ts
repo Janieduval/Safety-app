@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notifyAssessmentReviewed } from "@/lib/push";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json();
@@ -110,5 +111,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       afterJson: JSON.stringify({ status: newStatus, decision, comments, version: assessment.version }),
     },
   });
+  // Tell the worker's phone the result. Never throws, so a failed
+  // notification can't undo or break the review itself.
+  await notifyAssessmentReviewed(params.id, decision, comments);
   return NextResponse.json({ ok: true, assessment: updated });
 }
