@@ -188,7 +188,7 @@ model Assessment {
 
   auditLogs AuditLog[]
   changeAcknowledgments ChangeAcknowledgment[]
-
+pushSubscriptions PushSubscription[]
 
   @@index([projectId, status])
 }
