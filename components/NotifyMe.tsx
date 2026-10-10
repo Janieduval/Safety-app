@@ -12,19 +12,51 @@ function urlBase64ToUint8Array(base64: string) {
   return out;
 }
 
+// Gives up with a readable reason instead of waiting forever.
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(label)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
+// Finds the app's background service, registering it if it isn't there yet.
+async function getReadyRegistration(): Promise<ServiceWorkerRegistration> {
+  let reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
+  if (!reg.active) {
+    reg = await withTimeout(
+      navigator.serviceWorker.ready,
+      10000,
+      "the app's background service isn't ready yet"
+    );
+  }
+  return reg;
+}
+
 async function link(assessmentId: string, sub: PushSubscription) {
   const res = await fetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ assessmentId, subscription: sub.toJSON() }),
   });
-  if (!res.ok) throw new Error("link failed");
+  if (!res.ok) throw new Error("the server didn't accept the sign-up");
 }
 
 export default function NotifyMe({ assessmentId }: { assessmentId: string }) {
   const [state, setState] = useState<
     "checking" | "unsupported" | "idle" | "working" | "on" | "denied" | "error"
   >("checking");
+  const [detail, setDetail] = useState("");
 
   useEffect(() => {
     const supported =
@@ -42,7 +74,7 @@ export default function NotifyMe({ assessmentId }: { assessmentId: string }) {
     }
     if (Notification.permission === "granted") {
       // Already allowed on this phone: quietly attach it to this JSAFE too.
-      navigator.serviceWorker.ready
+      getReadyRegistration()
         .then((reg) => reg.pushManager.getSubscription())
         .then(async (sub) => {
           if (sub) {
@@ -60,22 +92,28 @@ export default function NotifyMe({ assessmentId }: { assessmentId: string }) {
 
   const enable = async () => {
     setState("working");
+    setDetail("");
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setState("denied");
         return;
       }
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await getReadyRegistration();
       const sub =
         (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY),
-        }));
+        (await withTimeout(
+          reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY),
+          }),
+          15000,
+          "the phone didn't respond to the notification sign-up"
+        ));
       await link(assessmentId, sub);
       setState("on");
-    } catch {
+    } catch (e: any) {
+      setDetail(e?.message ?? "unknown problem");
       setState("error");
     }
   };
@@ -110,7 +148,18 @@ export default function NotifyMe({ assessmentId }: { assessmentId: string }) {
         </p>
       )}
       {state === "error" && (
-        <p className="text-sm font-normal">Couldn't set up notifications. Try again later.</p>
+        <div className="space-y-2">
+          <p className="text-sm font-normal">
+            Couldn't set up notifications{detail ? ` (${detail})` : ""}.
+          </p>
+          <button
+            type="button"
+            onClick={enable}
+            className="text-sm px-4 py-2 rounded-lg bg-emerald-700 text-white font-medium"
+          >
+            Try again
+          </button>
+        </div>
       )}
     </div>
   );
