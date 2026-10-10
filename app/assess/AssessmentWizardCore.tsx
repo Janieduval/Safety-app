@@ -9,6 +9,7 @@ import StopWorkWarning from "@/components/StopWorkWarning";
 import SignaturePad from "@/components/SignaturePad";
 import RiskLegend from "@/components/RiskLegend";
 import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
+import NotifyMe from "@/components/NotifyMe";
 import { toSydneyInputValue, fromSydneyInputValue } from "@/lib/timezone";
 import { isLocalId, getLocalAssessment, saveLocalAssessment } from "@/lib/offlineStore";
 import { signLocalAssessment, validateLocalAssessmentForSubmit } from "@/lib/offlineAssessment";
