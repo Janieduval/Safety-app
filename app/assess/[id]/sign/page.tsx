@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAssessmentData } from "@/lib/useAssessment";
 import SignaturePad from "@/components/SignaturePad";
+import NotifyMe from "@/components/NotifyMe";
 import { SIGNON_CONFIRMATION_TEXT } from "@/lib/constants";
 
 const STATUS_MESSAGES: Record<string, { text: string; tone: "info" | "success" | "warning" }> = {
@@ -138,9 +139,8 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
 
       <StatusBanner status={assessment.status} />
 
-      
-        <a
-          href={`/api/assessments/${assessment.id}/pdf`}
+      <a
+        href={`/api/assessments/${assessment.id}/pdf`}
         target="_blank"
         rel="noreferrer"
         className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted"
@@ -230,6 +230,11 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
           Once everyone who needs to has signed on, you're done on this device — a supervisor
           will review the assessment separately.
         </p>
+        {assessment.status === "awaiting_supervisor_review" && (
+          <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-800">
+            <NotifyMe assessmentId={assessment.id} />
+          </div>
+        )}
         <Link
           href={`/${project.qrSlug}`}
           className="block text-center py-3 rounded-lg border border-neutral-400 text-neutral-700 font-medium"
