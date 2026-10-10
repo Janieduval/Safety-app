@@ -1,0 +1,117 @@
+"use client";
+import { useEffect, useState } from "react";
+
+const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+
+function urlBase64ToUint8Array(base64: string) {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function link(assessmentId: string, sub: PushSubscription) {
+  const res = await fetch("/api/push/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ assessmentId, subscription: sub.toJSON() }),
+  });
+  if (!res.ok) throw new Error("link failed");
+}
+
+export default function NotifyMe({ assessmentId }: { assessmentId: string }) {
+  const [state, setState] = useState<
+    "checking" | "unsupported" | "idle" | "working" | "on" | "denied" | "error"
+  >("checking");
+
+  useEffect(() => {
+    const supported =
+      PUBLIC_KEY &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window &&
+      "Notification" in window;
+    if (!supported) {
+      setState("unsupported");
+      return;
+    }
+    if (Notification.permission === "denied") {
+      setState("denied");
+      return;
+    }
+    if (Notification.permission === "granted") {
+      // Already allowed on this phone: quietly attach it to this JSAFE too.
+      navigator.serviceWorker.ready
+        .then((reg) => reg.pushManager.getSubscription())
+        .then(async (sub) => {
+          if (sub) {
+            await link(assessmentId, sub);
+            setState("on");
+          } else {
+            setState("idle");
+          }
+        })
+        .catch(() => setState("idle"));
+      return;
+    }
+    setState("idle");
+  }, [assessmentId]);
+
+  const enable = async () => {
+    setState("working");
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setState("denied");
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const sub =
+        (await reg.pushManager.getSubscription()) ??
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY),
+        }));
+      await link(assessmentId, sub);
+      setState("on");
+    } catch {
+      setState("error");
+    }
+  };
+
+  if (state === "checking") return null;
+
+  return (
+    <div className="pt-1">
+      {state === "idle" && (
+        <button
+          type="button"
+          onClick={enable}
+          className="text-sm px-4 py-2 rounded-lg bg-emerald-700 text-white font-medium"
+        >
+          Notify me when it's reviewed
+        </button>
+      )}
+      {state === "working" && <p className="text-sm font-normal">Setting up...</p>}
+      {state === "on" && (
+        <p className="text-sm font-normal">
+          ✓ You'll get a notification when a supervisor reviews this.
+        </p>
+      )}
+      {state === "denied" && (
+        <p className="text-sm font-normal">
+          Notifications are blocked for this app. You can turn them on in your phone's settings.
+        </p>
+      )}
+      {state === "unsupported" && (
+        <p className="text-sm font-normal">
+          To get notified, open the app from your home screen icon (not the browser).
+        </p>
+      )}
+      {state === "error" && (
+        <p className="text-sm font-normal">Couldn't set up notifications. Try again later.</p>
+      )}
+    </div>
+  );
+}
