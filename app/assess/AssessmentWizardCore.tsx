@@ -2032,20 +2032,18 @@ function ReviewStep({ assessment, submitErrors, onSubmit, submitting, readOnly }
       )}
 
       {assessment.status === "awaiting_supervisor_review" && (
-  <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 text-emerald-800 font-medium space-y-2">
-    <p>Submitted — awaiting supervisor review.</p>
-    {assessment.version > 1 ? (
-      <p className="font-normal text-sm">
-        This is version {assessment.version} — anyone who already signed needs to
-        sign again for this version.
-      </p>
-    ) : (
-      <p className="font-normal text-sm">You can now invite team members to sign on.</p>
-    )}
-    <CopySignOnLinkButton assessmentId={assessment.id} />
-    <NotifyMe assessmentId={assessment.id} />
-  </div>
-)}
+        <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 text-emerald-800 font-medium space-y-2">
+          <p>Submitted — awaiting supervisor review.</p>
+          {assessment.version > 1 ? (
+            <p className="font-normal text-sm">
+              This is version {assessment.version} — anyone who already signed needs to
+              sign again for this version.
+            </p>
+          ) : (
+            <p className="font-normal text-sm">You can now invite team members to sign on.</p>
+          )}
+          <CopySignOnLinkButton assessmentId={assessment.id} />
+          <NotifyMe assessmentId={assessment.id} />
         </div>
       )}
 
