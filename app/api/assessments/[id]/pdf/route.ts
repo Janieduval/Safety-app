@@ -4,6 +4,30 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import AssessmentPdfDocument from "@/lib/pdf/AssessmentPdfDocument";
 import React from "react";
 
+export const runtime = "nodejs";
+
+const PHOTO_TIMEOUT_MS = 8000;
+
+// Downloads one photo for the PDF. Returns null if it can't be fetched in
+// time or isn't a JPG/PNG, so one bad photo never breaks the whole PDF.
+async function fetchPhotoForPdf(url: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PHOTO_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) return null;
+    const type = res.headers.get("content-type") ?? "";
+    const format = type.includes("png") ? "png" : type.includes("jpeg") || type.includes("jpg") ? "jpg" : null;
+    if (!format) return null;
+    const data = Buffer.from(await res.arrayBuffer());
+    return { data, format };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const assessment = await prisma.assessment.findUnique({
     where: { id: params.id },
@@ -30,8 +54,28 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
   }
 
+  // Fetch every photo at once, then attach each one to its card as pdfSrc.
+  const hazardResponses = await Promise.all(
+    assessment.hazardResponses.map(async (r: any) => ({
+      ...r,
+      cards: await Promise.all(
+        r.cards.map(async (c: any) => ({
+          ...c,
+          photos: await Promise.all(
+            (c.photos ?? []).map(async (p: any) => ({
+              ...p,
+              pdfSrc: await fetchPhotoForPdf(p.url),
+            }))
+          ),
+        }))
+      ),
+    }))
+  );
+
+  const pdfAssessment = { ...assessment, hazardResponses };
+
   const buffer = await renderToBuffer(
-    React.createElement(AssessmentPdfDocument, { assessment }) as any
+    React.createElement(AssessmentPdfDocument, { assessment: pdfAssessment }) as any
   );
 
   return new NextResponse(new Uint8Array(buffer), {
