@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       permits: { include: { permitType: true } },
       accessCheck: true,
       changeEntries: true,
-      hazardResponses: { include: { cards: true } },
+      hazardResponses: { include: { cards: { include: { photos: { orderBy: { createdAt: "asc" } } } } } },
       declarations: true,
       newHazardFlag: true,
       signOns: { include: { worker: true }, orderBy: { signedAt: "asc" } },
