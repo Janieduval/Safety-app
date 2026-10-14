@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAssessmentData } from "@/lib/useAssessment";
 import SignaturePad from "@/components/SignaturePad";
-import { SUPERVISOR_CHECKLIST } from "@/lib/constants";
+import HazardPhotos from "@/components/HazardPhotos";
+import { SUPERVISOR_CHECKLIST, HAZARD_QUESTIONS } from "@/lib/constants";
 
 export default function SupervisorReviewPage({ params }: { params: { id: string } }) {
   const { assessment, project, loading, error, reload } = useAssessmentData(params.id);
@@ -40,6 +41,17 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
   const checklistComplete = SUPERVISOR_CHECKLIST.every((c) => checklist[c.key]);
   const canApprove = checklistComplete;
   const canRequestChanges = true; // changes can be requested even with an incomplete checklist
+
+  // Every hazard card that has at least one photo, with its question label.
+  const cardsWithPhotos = (assessment.hazardResponses ?? []).flatMap((r: any) =>
+    (r.cards ?? [])
+      .filter((c: any) => (c.photos ?? []).length > 0)
+      .map((c: any) => ({
+        ...c,
+        questionLabel:
+          HAZARD_QUESTIONS.find((q) => q.key === r.questionKey)?.label ?? r.questionKey,
+      }))
+  );
 
   const submitDecision = (finalDecision: "approved" | "changes_required") => async (dataUrl: string) => {
     if (!selectedSupervisorId) return;
@@ -80,15 +92,9 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
         Version {assessment.version} &middot; Completed by {assessment.completedByWorker?.name}
       </p>
 
-      
-        <a href={`/api/assessments/${assessment.id}/pdf`}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted"
-      >
+      <a href={`/api/assessments/${assessment.id}/pdf`} target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted">
         Download a PDF record of this assessment
       </a>
-        
 
       {reviews.length > 1 && (
         <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-3">
@@ -115,6 +121,45 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
           This assessment was already reviewed by{" "}
           {latestReview?.supervisor?.name ?? "a supervisor"} — decision:{" "}
           <strong>{latestReview?.decision?.replace(/_/g, " ")}</strong>.
+        </div>
+      )}
+
+      {cardsWithPhotos.length > 0 && (
+        <div className="mt-6 space-y-3">
+          <h2 className="font-semibold text-neutral-900">Hazard photos</h2>
+          <p className="text-xs text-neutral-500 -mt-2">Tap a photo to see it full size.</p>
+          {cardsWithPhotos.map((c: any) => (
+            <div key={c.id} className="border border-neutral-200 rounded-lg p-3 bg-white space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-neutral-500">{c.questionLabel}</p>
+                {c.description && (
+                  <p className="text-sm font-medium text-neutral-900 mt-0.5">{c.description}</p>
+                )}
+                {c.controls && (
+                  <p className="text-sm text-neutral-700 mt-1">
+                    <span className="font-medium">Controls: </span>
+                    {c.controls}
+                  </p>
+                )}
+              </div>
+              <HazardPhotos
+                hazardCardId={c.id}
+                assessmentId={assessment.id}
+                kind="hazard"
+                label="Hazard"
+                initialPhotos={c.photos}
+                readOnly
+              />
+              <HazardPhotos
+                hazardCardId={c.id}
+                assessmentId={assessment.id}
+                kind="control"
+                label="Control in place"
+                initialPhotos={c.photos}
+                readOnly
+              />
+            </div>
+          ))}
         </div>
       )}
 
@@ -254,7 +299,7 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
         </>
       )}
 
-     <div className="mt-8 pt-5 border-t border-neutral-200">
+      <div className="mt-8 pt-5 border-t border-neutral-200">
         <Link
           href={backHref}
           className="block text-center py-3 rounded-lg border border-neutral-400 text-neutral-700 font-medium"
