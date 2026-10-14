@@ -160,7 +160,7 @@ export default function ManagePeoplePage() {
     });
     await loadPeople();
   };
- const setPin = async (id: string, pin: string) => {
+  const setPin = async (id: string, pin: string) => {
     setError(null);
     try {
       const res = await fetch(`/api/admin/supervisors/${id}/pin`, {
@@ -186,7 +186,7 @@ export default function ManagePeoplePage() {
 
   return (
     <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <h1 className="text-2xl font-bold text-neutral-900">Manage workers &amp; supervisors</h1>
         <Link href="/admin/dashboard" className="text-sm text-emerald-700 font-medium">
           ← Dashboard
@@ -249,6 +249,18 @@ export default function ManagePeoplePage() {
           {reviewCount === 1 ? "needs" : "need"} a quick review below.
         </div>
       )}
+
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-white border border-neutral-200 rounded-lg p-3 mb-4">
+        <p className="text-sm text-neutral-700 flex-1 min-w-[12rem]">
+          Same person added twice? Review possible duplicate names and merge them.
+        </p>
+        <Link
+          href="/admin/duplicates"
+          className="shrink-0 text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
+        >
+          Check duplicates
+        </Link>
+      </div>
 
       <div className="bg-white border border-neutral-200 rounded-lg p-4 mb-6">
         <label className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -327,7 +339,7 @@ export default function ManagePeoplePage() {
                 No active {tab === "workers" ? "workers" : "supervisors"} yet.
               </p>
             )}
-           {activeList.map((p) => (
+            {activeList.map((p) => (
               <PersonRow
                 key={p.id}
                 person={p}
@@ -344,7 +356,7 @@ export default function ManagePeoplePage() {
                 Archived ({archivedList.length})
               </h2>
               <div className="space-y-2">
-               {archivedList.map((p) => (
+                {archivedList.map((p) => (
                   <PersonRow
                     key={p.id}
                     person={p}
