@@ -65,7 +65,7 @@ export default async function AdminDashboard({
     <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-neutral-900">Admin dashboard</h1>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
           <Link
             href="/admin/people"
             className="text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium"
@@ -78,21 +78,22 @@ export default async function AdminDashboard({
           >
             Saved hazard answers
           </Link>
-                    <Link
+          <Link
             href="/admin/export"
             className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
           >
             Export assessments
           </Link>
           <Link
+            href="/stats"
+            className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
+          >
+            View statistics
+          </Link>
+          <Link
             href="/supervisor/login"
             className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
-          >   <Link
-     href="/stats"
-     className="text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
-   >
-     View statistics
-   </Link>
+          >
             Supervisor login
           </Link>
           {projects[0] && (
@@ -242,7 +243,7 @@ export default async function AdminDashboard({
                       View
                     </Link>
                     {a.status !== "archived" && <ArchiveButton assessmentId={a.id} />}
-                     {isTodaySydney(a.dateTime) && <CopySignOnLinkButton assessmentId={a.id} />}
+                    {isTodaySydney(a.dateTime) && <CopySignOnLinkButton assessmentId={a.id} />}
                     {a.status === "awaiting_supervisor_review" && (
                       <Link
                         href={`/assess/${a.id}/supervisor-review?from=admin`}
