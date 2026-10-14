@@ -5,8 +5,42 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAssessmentData } from "@/lib/useAssessment";
 import SignaturePad from "@/components/SignaturePad";
-import HazardPhotos from "@/components/HazardPhotos";
 import { SUPERVISOR_CHECKLIST, HAZARD_QUESTIONS } from "@/lib/constants";
+
+const RISK_BADGE: Record<string, string> = {
+  low: "bg-emerald-100 text-emerald-800",
+  medium: "bg-amber-100 text-amber-800",
+  high: "bg-orange-100 text-orange-800",
+  extreme: "bg-red-100 text-red-800",
+};
+
+function PhotoColumn({ title, photos }: { title: string; photos: any[] }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 mb-1.5">
+        {title}
+      </p>
+      {photos.length === 0 ? (
+        <div className="aspect-square rounded-lg border border-dashed border-neutral-300 bg-neutral-50 flex items-center justify-center">
+          <span className="text-xs text-neutral-400">No photo</span>
+        </div>
+      ) : (
+        <div className={`grid gap-1.5 ${photos.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+          {photos.map((p: any) => (
+            <a key={p.id} href={p.url} target="_blank" rel="noreferrer" className="block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.url}
+                alt={title}
+                className="w-full aspect-square object-cover rounded-lg border border-neutral-200"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SupervisorReviewPage({ params }: { params: { id: string } }) {
   const { assessment, project, loading, error, reload } = useAssessmentData(params.id);
@@ -125,42 +159,46 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
       )}
 
       {cardsWithPhotos.length > 0 && (
-        <div className="mt-6 space-y-3">
-          <h2 className="font-semibold text-neutral-900">Hazard photos</h2>
-          <p className="text-xs text-neutral-500 -mt-2">Tap a photo to see it full size.</p>
-          {cardsWithPhotos.map((c: any) => (
-            <div key={c.id} className="border border-neutral-200 rounded-lg p-3 bg-white space-y-3">
-              <div>
-                <p className="text-xs font-semibold text-neutral-500">{c.questionLabel}</p>
-                {c.description && (
-                  <p className="text-sm font-medium text-neutral-900 mt-0.5">{c.description}</p>
-                )}
-                {c.controls && (
-                  <p className="text-sm text-neutral-700 mt-1">
-                    <span className="font-medium">Controls: </span>
-                    {c.controls}
-                  </p>
-                )}
-              </div>
-              <HazardPhotos
-                hazardCardId={c.id}
-                assessmentId={assessment.id}
-                kind="hazard"
-                label="Hazard"
-                initialPhotos={c.photos}
-                readOnly
-              />
-              <HazardPhotos
-                hazardCardId={c.id}
-                assessmentId={assessment.id}
-                kind="control"
-                label="Control in place"
-                initialPhotos={c.photos}
-                readOnly
-              />
-            </div>
-          ))}
-        </div>
+        <section className="mt-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-semibold text-neutral-900">Hazard photos</h2>
+            <span className="text-xs text-neutral-500">Tap a photo to enlarge</span>
+          </div>
+          <div className="space-y-4">
+            {cardsWithPhotos.map((c: any) => {
+              const hazardPhotos = c.photos.filter((p: any) => p.kind === "hazard");
+              const controlPhotos = c.photos.filter((p: any) => p.kind === "control");
+              return (
+                <div key={c.id} className="rounded-xl border border-neutral-200 bg-white overflow-hidden shadow-sm">
+                  <div className="flex items-start justify-between gap-3 px-4 py-2.5 bg-neutral-50 border-b border-neutral-200">
+                    <p className="text-xs font-medium text-neutral-600 leading-snug">{c.questionLabel}</p>
+                    {c.residualRisk && (
+                      <span className={`shrink-0 text-[11px] font-semibold capitalize px-2 py-0.5 rounded-full ${RISK_BADGE[c.residualRisk] ?? "bg-neutral-100 text-neutral-700"}`}>
+                        {c.residualRisk} risk
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-4 py-3 space-y-3">
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Hazard</p>
+                        <p className="text-sm text-neutral-900">{c.description || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Controls</p>
+                        <p className="text-sm text-neutral-900">{c.controls || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <PhotoColumn title="Hazard" photos={hazardPhotos} />
+                      <PhotoColumn title="Control in place" photos={controlPhotos} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {!notReady && !alreadyReviewed && (
