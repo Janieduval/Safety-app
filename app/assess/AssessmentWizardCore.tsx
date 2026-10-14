@@ -65,6 +65,9 @@ export function AssessmentWizardCore({ id }: { id: string }) {
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [localValidity, setLocalValidity] = useState<Record<string, boolean>>({});
+  // Which steps the worker has tried to continue from while incomplete.
+  // Warnings only appear after that, not the moment a step opens.
+  const [attempted, setAttempted] = useState<Record<string, boolean>>({});
 
   // Warn before refresh/navigation while a draft is in progress
   useEffect(() => {
@@ -91,13 +94,20 @@ export function AssessmentWizardCore({ id }: { id: string }) {
     criticalStepValid = localValidity[step] === true;
   }
   const continueBlocked = !readOnly && isCriticalStep && !criticalStepValid;
+  const showBlockedHint = continueBlocked && !!attempted[step];
 
   const setStepValidity = (key: string) => (valid: boolean) => {
     setLocalValidity((prev) => (prev[key] === valid ? prev : { ...prev, [key]: valid }));
   };
 
   const goNext = () => {
-    if (continueBlocked) return;
+    if (continueBlocked) {
+      // Show what's missing, and bring the worker back to the top where
+      // the list appears.
+      setAttempted((prev) => (prev[step] ? prev : { ...prev, [step]: true }));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
   };
   const goBack = () => setStepIndex((i) => Math.max(i - 1, 0));
@@ -252,6 +262,7 @@ export function AssessmentWizardCore({ id }: { id: string }) {
             save={save}
             reload={reloadAssessment}
             readOnly={readOnly}
+            showMissing={!!attempted.hazards}
             onValidityChange={setStepValidity("hazards")}
           />
         )}
@@ -312,7 +323,7 @@ export function AssessmentWizardCore({ id }: { id: string }) {
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 px-4 py-3">
         <div className="max-w-md mx-auto">
-          {continueBlocked && (
+          {showBlockedHint && (
             <p className="text-xs text-amber-700 font-medium mb-2 text-center">
               {step === "hazardPause"
                 ? "Take a moment to look around before continuing."
@@ -331,8 +342,10 @@ export function AssessmentWizardCore({ id }: { id: string }) {
             <button
               type="button"
               onClick={goNext}
-              disabled={stepIndex === STEPS.length - 1 || continueBlocked}
-              className="flex-1 py-3 rounded-lg bg-emerald-700 text-white font-semibold disabled:opacity-40"
+              disabled={stepIndex === STEPS.length - 1}
+              className={`flex-1 py-3 rounded-lg bg-emerald-700 text-white font-semibold disabled:opacity-40 ${
+                continueBlocked ? "opacity-50" : ""
+              }`}
             >
               Continue
             </button>
@@ -1033,7 +1046,7 @@ function ChangesStep({ assessment, save, reload, readOnly }: any) {
 
 // ---------------- Hazards ----------------
 
-function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChange }: any) {
+function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, onValidityChange }: any) {
   // Local state so the Yes/No buttons update the instant you tap them,
   // the same way Step 1 already works — instead of waiting for a full
   // save-then-reload round trip before the button even changes color.
@@ -1115,7 +1128,8 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
   // A plain-English list of exactly what's still missing — with 11
   // separate questions to scroll through, it's easy to miss answering
   // just one, and "Complete this step before continuing" alone gives no
-  // clue which one. This spells it out.
+  // clue which one. This spells it out. Only shown once the worker has
+  // tried to continue (showMissing), not the moment the step opens.
   const missingItems = useMemo(() => {
     const items: string[] = [];
     for (const hq of HAZARD_QUESTIONS) {
@@ -1155,7 +1169,7 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, onValidityChan
         hazard is present or could occur. "No" means it isn't relevant to today's work.
       </p>
 
-      {missingItems.length > 0 && (
+      {showMissing && !readOnly && missingItems.length > 0 && (
         <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4">
           <p className="font-semibold text-amber-900 mb-1">Still needed before you can continue:</p>
           <ul className="list-disc list-inside text-sm text-amber-800 space-y-0.5">
