@@ -8,6 +8,7 @@ import YesNoButtons from "@/components/YesNoButtons";
 import StopWorkWarning from "@/components/StopWorkWarning";
 import SignaturePad from "@/components/SignaturePad";
 import RiskLegend from "@/components/RiskLegend";
+import HazardPhotos from "@/components/HazardPhotos";
 import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
 import NotifyMe from "@/components/NotifyMe";
 import { toSydneyInputValue, fromSydneyInputValue } from "@/lib/timezone";
@@ -1414,6 +1415,14 @@ function HazardCard({
           )}
         </div>
       </Field>
+      <HazardPhotos
+        hazardCardId={card.id}
+        assessmentId={assessmentId}
+        kind="hazard"
+        label="Photo of the hazard (optional)"
+        initialPhotos={card.photos}
+        readOnly={readOnly}
+      />
       <RiskLegend />
       <Field label="Initial risk rating">
         <RiskSelect value={local.initialRisk} onChange={(v) => commit({ initialRisk: v })} disabled={readOnly} />
@@ -1485,6 +1494,14 @@ function HazardCard({
         />
         Control has been implemented
       </label>
+      <HazardPhotos
+        hazardCardId={card.id}
+        assessmentId={assessmentId}
+        kind="control"
+        label="Photo of the control in place (optional)"
+        initialPhotos={card.photos}
+        readOnly={readOnly}
+      />
       <Field label="Residual risk rating">
         <RiskSelect value={local.residualRisk} onChange={(v) => commit({ residualRisk: v })} disabled={readOnly} />
       </Field>
