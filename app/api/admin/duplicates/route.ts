@@ -78,22 +78,48 @@ async function loadPeople(projectId: string, kind: Kind): Promise<Person[]> {
   if (kind === "worker") {
     const rows = await prisma.worker.findMany({
       where: { projectId, archived: false },
-      include: { _count: { select: { assessmentsCompleted: true, signOns: true } } },
     });
+    const ids = rows.map((w) => w.id);
+    const authored = await prisma.assessment.groupBy({
+      by: ["completedByWorkerId"],
+      where: { completedByWorkerId: { in: ids } },
+      _count: { _all: true },
+    });
+    const signed = await prisma.signOn.groupBy({
+      by: ["workerId"],
+      where: { workerId: { in: ids } },
+      _count: { _all: true },
+    });
+    const authoredMap = new Map<string, number>();
+    for (const r of authored) {
+      if (r.completedByWorkerId) authoredMap.set(r.completedByWorkerId, r._count._all);
+    }
+    const signedMap = new Map<string, number>();
+    for (const r of signed) signedMap.set(r.workerId, r._count._all);
+
     return rows.map((w) => ({
       id: w.id,
       name: w.name,
       needsReview: w.needsReview,
       createdAt: w.createdAt,
-      assessments: w._count.assessmentsCompleted,
-      signOns: w._count.signOns,
+      assessments: authoredMap.get(w.id) ?? 0,
+      signOns: signedMap.get(w.id) ?? 0,
       reviews: 0,
     }));
   }
+
   const rows = await prisma.supervisor.findMany({
     where: { projectId, archived: false },
-    include: { _count: { select: { reviews: true } } },
   });
+  const ids = rows.map((s) => s.id);
+  const reviewed = await prisma.supervisorReview.groupBy({
+    by: ["supervisorId"],
+    where: { supervisorId: { in: ids } },
+    _count: { _all: true },
+  });
+  const reviewedMap = new Map<string, number>();
+  for (const r of reviewed) reviewedMap.set(r.supervisorId, r._count._all);
+
   return rows.map((s) => ({
     id: s.id,
     name: s.name,
@@ -101,7 +127,7 @@ async function loadPeople(projectId: string, kind: Kind): Promise<Person[]> {
     createdAt: s.createdAt,
     assessments: 0,
     signOns: 0,
-    reviews: s._count.reviews,
+    reviews: reviewedMap.get(s.id) ?? 0,
   }));
 }
 
