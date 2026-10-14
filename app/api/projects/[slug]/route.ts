@@ -52,9 +52,17 @@ export async function GET(
   if (!project || !project.active) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
+  // Each team comes with its saved hazard answers — the hazard card's
+  // suggestion dropdown is built from these.
   const teams = await prisma.teamOption.findMany({
     where: { active: true },
     orderBy: { label: "asc" },
+    include: {
+      hazardTemplates: {
+        where: { active: true },
+        orderBy: { updatedAt: "desc" },
+      },
+    },
   });
   return NextResponse.json({ project, teams });
 }
