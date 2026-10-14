@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getLocalAssessment,
   saveLocalAssessment,
@@ -7,6 +7,17 @@ import {
   isLocalId,
 } from "./offlineStore";
 import { applyLocalSection } from "./offlineAssessment";
+
+// ---------------- Shared save tracking ----------------
+// Lets a reload wait until pending saves have reached the server, so it
+// never fetches an older copy and shows text the worker already changed.
+const saveDrainers = new Map<string, () => Promise<void>>();
+
+async function waitForPendingSaves(assessmentId: string, timeoutMs = 10000) {
+  const drain = saveDrainers.get(assessmentId);
+  if (!drain) return;
+  await Promise.race([drain(), new Promise<void>((resolve) => setTimeout(resolve, timeoutMs))]);
+}
 
 export function useAssessmentData(id: string) {
   const [assessment, setAssessment] = useState<any>(null);
@@ -21,6 +32,7 @@ export function useAssessmentData(id: string) {
   // loading flag, so the screen doesn't flash back to a full loading state
   // on every click.
   const reloadAssessment = useCallback(async () => {
+    await waitForPendingSaves(id);
     if (isLocalId(id)) {
       try {
         const local = await getLocalAssessment(id);
@@ -48,6 +60,7 @@ export function useAssessmentData(id: string) {
   // Used only for the initial page load.
   const reload = useCallback(async () => {
     setLoading(true);
+    await waitForPendingSaves(id);
     if (isLocalId(id)) {
       try {
         const local = await getLocalAssessment(id);
@@ -96,55 +109,273 @@ export function useAssessmentData(id: string) {
   return { assessment, project, teams, loading, error, reload, reloadAssessment };
 }
 
-// Fire-and-forget autosave with basic status tracking for the UI. Returns
-// whatever row the save produced (e.g. a newly created hazard card), so a
-// caller that needs it — like "add a hazard card" — can update its own
-// state directly instead of making a second request just to find out.
-export function useAutosave(assessmentId: string) {
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const save = useCallback(
-    async (section: string, data: any): Promise<{ ok: boolean; result: any }> => {
-      setStatus("saving");
-      if (isLocalId(assessmentId)) {
-        try {
-          const local = await getLocalAssessment(assessmentId);
-          if (!local) throw new Error("not found");
-          const updatedData = applyLocalSection(local.data, section, data);
-          await saveLocalAssessment({ ...local, data: updatedData });
-          setStatus("saved");
-          let result: any = null;
-          if (section === "hazardCard") {
-            const hr = updatedData.hazardResponses.find(
-              (r: any) => r.id === data.hazardResponseId
-            );
-            if (hr) {
-              result = data.id
-                ? hr.cards.find((c: any) => c.id === data.id)
-                : hr.cards[hr.cards.length - 1];
-            }
+// ---------------- Autosave ----------------
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SaveResult = { ok: boolean; result: any };
+type Outcome = SaveResult & { retryable: boolean };
+type Job = {
+  key: string | null; // null = must be sent as-is (creates/deletes), never merged
+  section: string;
+  data: any;
+  resolvers: Array<(r: SaveResult) => void>;
+};
+
+const DEBOUNCE_MS = 500; // wait for a pause in typing before sending
+const RETRY_DELAYS_MS = [1000, 3000, 8000];
+const STALLED_RETRY_MS = 15000;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+// Saves for the same thing (the same hazard card, the same question...)
+// share a key, so only the newest version is sent. Saves that create or
+// delete something get no key and are always sent exactly as made.
+function coalesceKey(section: string, data: any): string | null {
+  if (section === "hazardCard" && !data?.id) return null; // creates a new card
+  if (section === "changeEntry" || section === "deleteHazardCard") return null;
+  const id = data?.id ?? data?.questionKey ?? data?.declarationKey ?? "";
+  return `${section}:${id}`;
+}
+
+function createSaveQueue(assessmentId: string, setStatus: (s: SaveStatus) => void) {
+  const url = `/api/assessments/${assessmentId}/autosave`;
+  const waiting = new Map<string, { job: Job; timer: ReturnType<typeof setTimeout> }>();
+  let queue: Job[] = [];
+  let running = false;
+  let hadError = false;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let idleWaiters: Array<() => void> = [];
+
+  const isIdle = () => waiting.size === 0 && queue.length === 0 && !running;
+
+  const notifyIdle = () => {
+    if (!isIdle()) return;
+    const waiters = idleWaiters;
+    idleWaiters = [];
+    waiters.forEach((w) => w());
+  };
+
+  const settle = (job: Job, r: SaveResult) => {
+    const resolvers = job.resolvers;
+    job.resolvers = [];
+    resolvers.forEach((resolve) => resolve(r));
+  };
+
+  async function sendOnce(job: Job): Promise<Outcome> {
+    if (isLocalId(assessmentId)) {
+      try {
+        const local = await getLocalAssessment(assessmentId);
+        if (!local) return { ok: false, result: null, retryable: false };
+        const updatedData = applyLocalSection(local.data, job.section, job.data);
+        await saveLocalAssessment({ ...local, data: updatedData });
+        let result: any = null;
+        if (job.section === "hazardCard") {
+          const hr = updatedData.hazardResponses.find(
+            (r: any) => r.id === job.data.hazardResponseId
+          );
+          if (hr) {
+            result = job.data.id
+              ? hr.cards.find((c: any) => c.id === job.data.id)
+              : hr.cards[hr.cards.length - 1];
           }
-          return { ok: true, result };
-        } catch {
-          setStatus("error");
-          return { ok: false, result: null };
+        }
+        return { ok: true, result, retryable: false };
+      } catch {
+        return { ok: false, result: null, retryable: false };
+      }
+    }
+    try {
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section: job.section, data: job.data }),
+      });
+      if (res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { ok: true, result: body.result ?? null, retryable: false };
+      }
+      // Server hiccups are worth retrying; a rejected save (4xx) isn't.
+      const retryable = res.status >= 500 || res.status === 408 || res.status === 429;
+      return { ok: false, result: null, retryable };
+    } catch {
+      // No connection — worth retrying.
+      return { ok: false, result: null, retryable: true };
+    }
+  }
+
+  // Sends queued saves one at a time, in order, so an older save can never
+  // land after a newer one and overwrite it.
+  async function run() {
+    if (running) return;
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+    running = true;
+    setStatus("saving");
+    while (queue.length > 0) {
+      const job = queue[0];
+      let outcome = await sendOnce(job);
+      for (let i = 0; !outcome.ok && outcome.retryable && i < RETRY_DELAYS_MS.length; i++) {
+        await sleep(RETRY_DELAYS_MS[i]);
+        outcome = await sendOnce(job);
+      }
+      if (!outcome.ok && outcome.retryable && job.key) {
+        // Still no connection. Keep this change at the front of the line
+        // and try again shortly, or as soon as the phone is back online.
+        settle(job, { ok: false, result: null });
+        running = false;
+        setStatus("error");
+        retryTimer = setTimeout(run, STALLED_RETRY_MS);
+        return;
+      }
+      queue.shift();
+      if (!outcome.ok) hadError = true;
+      settle(job, { ok: outcome.ok, result: outcome.result });
+    }
+    running = false;
+    setStatus(hadError ? "error" : "saved");
+    hadError = false;
+    notifyIdle();
+  }
+
+  function enqueue(job: Job) {
+    if (job.key) {
+      // If a save for the same thing is already waiting in line (and not
+      // being sent right now), just give it the newer data.
+      const start = running ? 1 : 0;
+      for (let i = start; i < queue.length; i++) {
+        if (queue[i].key === job.key) {
+          queue[i].data = job.data;
+          queue[i].resolvers.push(...job.resolvers);
+          run();
+          return;
         }
       }
-      try {
-        const res = await fetch(`/api/assessments/${assessmentId}/autosave`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ section, data }),
-        });
-        if (!res.ok) throw new Error("save failed");
-        const body = await res.json().catch(() => ({}));
-        setStatus("saved");
-        return { ok: true, result: body.result ?? null };
-      } catch {
-        setStatus("error");
-        return { ok: false, result: null };
+    }
+    queue.push(job);
+    run();
+  }
+
+  function flushWaiting() {
+    const entries = Array.from(waiting.values());
+    waiting.clear();
+    for (const { job, timer } of entries) {
+      clearTimeout(timer);
+      enqueue(job);
+    }
+  }
+
+  // A deleted card's pending edits no longer need sending.
+  function dropPendingFor(key: string) {
+    const w = waiting.get(key);
+    if (w) {
+      clearTimeout(w.timer);
+      waiting.delete(key);
+      settle(w.job, { ok: true, result: null });
+    }
+    const start = running ? 1 : 0;
+    queue = queue.filter((j, i) => {
+      if (i >= start && j.key === key) {
+        settle(j, { ok: true, result: null });
+        return false;
       }
-    },
-    [assessmentId]
-  );
-  return { save, status };
+      return true;
+    });
+  }
+
+  function save(section: string, data: any): Promise<SaveResult> {
+    return new Promise((resolve) => {
+      if (section === "deleteHazardCard" && data?.id) {
+        dropPendingFor(`hazardCard:${data.id}`);
+      }
+      const key = coalesceKey(section, data);
+      if (!key) {
+        // Send everything typed so far first, so things stay in order
+        // (e.g. a "Yes" answer reaches the server before its new card).
+        flushWaiting();
+        enqueue({ key: null, section, data, resolvers: [resolve] });
+        return;
+      }
+      setStatus("saving");
+      const existing = waiting.get(key);
+      if (existing) clearTimeout(existing.timer);
+      const job: Job = existing ? existing.job : { key, section, data, resolvers: [] };
+      job.data = data;
+      job.resolvers.push(resolve);
+      const timer = setTimeout(() => {
+        if (waiting.get(key)?.job !== job) return;
+        waiting.delete(key);
+        enqueue(job);
+      }, DEBOUNCE_MS);
+      waiting.set(key, { job, timer });
+    });
+  }
+
+  // Resolves once every pending save has been sent.
+  function drain(): Promise<void> {
+    flushWaiting();
+    if (isIdle()) return Promise.resolve();
+    return new Promise((resolve) => idleWaiters.push(resolve));
+  }
+
+  // Called when the app is closed or the phone switches apps: push out any
+  // unsent changes immediately, in a way the browser finishes even if the
+  // page is closing.
+  function sendPendingNow() {
+    if (!isLocalId(assessmentId)) {
+      const jobs = [
+        ...Array.from(waiting.values()).map((w) => w.job),
+        ...queue.filter((j) => j.key),
+      ];
+      for (const job of jobs) {
+        try {
+          fetch(url, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ section: job.section, data: job.data }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch {
+          // ignore — the normal queue will still retry
+        }
+      }
+    }
+    flushWaiting();
+  }
+
+  function resume() {
+    if (!running && queue.length > 0) run();
+  }
+
+  return { save, drain, sendPendingNow, resume };
+}
+
+// Autosave with typing pauses, in-order sending, retries and status
+// tracking for the UI. Returns whatever row the save produced (e.g. a
+// newly created hazard card), so a caller that needs it — like "add a
+// hazard card" — can update its own state directly.
+export function useAutosave(assessmentId: string) {
+  const [status, setStatus] = useState<SaveStatus>("idle");
+  const saver = useMemo(() => createSaveQueue(assessmentId, setStatus), [assessmentId]);
+
+  useEffect(() => {
+    saveDrainers.set(assessmentId, saver.drain);
+    const onHide = () => saver.sendPendingNow();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") saver.sendPendingNow();
+    };
+    const onOnline = () => saver.resume();
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", onOnline);
+    return () => {
+      if (saveDrainers.get(assessmentId) === saver.drain) saveDrainers.delete(assessmentId);
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [assessmentId, saver]);
+
+  return { save: saver.save, status, flush: saver.drain };
 }
