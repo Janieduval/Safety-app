@@ -298,6 +298,23 @@ model HazardCard {
   comments           String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
+
+  photos             HazardPhoto[]
+}
+
+// Photos attached to a hazard card. kind = "hazard" (the hazard itself)
+// or "control" (the control in place). The file lives in Vercel Blob;
+// pathname is kept so the file can be found or deleted later.
+model HazardPhoto {
+  id            String     @id @default(uuid())
+  hazardCardId  String
+  hazardCard    HazardCard @relation(fields: [hazardCardId], references: [id], onDelete: Cascade)
+  kind          String     // "hazard" | "control"
+  url           String
+  pathname      String
+  createdAt     DateTime   @default(now())
+
+  @@index([hazardCardId])
 }
 
 model Declaration {
