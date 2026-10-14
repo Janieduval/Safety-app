@@ -18,10 +18,32 @@ const styles = StyleSheet.create({
   warn: { color: "#b91c1c", fontWeight: 700 },
   signatureImg: { width: 160, height: 60, border: "1 solid #ccc" },
   footer: { position: "absolute", bottom: 20, left: 32, right: 32, fontSize: 8, color: "#888", textAlign: "center" },
+  photoGroup: { marginTop: 6 },
+  photoCaption: { fontSize: 8, fontWeight: 700, color: "#555", marginBottom: 3 },
+  photoRow: { flexDirection: "row" },
+  photo: { width: 150, height: 112, objectFit: "cover", border: "1 solid #ccc", borderRadius: 2, marginRight: 6 },
 });
 
 function riskLabel(risk: string) {
   return risk.charAt(0).toUpperCase() + risk.slice(1);
+}
+
+// Draws a row of photos for one card. Only photos the PDF route managed
+// to download (pdfSrc) are shown, so a missing photo never breaks the PDF.
+function PhotoGroup({ title, photos }: { title: string; photos: any[] }) {
+  const usable = (photos ?? []).filter((p: any) => p.pdfSrc);
+  if (usable.length === 0) return null;
+  return (
+    <View style={styles.photoGroup} wrap={false}>
+      <Text style={styles.photoCaption}>{title}</Text>
+      <View style={styles.photoRow}>
+        {usable.map((p: any) => (
+          // eslint-disable-next-line jsx-a11y/alt-text
+          <Image key={p.id} src={p.pdfSrc} style={styles.photo} />
+        ))}
+      </View>
+    </View>
+  );
 }
 
 const STEP1_LABELS: Record<string, string> = Object.fromEntries(
@@ -124,12 +146,12 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
         {a.hazardResponses
           .filter((r: any) => r.present)
           .map((r: any) => (
-            <View key={r.id} wrap={false} style={{ marginBottom: 6 }}>
-              <Text style={{ fontWeight: 700 }}>
+            <View key={r.id} style={{ marginBottom: 6 }}>
+              <Text style={{ fontWeight: 700, marginBottom: 3 }} minPresenceAhead={80}>
                 {HAZARD_LABELS[r.questionKey] ?? r.questionKey}: Yes
               </Text>
               {r.cards.map((c: any) => (
-                <View key={c.id} style={styles.card}>
+                <View key={c.id} style={styles.card} wrap={false}>
                   <Text>{c.description}</Text>
                   <Text>
                     Initial risk: {riskLabel(c.initialRisk)} → Residual risk:{" "}
@@ -147,6 +169,14 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
                   <Text>Responsible: {c.responsiblePerson}</Text>
                   <Text>{c.controlConfirmed ? "Control confirmed" : "Control NOT confirmed"}</Text>
                   {c.comments ? <Text>Comments: {c.comments}</Text> : null}
+                  <PhotoGroup
+                    title="Photo of the hazard"
+                    photos={(c.photos ?? []).filter((p: any) => p.kind === "hazard")}
+                  />
+                  <PhotoGroup
+                    title="Photo of the control in place"
+                    photos={(c.photos ?? []).filter((p: any) => p.kind === "control")}
+                  />
                 </View>
               ))}
             </View>
