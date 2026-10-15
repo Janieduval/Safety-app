@@ -3,9 +3,15 @@ import "./globals.css";
 import OfflineSyncManager from "@/components/OfflineSyncManager";
 import DebugToolsLoader from "@/components/DebugToolsLoader";
 export const metadata: Metadata = {
-  title: "Daily Task Safety Awareness",
+  title: "JSAFE App – Daily Task Safety Awareness",
   description: "Pre-task risk assessment for site workers",
+  applicationName: "JSAFE App",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "JSAFE App",
+    statusBarStyle: "default",
+  },
   icons: {
     icon: "/icon-192.png",
     apple: "/icon-192.png",
