@@ -1,6 +1,6 @@
 {
-  "name": "Daily Task Safety Awareness",
-  "short_name": "Safety App",
+  "name": "JSAFE App",
+  "short_name": "JSAFE App",
   "description": "Daily Task Safety Awareness pre-task risk assessments",
   "start_url": "/blind-creek-solar-farm",
   "display": "standalone",
@@ -8,13 +8,13 @@
   "theme_color": "#047857",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/icon-192_2.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512_1.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
