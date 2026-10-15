@@ -13,8 +13,8 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
-    icon: "/icon-192.png",
-    apple: "/icon-192.png",
+    icon: "/icon-192_2.png",
+    apple: "/icon-192_2.png",
   },
 };
 export const viewport: Viewport = {
