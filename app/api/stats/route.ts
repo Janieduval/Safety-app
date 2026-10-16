@@ -162,7 +162,21 @@ export async function GET(req: NextRequest) {
     reviews: reviews.filter((r) => sydneyDate(r.reviewedAt) === todayStr).length,
   };
 
+  // Who is looking, so the page can show the right menu (admin or supervisor).
+  const [supervisor, firstProject] = await Promise.all([
+    supervisorId
+      ? prisma.supervisor.findUnique({ where: { id: supervisorId }, select: { name: true } })
+      : Promise.resolve(null),
+    adminEmail
+      ? prisma.project.findFirst({ orderBy: { name: "asc" }, select: { qrSlug: true } })
+      : Promise.resolve(null),
+  ]);
+  const viewer = adminEmail
+    ? { role: "admin" as const, name: null, workerPageSlug: firstProject?.qrSlug ?? null }
+    : { role: "supervisor" as const, name: supervisor?.name ?? null, workerPageSlug: null };
+
   return NextResponse.json({
+    viewer,
     period,
     buckets,
     assessmentSeries,
