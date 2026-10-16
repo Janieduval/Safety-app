@@ -39,6 +39,22 @@ const STEPS = [
   "finish",
 ] as const;
 
+// Short names shown in the header for each step.
+const STEP_TITLES: Record<(typeof STEPS)[number], string> = {
+  header: "Assessment details",
+  step1: "Plan the task",
+  swms: "SWMS",
+  ppe: "PPE",
+  permits: "Permits",
+  access: "Access to work area",
+  changes: "Changes on site",
+  hazardPause: "Look around",
+  hazards: "Identify hazards",
+  newHazard: "New hazards",
+  declarations: "Final check",
+  finish: "Sign & submit",
+};
+
 const HAZARD_PAUSE_SECONDS = 20;
 
 const CRITICAL_STEPS = [
@@ -153,21 +169,39 @@ export function AssessmentWizardCore({ id }: { id: string }) {
 
   return (
     <main className="min-h-dvh bg-neutral-50 pb-24">
-      <header className="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 z-10">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div>
-            <p className="text-xs text-neutral-500">{project.name}</p>
-            <p className="text-sm font-semibold text-neutral-800">
-              Step {stepIndex + 1} of {STEPS.length}
-            </p>
+      <header
+        className="sticky top-0 z-10 text-white shadow-md"
+        style={{ background: "linear-gradient(135deg, #10b981 0%, #047857 55%, #064e3b 100%)" }}
+      >
+        <div className="max-w-md mx-auto px-4 pt-3 pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-192_2.png"
+                alt=""
+                className="w-8 h-8 rounded-lg ring-1 ring-white/30 shrink-0"
+              />
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium text-emerald-50/85 truncate">{project.name}</p>
+                <p className="text-base font-bold leading-tight truncate">{STEP_TITLES[step]}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-semibold text-emerald-50/90 tabular-nums">
+                {stepIndex + 1}/{STEPS.length}
+              </span>
+              <span className="rounded-full bg-white/95 px-2 py-0.5 text-xs empty:hidden">
+                <AutosaveStatus status={status} />
+              </span>
+            </div>
           </div>
-          <AutosaveStatus status={status} />
-        </div>
-        <div className="max-w-md mx-auto mt-2 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-emerald-700 transition-all"
-            style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
-          />
+          <div className="mt-2.5 h-1.5 bg-white/25 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-all"
+              style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
+            />
+          </div>
         </div>
       </header>
 
