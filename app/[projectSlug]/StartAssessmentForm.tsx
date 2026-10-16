@@ -15,6 +15,15 @@ import { AssessmentWizardCore } from "@/app/assess/AssessmentWizardCore";
 
 type Worker = { id: string; name: string };
 type Mode = "home" | "start" | "signon" | "mine";
+type CrewAssessment = {
+  id: string;
+  dateTime: string;
+  status: string;
+  location: string | null;
+  team: string | null;
+  author: string | null;
+  signedOn: number;
+};
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -120,6 +129,12 @@ export default function StartAssessmentForm({
   const [myAssessments, setMyAssessments] = useState<any[] | null>(null);
   const [loadingAssessments, setLoadingAssessments] = useState(false);
 
+  // Crew sign-on: today's Take 5s for this site.
+  const [crew, setCrew] = useState<CrewAssessment[] | null>(null);
+  const [crewLoading, setCrewLoading] = useState(false);
+  const [crewError, setCrewError] = useState<string | null>(null);
+  const [crewQuery, setCrewQuery] = useState("");
+
   // The ID of an offline assessment currently being filled out, rendered
   // in place on this exact page — never as a separate navigation. iOS's
   // standalone "add to home screen" apps have a well-known history of
@@ -201,13 +216,43 @@ export default function StartAssessmentForm({
     return localWorkers.filter((w) => w.name.toLowerCase().includes(q));
   }, [viewQuery, localWorkers]);
 
+  const crewFiltered = useMemo(() => {
+    if (!crew) return [];
+    const q = crewQuery.trim().toLowerCase();
+    if (!q) return crew;
+    return crew.filter((c) =>
+      [c.team, c.author, c.location].some((v) => (v ?? "").toLowerCase().includes(q))
+    );
+  }, [crew, crewQuery]);
+
+  const loadCrew = () => {
+    setCrewLoading(true);
+    setCrewError(null);
+    fetch(`/api/projects/${qrSlug}/today`, { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("failed");
+        return res.json();
+      })
+      .then((data) => setCrew(data.assessments ?? []))
+      .catch(() =>
+        setCrewError(
+          typeof navigator !== "undefined" && !navigator.onLine
+            ? "Needs signal to load today's Take 5s. Try again once you have signal."
+            : "Couldn't load today's Take 5s. Try again."
+        )
+      )
+      .finally(() => setCrewLoading(false));
+  };
+
   const goTo = (next: Mode) => {
     setMode(next);
     setError(null);
-    // Each screen starts with a fresh name search.
+    // Each screen starts with a fresh search.
     setViewQuery("");
     setViewSelected(null);
     setMyAssessments(null);
+    setCrewQuery("");
+    if (next === "signon") loadCrew();
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -482,23 +527,115 @@ export default function StartAssessmentForm({
     );
   }
 
-  // ---------------- Sign on / My assessments (same search, different list) ----------------
-  const isSignOn = mode === "signon";
-  const visibleAssessments = (myAssessments ?? []).filter((a: any) =>
-    isSignOn ? isSydneyToday(a.dateTime) : true
-  );
+  // ---------------- Sign on to a crew: today's Take 5s ----------------
+  if (mode === "signon") {
+    return (
+      <div>
+        {backButton}
+        <section className={CARD}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-neutral-900">Sign on to a crew</h2>
+              <p className="text-sm text-neutral-500 mt-0.5">
+                Find your crew&apos;s Take 5 for today, read it, then sign.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={loadCrew}
+              disabled={crewLoading}
+              className="shrink-0 text-xs font-semibold text-emerald-700 px-2.5 py-1.5 rounded-full bg-emerald-50 active:bg-emerald-100 disabled:opacity-50"
+            >
+              {crewLoading ? "Loading..." : "Refresh"}
+            </button>
+          </div>
 
+          <div className="relative mt-4">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-neutral-400 pointer-events-none">
+              <SearchIcon />
+            </span>
+            <input
+              type="text"
+              value={crewQuery}
+              onChange={(e) => setCrewQuery(e.target.value)}
+              placeholder="Search team, name or location..."
+              autoComplete="off"
+              className={INPUT}
+            />
+          </div>
+
+          <div className="mt-4">
+            {crewLoading && !crew && <p className="text-sm text-neutral-500">Loading today&apos;s Take 5s...</p>}
+            {crewError && (
+              <p className="text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                {crewError}
+              </p>
+            )}
+            {crew && crew.length === 0 && !crewError && (
+              <p className="text-sm text-neutral-500 bg-neutral-50 rounded-xl px-3 py-4 text-center">
+                No Take 5s have been started today yet.
+              </p>
+            )}
+            {crew && crew.length > 0 && crewFiltered.length === 0 && (
+              <p className="text-sm text-neutral-500 bg-neutral-50 rounded-xl px-3 py-4 text-center">
+                Nothing matches &ldquo;{crewQuery.trim()}&rdquo;.
+              </p>
+            )}
+            {crewFiltered.length > 0 && (
+              <div className="space-y-2.5">
+                {crewFiltered.map((c) => {
+                  const style = STATUS_STYLE[c.status] ?? DEFAULT_STATUS_STYLE;
+                  return (
+                    <Link
+                      key={c.id}
+                      href={`/assess/${c.id}?view=1`}
+                      className="relative flex items-center gap-3 overflow-hidden border border-neutral-200 rounded-2xl pl-4 pr-3 py-3 bg-white active:bg-neutral-50"
+                    >
+                      <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${style.bar}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-neutral-900 truncate">{c.team ?? "No team"}</span>
+                          <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${style.badge}`}>
+                            {STATUS_LABELS[c.status] ?? c.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-600 mt-0.5 truncate">
+                          Started by {c.author ?? "unknown"} ·{" "}
+                          {new Date(c.dateTime).toLocaleTimeString("en-AU", {
+                            timeZone: "Australia/Sydney",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-neutral-500">
+                          {c.location && <span className="truncate">{c.location}</span>}
+                          <span className="shrink-0 inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                            ✓ {c.signedOn} signed
+                          </span>
+                        </div>
+                      </div>
+                      <span className="shrink-0 text-neutral-400">
+                        <ChevronIcon className="w-4 h-4" />
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // ---------------- My assessments ----------------
   return (
     <div>
       {backButton}
       <section className={CARD}>
-        <h2 className="text-xl font-bold text-neutral-900">
-          {isSignOn ? "Sign on to a crew" : "My assessments"}
-        </h2>
+        <h2 className="text-xl font-bold text-neutral-900">My assessments</h2>
         <p className="text-sm text-neutral-500 mt-0.5">
-          {isSignOn
-            ? "Find your name to see today's assessments you can open and sign."
-            : "Find your name to continue a draft or look back at past assessments."}
+          Find your name to continue a draft or look back at past assessments.
         </p>
 
         <label htmlFor="view-name" className="block text-sm font-semibold text-neutral-700 mt-4 mb-1.5">
@@ -548,16 +685,14 @@ export default function StartAssessmentForm({
         {viewSelected && (
           <div className="mt-4">
             {loadingAssessments && <p className="text-sm text-neutral-500">Loading...</p>}
-            {!loadingAssessments && myAssessments && visibleAssessments.length === 0 && (
+            {!loadingAssessments && myAssessments && myAssessments.length === 0 && (
               <p className="text-sm text-neutral-500 bg-neutral-50 rounded-xl px-3 py-3 text-center">
-                {isSignOn
-                  ? "No assessments for you today yet."
-                  : "No assessments found for this name."}
+                No assessments found for this name.
               </p>
             )}
-            {!loadingAssessments && visibleAssessments.length > 0 && (
+            {!loadingAssessments && myAssessments && myAssessments.length > 0 && (
               <div className="space-y-2.5">
-                {visibleAssessments.map((a: any) => {
+                {myAssessments.map((a: any) => {
                   const today = isSydneyToday(a.dateTime);
                   const isAuthor = a.completedByWorkerId === viewSelected.id;
                   const stillEditable = a.status === "draft" || a.status === "changes_required";
@@ -647,11 +782,6 @@ export default function StartAssessmentForm({
                   );
                 })}
               </div>
-            )}
-            {isSignOn && !loadingAssessments && myAssessments && (
-              <p className="mt-4 text-xs text-neutral-500 text-center">
-                Don&apos;t see it? Ask the person who started it to send you the sign-on link.
-              </p>
             )}
           </div>
         )}
