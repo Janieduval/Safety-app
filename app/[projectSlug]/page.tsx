@@ -56,9 +56,32 @@ export default async function ProjectLandingPage({
             />
             <div className="min-w-0">
               <p className="text-2xl font-extrabold tracking-wide leading-none">JSAFE</p>
-              <p className="text-sm text-emerald-50/90 mt-1 truncate">{project.name}</p>
+              <p className="text-sm font-semibold text-white mt-1 truncate">{project.name}</p>
             </div>
           </div>
+
+          {(project.address || project.contractor) && (
+            <div className="mt-3 space-y-1 text-xs text-emerald-50/90">
+              {project.address && (
+                <p className="flex items-start gap-1.5">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="w-3.5 h-3.5 mt-px shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
+                    <circle cx="12" cy="10" r="2.5" />
+                  </svg>
+                  {project.address}
+                </p>
+              )}
+              {project.contractor && <p className="pl-5">Contractor: {project.contractor}</p>}
+            </div>
+          )}
 
           <p className="mt-4 text-base font-semibold">Take 5. Work safe. Go home safe.</p>
 
@@ -75,10 +98,9 @@ export default async function ProjectLandingPage({
           <StartAssessmentForm projectId={project.id} qrSlug={params.projectSlug} workers={project.workers} />
         </div>
 
-        <div className="max-w-md mx-auto mt-10 text-center text-xs text-neutral-400 space-y-0.5">
-          {project.address && <p>{project.address}</p>}
-          {project.contractor && <p>Contractor: {project.contractor}</p>}
-        </div>
+        <p className="max-w-md mx-auto mt-10 text-center text-xs font-medium text-neutral-400">
+          Daily Task Safety Awareness
+        </p>
       </div>
     </main>
   );
