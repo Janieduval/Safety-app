@@ -2,12 +2,27 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
 import ArchiveButton from "@/components/ArchiveButton";
+import AdminLogoutButton from "@/components/AdminLogoutButton";
 
 export const dynamic = "force-dynamic";
 
 function isTodaySydney(dateTime: Date | string): boolean {
   const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney" });
   return fmt.format(new Date(dateTime)) === fmt.format(new Date());
+}
+
+// "Good morning" / "Good afternoon" / "Good evening" by Sydney time.
+function greetingSydney(): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-AU", {
+      timeZone: "Australia/Sydney",
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(new Date())
+  );
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -184,19 +199,30 @@ export default async function AdminDashboard({
         className="md:hidden -mx-4 -mt-6 mb-5 px-5 pt-8 pb-6 rounded-b-3xl text-white shadow-md"
         style={{ background: "linear-gradient(135deg, #10b981 0%, #047857 55%, #064e3b 100%)" }}
       >
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/icon-192_2.png"
-            alt=""
-            className="w-12 h-12 rounded-2xl shadow-lg ring-2 ring-white/30"
-          />
-          <div>
-            <p className="text-2xl font-extrabold tracking-wide leading-none">JSAFE</p>
-            <p className="text-sm text-emerald-50/90 mt-1">Admin dashboard</p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon-192_2.png"
+              alt=""
+              className="w-12 h-12 rounded-2xl shadow-lg ring-2 ring-white/30 shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-2xl font-extrabold tracking-wide leading-none">JSAFE</p>
+              <p className="text-sm text-emerald-50/90 mt-1">Admin dashboard</p>
+            </div>
           </div>
+          <AdminLogoutButton className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-white/15 ring-1 ring-white/30 text-white active:bg-white/25 disabled:opacity-60" />
         </div>
-        <p className="mt-4 text-sm text-emerald-50/90">{todayLabel}</p>
+
+        <p className="mt-4 text-base font-semibold text-white">
+          Take 5. Work safe. Go home safe.
+        </p>
+
+        <div className="mt-4 pt-3 border-t border-white/20">
+          <p className="text-lg font-bold leading-tight">{greetingSydney()}</p>
+          <p className="text-sm text-emerald-50/90">{todayLabel}</p>
+        </div>
       </header>
 
       {/* ---------- Phone: needs-review alert ---------- */}
