@@ -96,7 +96,7 @@ export default async function AdminDashboard({
     "text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white text-center";
 
   return (
-    <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-5xl mx-auto">
+    <main className="min-h-dvh w-full min-w-0 bg-neutral-50 px-4 py-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-neutral-900">Admin dashboard</h1>
         <div className="grid grid-cols-2 gap-2 w-full md:flex md:flex-wrap md:w-auto">
