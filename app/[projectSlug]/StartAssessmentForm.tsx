@@ -85,10 +85,12 @@ const PlusIcon = () => (
     <path d="M12 5v14M5 12h14" />
   </Svg>
 );
+// A pen signing on a line.
 const SignIcon = () => (
   <Svg className="w-6 h-6">
-    <path d="M3 17c3-3 5 1 8-2s2-6 5-5" />
-    <path d="M3 21h18" />
+    <path d="M14.5 3.5l4 4L9 17l-5 1 1-5z" />
+    <path d="M12.5 5.5l4 4" />
+    <path d="M3 21c2-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0" />
   </Svg>
 );
 const ListIcon = () => (
