@@ -34,8 +34,19 @@ const STATUS_BADGE: Record<string, string> = {
   archived: "bg-neutral-200 text-neutral-600",
 };
 
-// Short names for the phone status filters, in the order they appear.
-const MOBILE_STATUSES: { key: string; label: string }[] = [
+const STATUS_DOT: Record<string, string> = {
+  "": "bg-emerald-700",
+  awaiting_supervisor_review: "bg-amber-500",
+  worker_completed: "bg-blue-500",
+  draft: "bg-neutral-400",
+  changes_required: "bg-orange-500",
+  approved: "bg-emerald-500",
+  archived: "bg-neutral-300",
+};
+
+// Status filters, in the order they appear (phone pills and computer tiles).
+const STATUS_OPTIONS: { key: string; label: string }[] = [
+  { key: "", label: "All" },
   { key: "awaiting_supervisor_review", label: "To review" },
   { key: "worker_completed", label: "Completed" },
   { key: "draft", label: "Draft" },
@@ -44,7 +55,7 @@ const MOBILE_STATUSES: { key: string; label: string }[] = [
   { key: "archived", label: "Archived" },
 ];
 
-// Simple line icons for the phone shortcut tiles.
+// Simple line icons for the shortcut tiles.
 const ICONS: Record<string, React.ReactNode> = {
   people: (
     <>
@@ -109,6 +120,14 @@ function describe(a: any) {
   return { flags, latestReview, today: isTodaySydney(a.dateTime) };
 }
 
+function TodayBadge() {
+  return (
+    <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[11px] font-bold uppercase">
+      Today
+    </span>
+  );
+}
+
 export default async function AdminDashboard({
   searchParams,
 }: {
@@ -155,15 +174,6 @@ export default async function AdminDashboard({
   const totalCount = counts.reduce((sum, c) => sum + c._count, 0);
   const toReview = countMap["awaiting_supervisor_review"] ?? 0;
 
-  const statuses = [
-    "draft",
-    "worker_completed",
-    "awaiting_supervisor_review",
-    "changes_required",
-    "approved",
-    "archived",
-  ];
-
   // Builds a dashboard link for a status, keeping the chosen project.
   const statusHref = (status?: string) => {
     const params = new URLSearchParams();
@@ -172,6 +182,12 @@ export default async function AdminDashboard({
     const q = params.toString();
     return `/admin/dashboard${q ? `?${q}` : ""}`;
   };
+
+  const statusOptions = STATUS_OPTIONS.map((s) => ({
+    ...s,
+    n: s.key ? countMap[s.key] ?? 0 : totalCount,
+    active: (searchParams.status ?? "") === s.key,
+  }));
 
   const todayLabel = new Intl.DateTimeFormat("en-AU", {
     timeZone: "Australia/Sydney",
@@ -189,14 +205,11 @@ export default async function AdminDashboard({
     ...(projects[0] ? [{ href: `/${projects[0].qrSlug}`, label: "Worker page", icon: "phone" }] : []),
   ];
 
-  const headerLink =
-    "text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white text-center";
-
   return (
-    <main className="min-h-dvh w-full min-w-0 bg-neutral-50 px-4 py-6 max-w-5xl mx-auto">
-      {/* ---------- Phone: JSAFE header ---------- */}
+    <main className="min-h-dvh w-full min-w-0 bg-neutral-50 px-4 py-6 md:py-8 max-w-6xl mx-auto">
+      {/* ---------- JSAFE header ---------- */}
       <header
-        className="md:hidden -mx-4 -mt-6 mb-5 px-5 pt-8 pb-6 rounded-b-3xl text-white shadow-md"
+        className="-mx-4 -mt-6 mb-5 px-5 pt-8 pb-6 rounded-b-3xl text-white shadow-md md:mx-0 md:mt-0 md:mb-6 md:px-8 md:py-7 md:rounded-3xl"
         style={{ background: "linear-gradient(135deg, #10b981 0%, #047857 55%, #064e3b 100%)" }}
       >
         <div className="flex items-center justify-between gap-3">
@@ -205,31 +218,32 @@ export default async function AdminDashboard({
             <img
               src="/icon-192_2.png"
               alt=""
-              className="w-12 h-12 rounded-2xl shadow-lg ring-2 ring-white/30 shrink-0"
+              className="w-12 h-12 md:w-14 md:h-14 rounded-2xl shadow-lg ring-2 ring-white/30 shrink-0"
             />
             <div className="min-w-0">
-              <p className="text-2xl font-extrabold tracking-wide leading-none">JSAFE</p>
+              <p className="text-2xl md:text-3xl font-extrabold tracking-wide leading-none">JSAFE</p>
               <p className="text-sm text-emerald-50/90 mt-1">Admin dashboard</p>
             </div>
           </div>
-          <AdminLogoutButton className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full bg-white/15 ring-1 ring-white/30 text-white active:bg-white/25 disabled:opacity-60" />
+          <AdminLogoutButton className="shrink-0 text-xs md:text-sm font-semibold px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-white/15 ring-1 ring-white/30 text-white hover:bg-white/25 active:bg-white/25 disabled:opacity-60" />
         </div>
 
-        <p className="mt-4 text-base font-semibold text-white">
-          Take 5. Work safe. Go home safe.
-        </p>
-
-        <div className="mt-4 pt-3 border-t border-white/20">
-          <p className="text-lg font-bold leading-tight">{greetingSydney()}</p>
-          <p className="text-sm text-emerald-50/90">{todayLabel}</p>
+        <div className="md:flex md:items-end md:justify-between md:gap-6 md:mt-6">
+          <p className="mt-4 md:mt-0 text-base md:text-lg font-semibold text-white">
+            Take 5. Work safe. Go home safe.
+          </p>
+          <div className="mt-4 pt-3 border-t border-white/20 md:mt-0 md:pt-0 md:border-0 md:text-right">
+            <p className="text-lg font-bold leading-tight">{greetingSydney()}</p>
+            <p className="text-sm text-emerald-50/90">{todayLabel}</p>
+          </div>
         </div>
       </header>
 
-      {/* ---------- Phone: needs-review alert ---------- */}
+      {/* ---------- Needs-review alert ---------- */}
       {toReview > 0 && searchParams.status !== "awaiting_supervisor_review" && (
         <Link
           href={statusHref("awaiting_supervisor_review")}
-          className="md:hidden flex items-center justify-between gap-3 mb-5 rounded-2xl bg-amber-50 border border-amber-300 px-4 py-3"
+          className="flex items-center justify-between gap-3 mb-5 rounded-2xl bg-amber-50 border border-amber-300 px-4 py-3 hover:bg-amber-100/60"
         >
           <div>
             <p className="text-sm font-semibold text-amber-900">Needs your review</p>
@@ -243,60 +257,77 @@ export default async function AdminDashboard({
         </Link>
       )}
 
-      {/* ---------- Phone: shortcut tiles ---------- */}
-      <nav className="md:hidden grid grid-cols-3 gap-2.5 mb-6">
+      {/* ---------- Shortcut tiles ---------- */}
+      <nav className="grid grid-cols-3 md:grid-cols-6 gap-2.5 md:gap-3 mb-6">
         {shortcuts.map((s) => (
           <Link
             key={s.href}
             href={s.href}
-            className="flex flex-col items-center gap-1.5 rounded-2xl bg-white border border-neutral-200 py-3 px-1 shadow-sm active:bg-neutral-50"
+            className="flex flex-col items-center gap-1.5 rounded-2xl bg-white border border-neutral-200 py-3 md:py-4 px-1 shadow-sm hover:border-emerald-300 hover:shadow active:bg-neutral-50"
           >
             <span className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <Icon name={s.icon} />
             </span>
-            <span className="text-xs font-medium text-neutral-700 text-center leading-tight">
+            <span className="text-xs md:text-sm font-medium text-neutral-700 text-center leading-tight">
               {s.label}
             </span>
           </Link>
         ))}
       </nav>
 
-      {/* ---------- Phone: status filters ---------- */}
+      {/* ---------- Status filters: pills on a phone ---------- */}
       <div className="md:hidden flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 mb-3">
-        {[{ key: "", label: "All" }, ...MOBILE_STATUSES].map((s) => {
-          const active = (searchParams.status ?? "") === s.key;
-          const n = s.key ? countMap[s.key] ?? 0 : totalCount;
-          return (
-            <Link
-              key={s.key || "all"}
-              href={statusHref(s.key || undefined)}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border ${
-                active
-                  ? "bg-emerald-700 border-emerald-700 text-white font-semibold"
-                  : "bg-white border-neutral-300 text-neutral-700"
+        {statusOptions.map((s) => (
+          <Link
+            key={s.key || "all"}
+            href={statusHref(s.key || undefined)}
+            className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full border ${
+              s.active
+                ? "bg-emerald-700 border-emerald-700 text-white font-semibold"
+                : "bg-white border-neutral-300 text-neutral-700"
+            }`}
+          >
+            {s.label}
+            <span
+              className={`text-[11px] font-bold px-1.5 rounded-full ${
+                s.active ? "bg-white/25 text-white" : "bg-neutral-100 text-neutral-600"
               }`}
             >
-              {s.label}
-              <span
-                className={`text-[11px] font-bold px-1.5 rounded-full ${
-                  active ? "bg-white/25 text-white" : "bg-neutral-100 text-neutral-600"
-                }`}
-              >
-                {n}
-              </span>
-            </Link>
-          );
-        })}
+              {s.n}
+            </span>
+          </Link>
+        ))}
       </div>
 
-      {/* Phone: project filters, only when there's more than one project */}
+      {/* ---------- Status filters: tiles on a computer ---------- */}
+      <div className="hidden md:grid grid-cols-7 gap-3 mb-5">
+        {statusOptions.map((s) => (
+          <Link
+            key={s.key || "all"}
+            href={statusHref(s.key || undefined)}
+            className={`rounded-2xl border p-3.5 shadow-sm transition ${
+              s.active
+                ? "bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600/20"
+                : "bg-white border-neutral-200 hover:border-emerald-300"
+            }`}
+          >
+            <p className="text-2xl font-bold text-neutral-900">{s.n}</p>
+            <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-neutral-600">
+              <span className={`w-2 h-2 rounded-full ${STATUS_DOT[s.key] ?? "bg-neutral-300"}`} />
+              {s.label}
+            </p>
+          </Link>
+        ))}
+      </div>
+
+      {/* Project filters, only when there's more than one project */}
       {projects.length > 1 && (
-        <div className="md:hidden flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 mb-3">
+        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 mb-3 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible">
           {projects.map((p) => (
             <Link
               key={p.id}
               href={`/admin/dashboard?projectId=${p.id}`}
-              className={`shrink-0 whitespace-nowrap text-xs px-3 py-1 rounded-full border ${
+              className={`shrink-0 whitespace-nowrap text-xs md:text-sm px-3 py-1 rounded-full border ${
                 searchParams.projectId === p.id
                   ? "bg-neutral-900 border-neutral-900 text-white"
                   : "bg-white border-neutral-300 text-neutral-700"
@@ -308,239 +339,187 @@ export default async function AdminDashboard({
         </div>
       )}
 
-      {/* ---------- Computer: header buttons (unchanged) ---------- */}
-      <div className="hidden md:flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-neutral-900">Admin dashboard</h1>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/admin/people"
-            className="text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium text-center"
-          >
-            Manage workers &amp; supervisors
-          </Link>
-          <Link href="/admin/hazard-templates" className={headerLink}>
-            Saved hazard answers
-          </Link>
-          <Link href="/admin/export" className={headerLink}>
-            Export assessments
-          </Link>
-          <Link href="/stats" className={headerLink}>
-            View statistics
-          </Link>
-          <Link href="/supervisor/login" className={headerLink}>
-            Supervisor login
-          </Link>
-          {projects[0] && (
-            <Link href={`/${projects[0].qrSlug}`} className={headerLink}>
-              Assessment access page
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* ---------- Computer: status counts (unchanged) ---------- */}
-      <div className="hidden md:grid grid-cols-6 gap-3 mb-6">
-        {statuses.map((s) => (
-          <Link
-            key={s}
-            href={`/admin/dashboard?status=${s}`}
-            className={`rounded-lg border p-3 bg-white ${
-              searchParams.status === s ? "border-emerald-600 ring-1 ring-emerald-600" : "border-neutral-200"
-            }`}
-          >
-            <p className="text-2xl font-bold text-neutral-900">{countMap[s] ?? 0}</p>
-            <p className="text-xs text-neutral-600 capitalize">{s.replace(/_/g, " ")}</p>
-          </Link>
-        ))}
-      </div>
-
-      {/* ---------- Computer: filters (unchanged) ---------- */}
-      <div className="hidden md:flex flex-wrap gap-3 mb-4">
-        <Link
-          href="/admin/dashboard"
-          className="text-sm px-3 py-1.5 rounded-full border border-neutral-300 bg-white"
-        >
-          All statuses
-        </Link>
-        {projects.map((p) => (
-          <Link
-            key={p.id}
-            href={`/admin/dashboard?projectId=${p.id}`}
-            className="text-sm px-3 py-1.5 rounded-full border border-neutral-300 bg-white"
-          >
-            {p.name}
-          </Link>
-        ))}
-      </div>
-
-      <form action="/admin/dashboard" method="get" className="flex gap-2 mb-4">
-        {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
-        {searchParams.projectId && <input type="hidden" name="projectId" value={searchParams.projectId} />}
-        <input
-          type="text"
-          name="worker"
-          defaultValue={searchParams.worker ?? ""}
-          placeholder="Search by worker or team..."
-          className="flex-1 min-w-0 md:max-w-xs rounded-xl md:rounded-lg border border-neutral-300 px-3 py-2 text-sm bg-white"
-        />
-        <button
-          type="submit"
-          className="text-sm px-4 py-2 rounded-xl md:rounded-lg bg-neutral-900 text-white font-medium"
-        >
-          Search
-        </button>
-        {searchParams.worker && (
-          <Link
-            href={`/admin/dashboard${searchParams.status ? `?status=${searchParams.status}` : ""}`}
-            className="text-sm px-4 py-2 rounded-xl md:rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
-          >
-            Clear
-          </Link>
-        )}
-      </form>
-
-      {/* ---------- Phone: cards ---------- */}
-      <div className="md:hidden">
-        <div className="flex items-baseline justify-between mb-2">
-          <h2 className="text-base font-bold text-neutral-900">Assessments</h2>
-          <span className="text-xs text-neutral-500">
+      {/* ---------- Heading + search ---------- */}
+      <div className="md:flex md:items-center md:justify-between md:gap-4 mb-3">
+        <div className="flex items-baseline justify-between gap-3 mb-3 md:mb-0">
+          <h2 className="text-base md:text-lg font-bold text-neutral-900">Assessments</h2>
+          <span className="text-xs text-neutral-500 md:ml-2">
             {assessments.length === 100 ? "Latest 100" : `${assessments.length} shown`}
           </span>
         </div>
-        <div className="space-y-3">
-          {assessments.map((a) => {
-            const { flags, latestReview, today } = describe(a);
-            return (
-              <div key={a.id} className="bg-white rounded-2xl border border-neutral-200 p-4 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <p className={`text-sm ${today ? "font-semibold text-blue-800" : "text-neutral-600"}`}>
-                    {today && (
-                      <span className="inline-block mr-1.5 px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[11px] font-bold uppercase">
-                        Today
-                      </span>
-                    )}
-                    {new Date(a.dateTime).toLocaleString("en-AU", {
-                      timeZone: "Australia/Sydney",
-                      day: "numeric",
-                      month: "short",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                  <span
-                    className={`shrink-0 text-[11px] font-semibold capitalize px-2 py-0.5 rounded-full ${
-                      STATUS_BADGE[a.status] ?? "bg-neutral-100 text-neutral-700"
-                    }`}
-                  >
-                    {a.status.replace(/_/g, " ")}
-                  </span>
-                </div>
-
-                <p className="mt-2 font-semibold text-neutral-900">
-                  {a.completedByWorker?.name ?? "Unknown worker"}
-                </p>
-                <p className="text-sm text-neutral-600">
-                  {a.project.name} · {a.team?.label ?? a.otherTeamText ?? "No team"}
-                </p>
-
-                {a.status === "awaiting_supervisor_review" && a.version > 1 && (
-                  <p className="mt-1 text-xs font-semibold text-blue-700">
-                    Amended — v{a.version} ready for review
-                  </p>
-                )}
-
-                {flags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {flags.map((f) => (
-                      <span
-                        key={f}
-                        className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-medium"
-                      >
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {(a.status === "approved" || a.status === "changes_required") && latestReview && (
-                  <p className="mt-2 text-xs text-neutral-500">
-                    Reviewed by {latestReview.supervisor?.name ?? "supervisor"}
-                  </p>
-                )}
-
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/admin/assessments/${a.id}`}
-                    className="flex-1 text-center text-sm px-3 py-2 rounded-xl border border-emerald-700 text-emerald-700 font-semibold"
-                  >
-                    View
-                  </Link>
-                  {a.status === "awaiting_supervisor_review" && (
-                    <Link
-                      href={`/assess/${a.id}/supervisor-review?from=admin`}
-                      className="flex-1 text-center text-sm px-3 py-2 rounded-xl bg-amber-600 text-white font-semibold"
-                    >
-                      Review
-                    </Link>
-                  )}
-                </div>
-                {(a.status !== "archived" || today) && (
-                  <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm">
-                    {a.status !== "archived" && <ArchiveButton assessmentId={a.id} />}
-                    {today && <CopySignOnLinkButton assessmentId={a.id} />}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {assessments.length === 0 && (
-            <p className="p-6 text-center text-neutral-500 bg-white rounded-2xl border border-neutral-200">
-              No assessments match this filter.
-            </p>
+        <form action="/admin/dashboard" method="get" className="flex gap-2 md:w-96">
+          {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
+          {searchParams.projectId && <input type="hidden" name="projectId" value={searchParams.projectId} />}
+          <input
+            type="text"
+            name="worker"
+            defaultValue={searchParams.worker ?? ""}
+            placeholder="Search by worker or team..."
+            className="flex-1 min-w-0 rounded-xl border border-neutral-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600"
+          />
+          <button
+            type="submit"
+            className="text-sm px-4 py-2 rounded-xl bg-neutral-900 text-white font-medium hover:bg-neutral-800"
+          >
+            Search
+          </button>
+          {searchParams.worker && (
+            <Link
+              href={`/admin/dashboard${searchParams.status ? `?status=${searchParams.status}` : ""}`}
+              className="text-sm px-4 py-2 rounded-xl border border-neutral-300 text-neutral-700 font-medium bg-white"
+            >
+              Clear
+            </Link>
           )}
-        </div>
+        </form>
       </div>
 
-      {/* ---------- Computer: table (unchanged) ---------- */}
-      <div className="hidden md:block bg-white rounded-lg border border-neutral-200 overflow-x-auto">
+      {/* ---------- Phone: cards ---------- */}
+      <div className="md:hidden space-y-3">
+        {assessments.map((a) => {
+          const { flags, latestReview, today } = describe(a);
+          return (
+            <div key={a.id} className="bg-white rounded-2xl border border-neutral-200 p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <p className={`text-sm ${today ? "font-semibold text-blue-800" : "text-neutral-600"}`}>
+                  {today && <TodayBadge />}
+                  {new Date(a.dateTime).toLocaleString("en-AU", {
+                    timeZone: "Australia/Sydney",
+                    day: "numeric",
+                    month: "short",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
+                <span
+                  className={`shrink-0 text-[11px] font-semibold capitalize px-2 py-0.5 rounded-full ${
+                    STATUS_BADGE[a.status] ?? "bg-neutral-100 text-neutral-700"
+                  }`}
+                >
+                  {a.status.replace(/_/g, " ")}
+                </span>
+              </div>
+
+              <p className="mt-2 font-semibold text-neutral-900">
+                {a.completedByWorker?.name ?? "Unknown worker"}
+              </p>
+              <p className="text-sm text-neutral-600">
+                {a.project.name} · {a.team?.label ?? a.otherTeamText ?? "No team"}
+              </p>
+
+              {a.status === "awaiting_supervisor_review" && a.version > 1 && (
+                <p className="mt-1 text-xs font-semibold text-blue-700">
+                  Amended — v{a.version} ready for review
+                </p>
+              )}
+
+              {flags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {flags.map((f) => (
+                    <span
+                      key={f}
+                      className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-medium"
+                    >
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {(a.status === "approved" || a.status === "changes_required") && latestReview && (
+                <p className="mt-2 text-xs text-neutral-500">
+                  Reviewed by {latestReview.supervisor?.name ?? "supervisor"}
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/admin/assessments/${a.id}`}
+                  className="flex-1 text-center text-sm px-3 py-2 rounded-xl border border-emerald-700 text-emerald-700 font-semibold"
+                >
+                  View
+                </Link>
+                {a.status === "awaiting_supervisor_review" && (
+                  <Link
+                    href={`/assess/${a.id}/supervisor-review?from=admin`}
+                    className="flex-1 text-center text-sm px-3 py-2 rounded-xl bg-amber-600 text-white font-semibold"
+                  >
+                    Review
+                  </Link>
+                )}
+              </div>
+              {(a.status !== "archived" || today) && (
+                <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-2 text-sm">
+                  {a.status !== "archived" && <ArchiveButton assessmentId={a.id} />}
+                  {today && <CopySignOnLinkButton assessmentId={a.id} />}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {assessments.length === 0 && (
+          <p className="p-6 text-center text-neutral-500 bg-white rounded-2xl border border-neutral-200">
+            No assessments match this filter.
+          </p>
+        )}
+      </div>
+
+      {/* ---------- Computer: table ---------- */}
+      <div className="hidden md:block bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-neutral-100 text-neutral-700 text-left">
+          <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
             <tr>
-              <th className="p-3">Date</th>
-              <th className="p-3">Project</th>
-              <th className="p-3">Worker</th>
-              <th className="p-3">Team</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Flags</th>
-              <th className="p-3"></th>
+              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Worker</th>
+              <th className="px-4 py-3">Team</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Flags</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {assessments.map((a) => {
               const { flags, latestReview, today } = describe(a);
               return (
-                <tr key={a.id} className="border-t border-neutral-100">
-                  <td
-                    className={`p-3 whitespace-nowrap ${
-                      today ? "bg-blue-50 font-semibold text-blue-900" : ""
-                    }`}
-                  >
-                    {new Date(a.dateTime).toLocaleString("en-AU", { timeZone: "Australia/Sydney" })}
+                <tr key={a.id} className="border-t border-neutral-100 align-top hover:bg-neutral-50/70">
+                  <td className={`px-4 py-3 whitespace-nowrap ${today ? "font-semibold text-blue-800" : "text-neutral-700"}`}>
+                    {today && <TodayBadge />}
+                    {new Date(a.dateTime).toLocaleString("en-AU", {
+                      timeZone: "Australia/Sydney",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
                   </td>
-                  <td className="p-3">{a.project.name}</td>
-                  <td className="p-3">{a.completedByWorker?.name}</td>
-                  <td className="p-3">{a.team?.label ?? a.otherTeamText ?? "—"}</td>
-                  <td className="p-3">
-                    <span className="capitalize">{a.status.replace(/_/g, " ")}</span>
+                  <td className="px-4 py-3">
+                    <p className="font-semibold text-neutral-900">{a.completedByWorker?.name ?? "—"}</p>
+                    <p className="text-xs text-neutral-500">{a.project.name}</p>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-700">{a.team?.label ?? a.otherTeamText ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-block text-[11px] font-semibold capitalize px-2 py-0.5 rounded-full ${
+                        STATUS_BADGE[a.status] ?? "bg-neutral-100 text-neutral-700"
+                      }`}
+                    >
+                      {a.status.replace(/_/g, " ")}
+                    </span>
                     {a.status === "awaiting_supervisor_review" && a.version > 1 && (
-                      <span className="block text-xs font-semibold text-blue-700 mt-0.5">
+                      <span className="block text-xs font-semibold text-blue-700 mt-1">
                         Amended — v{a.version} ready for review
                       </span>
                     )}
+                    {(a.status === "approved" || a.status === "changes_required") && latestReview && (
+                      <span className="block text-xs text-neutral-500 mt-1">
+                        Reviewed by {latestReview.supervisor?.name ?? "supervisor"}
+                      </span>
+                    )}
                   </td>
-                  <td className="p-3">
+                  <td className="px-4 py-3">
                     {flags.length === 0 ? (
-                      <span className="text-neutral-400">—</span>
+                      <span className="text-neutral-300">—</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {flags.map((f) => (
@@ -554,27 +533,28 @@ export default async function AdminDashboard({
                       </div>
                     )}
                   </td>
-                  <td className="p-3 whitespace-nowrap">
-                    <Link
-                      href={`/admin/assessments/${a.id}`}
-                      className="text-emerald-700 font-medium hover:underline"
-                    >
-                      View
-                    </Link>
-                    {a.status !== "archived" && <ArchiveButton assessmentId={a.id} />}
-                    {today && <CopySignOnLinkButton assessmentId={a.id} />}
-                    {a.status === "awaiting_supervisor_review" && (
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                      {a.status === "awaiting_supervisor_review" && (
+                        <Link
+                          href={`/assess/${a.id}/supervisor-review?from=admin`}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-amber-600 text-white font-semibold hover:bg-amber-700"
+                        >
+                          Review
+                        </Link>
+                      )}
                       <Link
-                        href={`/assess/${a.id}/supervisor-review?from=admin`}
-                        className="text-amber-700 font-medium hover:underline ml-3"
+                        href={`/admin/assessments/${a.id}`}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-emerald-700 text-emerald-700 font-semibold hover:bg-emerald-50"
                       >
-                        Review
+                        View
                       </Link>
-                    )}
-                    {(a.status === "approved" || a.status === "changes_required") && latestReview && (
-                      <span className="text-neutral-500 ml-3">
-                        Reviewed by {latestReview.supervisor?.name ?? "supervisor"}
-                      </span>
+                    </div>
+                    {(a.status !== "archived" || today) && (
+                      <div className="mt-1.5 flex items-center justify-end gap-x-1 text-xs whitespace-nowrap">
+                        {a.status !== "archived" && <ArchiveButton assessmentId={a.id} />}
+                        {today && <CopySignOnLinkButton assessmentId={a.id} />}
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -582,7 +562,7 @@ export default async function AdminDashboard({
             })}
             {assessments.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-6 text-center text-neutral-500">
+                <td colSpan={6} className="p-8 text-center text-neutral-500">
                   No assessments match this filter.
                 </td>
               </tr>
