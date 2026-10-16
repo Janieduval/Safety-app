@@ -167,6 +167,23 @@ export function AssessmentWizardCore({ id }: { id: string }) {
       ? assessment.supervisorReviews[assessment.supervisorReviews.length - 1]
       : null;
 
+  // Small line at the top of the header: whose Take 5 this is,
+  // e.g. "Janie D · Module installation". Shows "JSAFE · Take 5"
+  // until a name and team have been picked.
+  const headerWorkerName = (() => {
+    const full = (assessment.completedByWorker?.name ?? "").trim();
+    if (!full) return "";
+    const parts = full.split(/\s+/);
+    return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}` : parts[0];
+  })();
+  const headerTeamLabel = (() => {
+    const label = teams?.find((t: any) => t.id === assessment.teamId)?.label ?? "";
+    if (label === "Other") return (assessment.otherTeamText ?? "").trim();
+    return label;
+  })();
+  const headerContext =
+    [headerWorkerName, headerTeamLabel].filter(Boolean).join(" · ") || "JSAFE · Take 5";
+
   return (
     <main className="min-h-dvh bg-neutral-50 pb-24">
       <header
@@ -183,7 +200,7 @@ export function AssessmentWizardCore({ id }: { id: string }) {
                 className="w-8 h-8 rounded-lg ring-1 ring-white/30 shrink-0"
               />
               <div className="min-w-0">
-                <p className="text-[11px] font-medium text-emerald-50/85 truncate">{project.name}</p>
+                <p className="text-[11px] font-medium text-emerald-50/85 truncate">{headerContext}</p>
                 <p className="text-base font-bold leading-tight truncate">{STEP_TITLES[step]}</p>
               </div>
             </div>
