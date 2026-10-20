@@ -4,20 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 // Pull down from the top of the page to refresh, like a normal phone app.
-// Only on the admin, supervisor and statistics pages, and only when JSAFE is
-// opened from the home screen (in a browser tab the browser already does this).
+// Only on the admin, supervisor and statistics pages, on touch screens.
 // Never on the assessment pages, so a worker can't reload mid-form by accident.
 
 const PAGES = ["/admin", "/supervisor", "/stats"];
 const TRIGGER = 70; // how far (px) to pull before it refreshes
 const MAX_PULL = 110;
 
-function isHomeScreenApp(): boolean {
+function isTouchScreen(): boolean {
   if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    (window.navigator as any).standalone === true
-  );
+  return "ontouchstart" in window || navigator.maxTouchPoints > 0;
 }
 
 export default function PullToRefresh() {
@@ -30,7 +26,7 @@ export default function PullToRefresh() {
   const onThisPage = PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   useEffect(() => {
-    if (!onThisPage || !isHomeScreenApp()) return;
+    if (!onThisPage || !isTouchScreen()) return;
 
     const setBoth = (n: number) => {
       pullRef.current = n;
