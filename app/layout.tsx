@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import OfflineSyncManager from "@/components/OfflineSyncManager";
 import DebugToolsLoader from "@/components/DebugToolsLoader";
+import PullToRefresh from "@/components/PullToRefresh";
 export const metadata: Metadata = {
   title: "JSAFE App – Daily Task Safety Awareness",
   description: "Pre-task risk assessment for site workers",
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full flex flex-col font-sans">
         <OfflineSyncManager />
         <DebugToolsLoader />
+        <PullToRefresh />
         {children}
       </body>
     </html>
