@@ -79,6 +79,21 @@ function Icon({ name, className = "w-5 h-5" }: { name: string; className?: strin
   );
 }
 
+// Order for today's JSAFEs: still to review first, then not yet submitted,
+// then already reviewed at the end of today's group. Older days keep their
+// usual newest-first order underneath.
+function reviewRank(a: any): number {
+  if (!isTodaySydney(a.dateTime)) return 3;
+  if (a.status === "awaiting_supervisor_review") return 0;
+  if (
+    a.status === "approved" ||
+    a.status === "changes_required" ||
+    a.status === "archived"
+  )
+    return 2;
+  return 1;
+}
+
 // Works out the flags and latest review once, for both the phone cards and
 // the computer table.
 function describe(a: any) {
@@ -139,7 +154,7 @@ export default async function SupervisorDashboard({
     ];
   }
 
-  const assessments = await prisma.assessment.findMany({
+  const latestAssessments = await prisma.assessment.findMany({
     where,
     include: {
       project: true,
@@ -155,6 +170,8 @@ export default async function SupervisorDashboard({
     orderBy: { createdAt: "desc" },
     take: 100,
   });
+  // Sort is stable, so each group stays newest-first.
+  const assessments = [...latestAssessments].sort((x, y) => reviewRank(x) - reviewRank(y));
 
   const counts = await prisma.assessment.groupBy({
     by: ["status"],
