@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { verifyAdminSessionToken } from "@/lib/adminSession";
+import { verifySupervisorSessionToken } from "@/lib/supervisorSession";
 import { renderToBuffer } from "@react-pdf/renderer";
 import AssessmentPdfDocument from "@/lib/pdf/AssessmentPdfDocument";
 import React from "react";
@@ -91,13 +94,18 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     React.createElement(AssessmentPdfDocument, { assessment: pdfAssessment }) as any
   );
 
-  const view = req.nextUrl.searchParams.get("view") === "1";
+  // Admins and supervisors: the PDF just opens. Workers: it saves as a file.
+  // (?view=1 always opens, ?download=1 always saves.)
+  const isStaff =
+    !!(await verifyAdminSessionToken(cookies().get("admin_session")?.value)) ||
+    !!(await verifySupervisorSessionToken(cookies().get("supervisor_session")?.value));
+  const mode = req.nextUrl.searchParams;
+  const view = mode.get("download") === "1" ? false : mode.get("view") === "1" || isStaff;
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      // "attachment" makes the browser save the file instead of only showing it.
-      // Add ?view=1 to the link to open it in the browser instead.
+      // "inline" opens the PDF in the browser; "attachment" saves it as a file.
       "Content-Disposition": `${view ? "inline" : "attachment"}; filename="${pdfFileName(assessment)}"`,
       "Cache-Control": "no-store",
     },
