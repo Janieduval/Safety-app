@@ -28,7 +28,20 @@ async function fetchPhotoForPdf(url: string) {
   }
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+// Builds a readable file name, e.g. "JSAFE_Janie-Duval_2026-10-21.pdf".
+function pdfFileName(assessment: any): string {
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney" }).format(
+    new Date(assessment.dateTime)
+  );
+  const name = (assessment.completedByWorker?.name ?? "assessment")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `JSAFE_${name || "assessment"}_${date}.pdf`;
+}
+
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const assessment = await prisma.assessment.findUnique({
     where: { id: params.id },
     include: {
@@ -78,10 +91,15 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     React.createElement(AssessmentPdfDocument, { assessment: pdfAssessment }) as any
   );
 
+  const view = req.nextUrl.searchParams.get("view") === "1";
+
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="assessment-${assessment.id}.pdf"`,
+      // "attachment" makes the browser save the file instead of only showing it.
+      // Add ?view=1 to the link to open it in the browser instead.
+      "Content-Disposition": `${view ? "inline" : "attachment"}; filename="${pdfFileName(assessment)}"`,
+      "Cache-Control": "no-store",
     },
   });
 }
