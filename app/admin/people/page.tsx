@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import AdminLogoutButton from "@/components/AdminLogoutButton";
 
 type Project = { id: string; name: string; qrSlug: string };
 type Person = {
@@ -12,6 +13,74 @@ type Person = {
   needsReview?: boolean;
   hasPin?: boolean;
 };
+
+const BRAND_GRADIENT = "linear-gradient(135deg, #10b981 0%, #047857 55%, #064e3b 100%)";
+const SIDEBAR_GRADIENT = "linear-gradient(180deg, #059669 0%, #047857 45%, #064e3b 100%)";
+
+const ICONS: Record<string, React.ReactNode> = {
+  home: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
+  people: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M15.5 14.2c3 .3 5.5 2.7 5.5 5.8" />
+    </>
+  ),
+  saved: <path d="M6 3h12v18l-6-4-6 4z" />,
+  export: <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3" />,
+  stats: <path d="M4 20V11M10 20V5M16 20v-6M2 20h20" />,
+  supervisor: (
+    <>
+      <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
+      <path d="M9 12l2 2 4-4" />
+    </>
+  ),
+  phone: (
+    <>
+      <rect x="7" y="2" width="10" height="20" rx="2" />
+      <path d="M11 18h2" />
+    </>
+  ),
+  back: <path d="M15 5l-7 7 7 7" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="8" y="8" width="12" height="12" rx="2" />
+      <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  chevron: <path d="M6 9l6 6 6-6" />,
+};
+
+function Icon({ name, className = "w-5 h-5" }: { name: string; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {ICONS[name]}
+    </svg>
+  );
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function ManagePeoplePage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -27,6 +96,8 @@ export default function ManagePeoplePage() {
   const [bulkText, setBulkText] = useState("");
   const [bulkResult, setBulkResult] = useState<string | null>(null);
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -177,186 +248,332 @@ export default function ManagePeoplePage() {
       setError(e.message);
     }
   };
+
+  const term = search.trim().toLowerCase();
   const list = tab === "workers" ? workers : supervisors;
-  const activeList = list
-    .filter((p) => !p.archived)
-    .sort((a, b) => (b.needsReview ? 1 : 0) - (a.needsReview ? 1 : 0));
-  const archivedList = list.filter((p) => p.archived);
-  const reviewCount = activeList.filter((p) => p.needsReview).length;
+  const matches = (p: Person) => !term || p.name.toLowerCase().includes(term);
+  const activeAll = list.filter((p) => !p.archived);
+  const activeList = activeAll
+    .filter(matches)
+    .sort(
+      (a, b) =>
+        (b.needsReview ? 1 : 0) - (a.needsReview ? 1 : 0) || a.name.localeCompare(b.name)
+    );
+  const archivedAll = list.filter((p) => p.archived);
+  const archivedList = archivedAll.filter(matches).sort((a, b) => a.name.localeCompare(b.name));
+  const reviewCount = activeAll.filter((p) => p.needsReview).length;
+  const singular = tab === "workers" ? "worker" : "supervisor";
+  const plural = tab === "workers" ? "workers" : "supervisors";
+
+  const workerPageSlug = projects.find((p) => p.id === projectId)?.qrSlug ?? projects[0]?.qrSlug;
+  const navItems = [
+    { href: "/admin/dashboard", label: "Dashboard", icon: "home" },
+    { href: "/admin/people", label: "People", icon: "people" },
+    { href: "/admin/hazard-templates", label: "Saved answers", icon: "saved" },
+    { href: "/admin/export", label: "Export", icon: "export" },
+    { href: "/stats", label: "Statistics", icon: "stats" },
+    { href: "/supervisor/login", label: "Supervisor", icon: "supervisor" },
+    ...(workerPageSlug ? [{ href: `/${workerPageSlug}`, label: "Worker page", icon: "phone" }] : []),
+  ];
+
+  const tabCount = (t: "workers" | "supervisors") =>
+    (t === "workers" ? workers : supervisors).filter((p) => !p.archived).length;
 
   return (
-    <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-2xl mx-auto">
-      <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-        <h1 className="text-2xl font-bold text-neutral-900">Manage workers &amp; supervisors</h1>
-        <Link href="/admin/dashboard" className="text-sm text-emerald-700 font-medium">
-          ← Dashboard
-        </Link>
-      </div>
-
-      {projects.length > 1 ? (
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-neutral-700 mb-1">Project</label>
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 px-4 py-2 bg-white"
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : projects.length === 1 ? (
-        <p className="text-sm text-neutral-500 mb-4">
-          Project: <span className="font-medium text-neutral-700">{projects[0].name}</span>
-        </p>
-      ) : (
-        <p className="text-sm text-red-700 font-medium mb-4">
-          No project found — this needs a project to exist before people can be added.
-        </p>
-      )}
-
-      <div className="flex gap-2 mb-5">
-        <button
-          type="button"
-          onClick={() => setTab("workers")}
-          className={`px-4 py-2 rounded-full text-sm font-medium border ${
-            tab === "workers"
-              ? "bg-neutral-900 text-white border-neutral-900"
-              : "bg-white text-neutral-700 border-neutral-300"
-          }`}
-        >
-          Workers
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("supervisors")}
-          className={`px-4 py-2 rounded-full text-sm font-medium border ${
-            tab === "supervisors"
-              ? "bg-neutral-900 text-white border-neutral-900"
-              : "bg-white text-neutral-700 border-neutral-300"
-          }`}
-        >
-          Supervisors
-        </button>
-      </div>
-
-      {tab === "workers" && reviewCount > 0 && (
-        <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg p-3 text-sm font-medium mb-4">
-          {reviewCount} new worker{reviewCount === 1 ? "" : "s"} added themselves on-site and{" "}
-          {reviewCount === 1 ? "needs" : "need"} a quick review below.
-        </div>
-      )}
-
-      <div className="flex items-center justify-between flex-wrap gap-3 bg-white border border-neutral-200 rounded-lg p-3 mb-4">
-        <p className="text-sm text-neutral-700 flex-1 min-w-[12rem]">
-          Same person added twice? Review possible duplicate names and merge them.
-        </p>
-        <Link
-          href="/admin/duplicates"
-          className="shrink-0 text-sm px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 font-medium bg-white"
-        >
-          Check duplicates
-        </Link>
-      </div>
-
-      <div className="bg-white border border-neutral-200 rounded-lg p-4 mb-6">
-        <label className="block text-sm font-semibold text-neutral-700 mb-2">
-          Add a {tab === "workers" ? "worker" : "supervisor"}
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addPerson()}
-            placeholder="Full name"
-            className="flex-1 rounded-lg border border-neutral-300 px-4 py-2"
+    <div className="min-h-dvh w-full min-w-0 bg-neutral-50 md:flex">
+      {/* ---------- Computer: JSAFE sidebar ---------- */}
+      <aside
+        className="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-dvh md:overflow-y-auto text-white px-4 py-6"
+        style={{ background: SIDEBAR_GRADIENT }}
+      >
+        <div className="flex items-center gap-3 px-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon-192_2.png"
+            alt=""
+            className="w-11 h-11 rounded-xl shadow-lg ring-2 ring-white/25 shrink-0"
           />
-          <button
-            type="button"
-            onClick={addPerson}
-            disabled={saving || !newName.trim()}
-            className="px-5 py-2 rounded-lg bg-emerald-700 text-white font-medium disabled:opacity-40"
-          >
-            Add
-          </button>
-        </div>
-        {error && <p className="text-red-700 text-sm font-medium mt-2">{error}</p>}
-
-        <button
-          type="button"
-          onClick={() => setShowBulk((s) => !s)}
-          className="text-sm text-emerald-700 font-medium underline decoration-dotted mt-3"
-        >
-          {showBulk ? "Hide bulk add" : "Add many at once →"}
-        </button>
-
-        {showBulk && (
-          <div className="mt-3 border-t border-neutral-200 pt-3">
-            <label className="block text-sm font-semibold text-neutral-700 mb-2">
-              Paste a list of names — one per line
-            </label>
-            <p className="text-xs text-neutral-500 mb-2">
-              If you have these in a spreadsheet, select the whole column of names, copy it,
-              and paste it directly into the box below — each row becomes its own name
-              automatically.
-            </p>
-            <textarea
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              rows={8}
-              placeholder={"Alex Nguyen\nBrianna Fields\nChris Doukas\n..."}
-              className="w-full rounded-lg border border-neutral-300 px-4 py-2 font-mono text-sm"
-            />
-            <button
-              type="button"
-              onClick={addBulk}
-              disabled={bulkSaving || !bulkText.trim()}
-              className="mt-2 px-5 py-2 rounded-lg bg-emerald-700 text-white font-medium disabled:opacity-40"
-            >
-              {bulkSaving ? "Adding..." : "Add all"}
-            </button>
-            {bulkResult && (
-              <p className="text-emerald-700 text-sm font-medium mt-2">{bulkResult}</p>
-            )}
+          <div>
+            <p className="text-xl font-extrabold tracking-wide leading-none">JSAFE</p>
+            <p className="text-xs text-emerald-50/80 mt-1">Admin</p>
           </div>
-        )}
-      </div>
+        </div>
+        <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
+          Take 5. Work safe. Go home safe.
+        </p>
 
-      {loading ? (
-        <p className="text-neutral-500 text-sm">Loading...</p>
-      ) : (
-        <>
-          <h2 className="font-semibold text-neutral-900 mb-2">
-            Active ({activeList.length})
-          </h2>
-          <div className="space-y-2 mb-6">
-            {activeList.length === 0 && (
-              <p className="text-sm text-neutral-500">
-                No active {tab === "workers" ? "workers" : "supervisors"} yet.
+        <nav className="mt-8 space-y-1">
+          {navItems.map((item) => {
+            const active = item.href === "/admin/people";
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm ${
+                  active
+                    ? "font-semibold bg-white/15"
+                    : "text-emerald-50/90 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <Icon name={item.icon} className="w-[18px] h-[18px]" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto pt-6">
+          <AdminLogoutButton className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-white bg-white/10 ring-1 ring-white/20 hover:bg-white/20 disabled:opacity-60" />
+        </div>
+      </aside>
+
+      {/* ---------- Main area ---------- */}
+      <main className="flex-1 min-w-0 px-4 py-6 md:px-8 md:py-7">
+        <div className="max-w-3xl mx-auto">
+          {/* ---------- Phone: JSAFE header ---------- */}
+          <header
+            className="md:hidden -mx-4 -mt-6 mb-5 px-5 pt-6 pb-5 rounded-b-3xl text-white shadow-md"
+            style={{ background: BRAND_GRADIENT }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <Link
+                href="/admin/dashboard"
+                className="flex items-center gap-1 text-sm font-semibold px-3 py-1.5 -ml-1 rounded-full bg-white/15 ring-1 ring-white/30 active:bg-white/25"
+              >
+                <Icon name="back" className="w-4 h-4" />
+                Dashboard
+              </Link>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon-192_2.png"
+                alt=""
+                className="w-9 h-9 rounded-xl shadow ring-2 ring-white/30 shrink-0"
+              />
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <span className="w-10 h-10 rounded-2xl bg-white/15 ring-1 ring-white/25 flex items-center justify-center shrink-0">
+                <Icon name="people" className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-2xl font-extrabold leading-none">People</p>
+                <p className="text-sm text-emerald-50/90 mt-1 truncate">
+                  Workers &amp; supervisors
+                  {projects.length === 1 ? ` · ${projects[0].name}` : ""}
+                </p>
+              </div>
+            </div>
+          </header>
+
+          {/* ---------- Computer: title line ---------- */}
+          <div className="hidden md:block mb-6">
+            <h1 className="text-2xl font-bold text-neutral-900">People</h1>
+            <p className="text-sm text-neutral-500">
+              Workers &amp; supervisors
+              {projects.length === 1 ? ` · ${projects[0].name}` : ""}
+            </p>
+          </div>
+
+          {/* Project picker (only when there's more than one) */}
+          {projects.length > 1 && (
+            <div className="mb-4">
+              <label className="block text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-1.5">
+                Project
+              </label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full rounded-xl border border-neutral-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {projects.length === 0 && !loading && (
+            <p className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-800">
+              No project found — this needs a project to exist before people can be added.
+            </p>
+          )}
+
+          {/* Workers / Supervisors switch */}
+          <div className="flex w-full md:w-auto md:inline-flex p-1 mb-5 rounded-full bg-white border border-neutral-200 shadow-sm">
+            {(["workers", "supervisors"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => {
+                  setTab(t);
+                  setSearch("");
+                  setShowBulk(false);
+                  setBulkResult(null);
+                }}
+                className={`flex-1 md:flex-none md:px-6 py-2 rounded-full text-sm font-semibold capitalize flex items-center justify-center gap-2 transition-colors ${
+                  tab === t ? "bg-emerald-700 text-white shadow" : "text-neutral-600 hover:text-neutral-900"
+                }`}
+              >
+                {t}
+                <span
+                  className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
+                    tab === t ? "bg-white/25 text-white" : "bg-neutral-100 text-neutral-600"
+                  }`}
+                >
+                  {tabCount(t)}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {tab === "workers" && reviewCount > 0 && (
+            <div className="flex items-start gap-3 mb-4 rounded-2xl bg-amber-50 border border-amber-300 px-4 py-3">
+              <span className="shrink-0 w-7 h-7 rounded-full bg-amber-500 text-white text-sm font-bold flex items-center justify-center">
+                {reviewCount}
+              </span>
+              <p className="text-sm text-amber-900">
+                <span className="font-semibold">
+                  New worker{reviewCount === 1 ? "" : "s"} to check.
+                </span>{" "}
+                {reviewCount === 1 ? "Someone" : "They"} added themselves on site. Tap{" "}
+                <span className="font-semibold">Confirm</span> once you know the name is right.
+              </p>
+            </div>
+          )}
+
+          {/* Add a person */}
+          <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 md:p-5 mb-4">
+            <label className="block font-semibold text-neutral-900 mb-2">Add a {singular}</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addPerson()}
+                placeholder="Full name"
+                className="flex-1 min-w-0 rounded-xl border border-neutral-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600"
+              />
+              <button
+                type="button"
+                onClick={addPerson}
+                disabled={saving || !newName.trim()}
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 disabled:opacity-40"
+              >
+                <Icon name="plus" className="w-4 h-4" />
+                {saving ? "Adding..." : "Add"}
+              </button>
+            </div>
+            {error && (
+              <p className="mt-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm font-medium text-red-800">
+                {error}
               </p>
             )}
-            {activeList.map((p) => (
-              <PersonRow
-                key={p.id}
-                person={p}
-                onUpdate={(patch) => updatePerson(p.id, patch)}
-                isSupervisor={tab === "supervisors"}
-                onSetPin={(pin) => setPin(p.id, pin)}
+
+            <button
+              type="button"
+              onClick={() => setShowBulk((s) => !s)}
+              className="mt-3 flex items-center gap-1 text-sm text-emerald-700 font-semibold"
+            >
+              {showBulk ? "Hide bulk add" : "Add many at once"}
+              <Icon
+                name="chevron"
+                className={`w-4 h-4 transition-transform ${showBulk ? "rotate-180" : ""}`}
               />
-            ))}
+            </button>
+
+            {showBulk && (
+              <div className="mt-3 border-t border-neutral-100 pt-3">
+                <label className="block text-sm font-semibold text-neutral-700 mb-1">
+                  Paste a list of names — one per line
+                </label>
+                <p className="text-xs text-neutral-500 mb-2">
+                  From a spreadsheet: select the whole column of names, copy it, and paste it
+                  here. Each row becomes its own name.
+                </p>
+                <textarea
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  rows={7}
+                  placeholder={"Alex Nguyen\nBrianna Fields\nChris Doukas\n..."}
+                  className="w-full rounded-xl border border-neutral-300 px-4 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+                <button
+                  type="button"
+                  onClick={addBulk}
+                  disabled={bulkSaving || !bulkText.trim()}
+                  className="mt-2 px-5 py-2.5 rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 disabled:opacity-40"
+                >
+                  {bulkSaving ? "Adding..." : "Add all"}
+                </button>
+                {bulkResult && (
+                  <p className="mt-2 text-sm font-medium text-emerald-700">{bulkResult}</p>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Duplicates shortcut */}
+          <Link
+            href="/admin/duplicates"
+            className="flex items-center gap-3 mb-6 rounded-2xl bg-white border border-neutral-200 px-4 py-3 shadow-sm hover:border-emerald-300 active:bg-neutral-50"
+          >
+            <span className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+              <Icon name="copy" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold text-neutral-800">Check duplicates</span>
+              <span className="block text-xs text-neutral-500">
+                Same person added twice? Review and merge them.
+              </span>
+            </span>
+            <span className="text-neutral-400">→</span>
+          </Link>
+
+          {/* Search */}
+          <div className="relative mb-3">
+            <Icon
+              name="search"
+              className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`Search ${plural}...`}
+              className="w-full rounded-xl border border-neutral-300 bg-white pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600"
+            />
           </div>
 
-          {archivedList.length > 0 && (
+          {loading ? (
+            <div className="space-y-2 animate-pulse">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-white rounded-2xl border border-neutral-200" />
+              ))}
+            </div>
+          ) : (
             <>
-              <h2 className="font-semibold text-neutral-500 mb-2">
-                Archived ({archivedList.length})
-              </h2>
-              <div className="space-y-2">
-                {archivedList.map((p) => (
+              <div className="flex items-baseline justify-between mb-2">
+                <h2 className="font-bold text-neutral-900">
+                  Active <span className="text-neutral-400 font-semibold">{activeList.length}</span>
+                </h2>
+                {term && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="text-xs font-semibold text-emerald-700"
+                  >
+                    Clear search
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden mb-6">
+                {activeList.length === 0 && (
+                  <p className="px-4 py-6 text-sm text-neutral-500 text-center">
+                    {term ? `No ${plural} match "${search.trim()}".` : `No active ${plural} yet.`}
+                  </p>
+                )}
+                {activeList.map((p) => (
                   <PersonRow
                     key={p.id}
                     person={p}
@@ -366,11 +583,68 @@ export default function ManagePeoplePage() {
                   />
                 ))}
               </div>
+
+              {archivedAll.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchived((s) => !s)}
+                    className="w-full flex items-center justify-between mb-2 text-left"
+                  >
+                    <h2 className="font-bold text-neutral-500">
+                      Archived <span className="text-neutral-400 font-semibold">{archivedList.length}</span>
+                    </h2>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                      {showArchived ? "Hide" : "Show"}
+                      <Icon
+                        name="chevron"
+                        className={`w-4 h-4 transition-transform ${showArchived ? "rotate-180" : ""}`}
+                      />
+                    </span>
+                  </button>
+                  {showArchived && (
+                    <div className="bg-white rounded-2xl border border-neutral-200 divide-y divide-neutral-100 overflow-hidden">
+                      {archivedList.length === 0 && (
+                        <p className="px-4 py-6 text-sm text-neutral-500 text-center">
+                          No archived {plural} match.
+                        </p>
+                      )}
+                      {archivedList.map((p) => (
+                        <PersonRow
+                          key={p.id}
+                          person={p}
+                          onUpdate={(patch) => updatePerson(p.id, patch)}
+                          isSupervisor={tab === "supervisors"}
+                          onSetPin={(pin) => setPin(p.id, pin)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
-        </>
-      )}
-    </main>
+
+          <p className="mt-8 mb-2 text-center text-xs text-neutral-400">
+            JSAFE · Daily Task Safety Awareness
+          </p>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function Badge({ tone, children }: { tone: "amber" | "green" | "grey"; children: React.ReactNode }) {
+  const cls =
+    tone === "amber"
+      ? "bg-amber-100 text-amber-800"
+      : tone === "green"
+      ? "bg-emerald-100 text-emerald-800"
+      : "bg-neutral-100 text-neutral-600";
+  return (
+    <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${cls}`}>
+      {children}
+    </span>
   );
 }
 
@@ -402,73 +676,73 @@ function PersonRow({
     setSettingPin(false);
   };
 
+  const dim = person.archived || !person.active;
+  const avatarClass = person.needsReview
+    ? "bg-amber-100 text-amber-800"
+    : dim
+    ? "bg-neutral-100 text-neutral-400"
+    : "bg-emerald-50 text-emerald-700";
+
+  const chip =
+    "text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700 font-medium bg-white hover:bg-neutral-50";
+
   return (
-    <div
-      className={`border rounded-lg p-3 ${
-        person.needsReview
-          ? "bg-amber-50 border-amber-300"
-          : person.archived
-          ? "bg-neutral-100 border-neutral-200"
-          : "bg-white border-neutral-200"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        {editing ? (
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => {
-              setEditing(false);
-              if (name.trim() && name.trim() !== person.name) onUpdate({ name: name.trim() });
-            }}
-            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-            autoFocus
-            className="flex-1 rounded border border-neutral-300 px-2 py-1 mr-3"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className={`text-left flex-1 font-medium ${
-              person.archived ? "text-neutral-500" : "text-neutral-900"
-            }`}
+    <div className={`px-4 py-3 ${person.needsReview ? "bg-amber-50/60" : ""}`}>
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <span
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${avatarClass}`}
           >
-            {person.name}
-            {person.needsReview && (
-              <span className="ml-2 text-xs text-amber-700 font-semibold">NEW — UNVERIFIED</span>
-            )}
-            {!person.active && !person.archived && (
-              <span className="ml-2 text-xs text-amber-700 font-semibold">INACTIVE</span>
-            )}
-            {isSupervisor && (
-              <span
-                className={`ml-2 text-xs font-semibold ${
-                  person.hasPin ? "text-emerald-700" : "text-neutral-400"
+            {initials(person.name)}
+          </span>
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => {
+                  setEditing(false);
+                  if (name.trim() && name.trim() !== person.name) onUpdate({ name: name.trim() });
+                }}
+                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                autoFocus
+                className="w-full rounded-lg border border-emerald-600 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                title="Tap to edit the name"
+                className={`text-left font-semibold truncate max-w-full ${
+                  dim ? "text-neutral-500" : "text-neutral-900"
                 }`}
               >
-                {person.hasPin ? "PIN SET" : "NO PIN"}
-              </span>
+                {person.name}
+              </button>
             )}
-          </button>
-        )}
+            <div className="mt-0.5 flex flex-wrap gap-1">
+              {person.needsReview && <Badge tone="amber">New — unverified</Badge>}
+              {!person.active && !person.archived && <Badge tone="grey">Inactive</Badge>}
+              {person.archived && <Badge tone="grey">Archived</Badge>}
+              {isSupervisor &&
+                (person.hasPin ? <Badge tone="green">PIN set</Badge> : <Badge tone="grey">No PIN</Badge>)}
+            </div>
+          </div>
+        </div>
 
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex flex-wrap gap-1.5 sm:justify-end sm:shrink-0 pl-[52px] sm:pl-0">
           {person.needsReview && (
             <button
               type="button"
               onClick={() => onUpdate({ needsReview: false })}
-              className="text-xs px-3 py-1.5 rounded-full border border-emerald-600 text-emerald-700 font-medium"
+              className="text-xs px-3 py-1.5 rounded-full bg-emerald-700 text-white font-semibold hover:bg-emerald-800"
             >
               Confirm
             </button>
           )}
           {isSupervisor && (
-            <button
-              type="button"
-              onClick={() => setSettingPin((s) => !s)}
-              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
-            >
+            <button type="button" onClick={() => setSettingPin((s) => !s)} className={chip}>
               {person.hasPin ? "Change PIN" : "Set PIN"}
             </button>
           )}
@@ -476,7 +750,7 @@ function PersonRow({
             <button
               type="button"
               onClick={() => onUpdate({ active: !person.active })}
-              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
+              className={chip}
             >
               {person.active ? "Set inactive" : "Set active"}
             </button>
@@ -484,7 +758,7 @@ function PersonRow({
           <button
             type="button"
             onClick={() => onUpdate({ archived: !person.archived })}
-            className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
+            className={chip}
           >
             {person.archived ? "Restore" : "Archive"}
           </button>
@@ -492,19 +766,19 @@ function PersonRow({
       </div>
 
       {settingPin && (
-        <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center gap-2">
+        <div className="mt-3 ml-[52px] flex flex-wrap items-center gap-2">
           <input
             type="text"
             inputMode="numeric"
             placeholder="4-6 digit PIN"
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm w-32"
+            className="rounded-xl border border-neutral-300 px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-emerald-600"
           />
           <button
             type="button"
             onClick={submitPin}
-            className="text-xs px-3 py-1.5 rounded-full bg-emerald-700 text-white font-medium"
+            className="text-xs px-3 py-1.5 rounded-full bg-emerald-700 text-white font-semibold"
           >
             Save PIN
           </button>
