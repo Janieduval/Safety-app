@@ -83,7 +83,7 @@ export default async function SupervisorAssessmentRecordPage({
             Completed by {a.completedByWorker?.name}
           </p>
         </div>
-        <a href={`/api/assessments/${a.id}/pdf`}
+        <a href={`/api/assessments/${a.id}/pdf?view=1`}
           target="_blank"
           rel="noreferrer"
           className="shrink-0 text-sm px-4 py-2 rounded-lg bg-neutral-900 text-white font-medium"
