@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useAssessmentData } from "@/lib/useAssessment";
 import SignaturePad from "@/components/SignaturePad";
 import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
+import WorkerHeader from "@/components/WorkerHeader";
 
 export default function ReassessPage({ params }: { params: { id: string } }) {
   const { assessment, project, loading, error } = useAssessmentData(params.id);
@@ -23,17 +24,46 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
     return project.workers.filter((w: any) => w.name.toLowerCase().includes(query.toLowerCase()));
   }, [project, query]);
 
-  if (loading) return <p className="p-6 text-center text-neutral-500">Loading...</p>;
+  const field =
+    "w-full rounded-xl border border-neutral-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600";
+
+  const frame = (body: React.ReactNode, context?: string, subtitle?: string, backHref?: string) => (
+    <main className="min-h-dvh w-full min-w-0 bg-neutral-50 pb-10">
+      <WorkerHeader
+        context={context}
+        title="Reassess"
+        subtitle={subtitle ?? "Conditions have changed"}
+        backHref={backHref}
+        backLabel="Back"
+      />
+      <div className="max-w-md mx-auto px-4 py-5">{body}</div>
+    </main>
+  );
+
+  if (loading)
+    return frame(
+      <div className="space-y-3 animate-pulse">
+        <div className="h-24 bg-white rounded-2xl border border-neutral-200" />
+        <div className="h-64 bg-white rounded-2xl border border-neutral-200" />
+      </div>
+    );
   if (error || !assessment || !project)
-    return <p className="p-6 text-center text-red-700">{error ?? "Not found."}</p>;
+    return frame(
+      <p className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-800">
+        {error ?? "Not found."}
+      </p>
+    );
+
+  const backHref = `/assess/${params.id}`;
 
   if (assessment.status !== "approved") {
-    return (
-      <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-md mx-auto">
-        <div className="rounded-lg bg-amber-50 border border-amber-300 p-4 text-amber-800 font-medium">
-          Reassessment is only available for an approved assessment.
-        </div>
-      </main>
+    return frame(
+      <div className="rounded-2xl bg-amber-50 border border-amber-300 px-4 py-3 text-sm text-amber-900 font-medium">
+        Reassessment is only available for an approved assessment.
+      </div>,
+      project.name,
+      undefined,
+      backHref
     );
   }
 
@@ -67,33 +97,38 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
   };
 
   if (done) {
-    return (
-      <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-md mx-auto">
-        <div className="rounded-lg bg-emerald-50 border border-emerald-300 p-4 text-emerald-800 font-medium space-y-2">
-          <p>
-            Reassessment recorded{newVersion ? ` as version ${newVersion}` : ""} — signed and
-            sent to your supervisor for review.
-          </p>
-          <p className="font-normal text-sm">
-            Anyone who already signed the original needs to sign again for this version.
-          </p>
+    return frame(
+      <div className="rounded-2xl bg-emerald-50 border border-emerald-300 p-5 text-emerald-900 space-y-3 text-center">
+        <span className="mx-auto w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xl font-bold">
+          ✓
+        </span>
+        <p className="font-semibold">
+          Reassessment recorded{newVersion ? ` as version ${newVersion}` : ""}
+        </p>
+        <p className="text-sm">Signed and sent to your supervisor for review.</p>
+        <p className="text-sm">
+          Anyone who signed the original needs to sign again for this version.
+        </p>
+        <div className="flex justify-center">
           <CopySignOnLinkButton assessmentId={params.id} />
         </div>
-      </main>
+      </div>,
+      project.name,
+      "All done",
+      `/${project.qrSlug}`
     );
   }
 
-  return (
-    <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-md mx-auto">
-      <h1 className="text-xl font-bold text-neutral-900">Conditions have changed — reassess</h1>
-      <p className="text-neutral-600 text-sm mt-1">
-        This creates version {assessment.version + 1} of this assessment for {project.name},
-        with your notes on what changed. Your team will need to sign again for this version.
-      </p>
+  return frame(
+    <div className="space-y-4">
+      <div className="rounded-2xl bg-amber-50 border border-amber-300 px-4 py-3 text-sm text-amber-900">
+        This creates <strong>version {assessment.version + 1}</strong> of this JSAFE with your notes
+        on what changed. Your team will need to sign again for this version.
+      </div>
 
-      <div className="mt-5 space-y-4">
+      <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-1">Your name</label>
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">Your name</label>
           <input
             type="text"
             placeholder="Search your name..."
@@ -102,10 +137,10 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
               setQuery(e.target.value);
               setWorkerId(null);
             }}
-            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+            className={field}
           />
           {query && !workerId && (
-            <div className="mt-1 border border-neutral-200 rounded-lg divide-y bg-white">
+            <div className="mt-1 border border-neutral-200 rounded-xl divide-y divide-neutral-100 bg-white max-h-56 overflow-y-auto shadow-sm">
               {workers.map((w: any) => (
                 <button
                   key={w.id}
@@ -114,66 +149,76 @@ export default function ReassessPage({ params }: { params: { id: string } }) {
                     setWorkerId(w.id);
                     setQuery(w.name);
                   }}
-                  className="w-full text-left px-4 py-3 active:bg-neutral-100"
+                  className="w-full text-left px-4 py-3 active:bg-emerald-50"
                 >
                   {w.name}
                 </button>
               ))}
+              {workers.length === 0 && (
+                <p className="p-3 text-sm text-neutral-500">No matching worker found.</p>
+              )}
             </div>
           )}
+          {workerId && <p className="mt-1.5 text-xs font-semibold text-emerald-700">✓ {query}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-1">
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
             What has changed?
           </label>
           <textarea
             value={whatChanged}
             onChange={(e) => setWhatChanged(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+            className={field}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-1">
-            New hazards (if any)
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
+            New hazards <span className="font-normal text-neutral-500">(if any)</span>
           </label>
           <textarea
             value={newHazards}
             onChange={(e) => setNewHazards(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+            className={field}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-neutral-700 mb-1">
-            New controls (if any)
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
+            New controls <span className="font-normal text-neutral-500">(if any)</span>
           </label>
           <textarea
             value={newControls}
             onChange={(e) => setNewControls(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+            className={field}
           />
         </div>
+      </section>
 
-        {formError && <p className="text-red-700 text-sm font-medium">{formError}</p>}
+      {formError && (
+        <p className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm font-medium text-red-800">
+          {formError}
+        </p>
+      )}
 
-        {workerId && whatChanged.trim() ? (
-          <div className="space-y-2">
-            <p className="text-sm text-neutral-700">
-              Sign below to confirm and submit this reassessment.
-            </p>
-            <SignaturePad onCapture={submit} disabled={submitting} />
-          </div>
-        ) : (
-          <p className="text-sm text-neutral-500 text-center">
-            Enter your name and what's changed to continue to signing.
-          </p>
-        )}
-      </div>
-    </main>
+      {workerId && whatChanged.trim() ? (
+        <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 space-y-2">
+          <h2 className="font-bold text-neutral-900">Sign to submit</h2>
+          <p className="text-sm text-neutral-600">Sign below to confirm and send this reassessment.</p>
+          <SignaturePad onCapture={submit} disabled={submitting} />
+        </section>
+      ) : (
+        <p className="text-sm text-neutral-500 text-center">
+          Enter your name and what&apos;s changed to continue to signing.
+        </p>
+      )}
+    </div>,
+    project.name,
+    "Conditions have changed",
+    backHref
   );
 }
