@@ -1,51 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAssessmentData } from "@/lib/useAssessment";
 import SignaturePad from "@/components/SignaturePad";
-import { SUPERVISOR_CHECKLIST, HAZARD_QUESTIONS } from "@/lib/constants";
-
-const RISK_BADGE: Record<string, string> = {
-  low: "bg-emerald-100 text-emerald-800",
-  medium: "bg-amber-100 text-amber-800",
-  high: "bg-orange-100 text-orange-800",
-  extreme: "bg-red-100 text-red-800",
-};
-
-function PhotoColumn({ title, photos }: { title: string; photos: any[] }) {
-  return (
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 mb-1.5">
-        {title}
-      </p>
-      {photos.length === 0 ? (
-        <div className="aspect-square rounded-lg border border-dashed border-neutral-300 bg-neutral-50 flex items-center justify-center">
-          <span className="text-xs text-neutral-400">No photo</span>
-        </div>
-      ) : (
-        <div className={`grid gap-1.5 ${photos.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-          {photos.map((p: any) => (
-            <a key={p.id} href={p.url} target="_blank" rel="noreferrer" className="block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={p.url}
-                alt={title}
-                className="w-full aspect-square object-cover rounded-lg border border-neutral-200"
-              />
-            </a>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import StaffShell from "@/components/StaffShell";
+import AssessmentRecord from "@/components/AssessmentRecord";
+import { SUPERVISOR_CHECKLIST } from "@/lib/constants";
 
 export default function SupervisorReviewPage({ params }: { params: { id: string } }) {
   const { assessment, project, loading, error, reload } = useAssessmentData(params.id);
   const searchParams = useSearchParams();
-  const backHref = searchParams.get("from") === "supervisor" ? "/supervisor" : "/admin/dashboard";
+  const fromSupervisor = searchParams.get("from") === "supervisor";
+  const role = fromSupervisor ? "supervisor" : "admin";
+  const backHref = fromSupervisor ? "/supervisor" : "/admin/dashboard";
   const [query, setQuery] = useState("");
   const [selectedSupervisorId, setSelectedSupervisorId] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
@@ -63,9 +31,39 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
     );
   }, [project, query]);
 
-  if (loading) return <p className="p-6 text-center text-neutral-500">Loading...</p>;
+  const shell = (title: string, subtitle: string | undefined, body: React.ReactNode, actions?: React.ReactNode) => (
+    <StaffShell
+      role={role}
+      active={backHref}
+      title={title}
+      subtitle={subtitle}
+      icon="check"
+      backHref={backHref}
+      backLabel="Dashboard"
+      actions={actions}
+      maxWidth="max-w-6xl"
+    >
+      {body}
+    </StaffShell>
+  );
+
+  if (loading)
+    return shell(
+      "Supervisor review",
+      undefined,
+      <div className="space-y-3 animate-pulse">
+        <div className="h-40 bg-white rounded-2xl border border-neutral-200" />
+        <div className="h-64 bg-white rounded-2xl border border-neutral-200" />
+      </div>
+    );
   if (error || !assessment || !project)
-    return <p className="p-6 text-center text-red-700">{error ?? "Not found."}</p>;
+    return shell(
+      "Supervisor review",
+      undefined,
+      <p className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-800">
+        {error ?? "Not found."}
+      </p>
+    );
 
   const reviews = assessment.supervisorReviews ?? [];
   const latestReview = reviews.length > 0 ? reviews[reviews.length - 1] : null;
@@ -75,17 +73,7 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
   const checklistComplete = SUPERVISOR_CHECKLIST.every((c) => checklist[c.key]);
   const canApprove = checklistComplete;
   const canRequestChanges = true; // changes can be requested even with an incomplete checklist
-
-  // Every hazard card that has at least one photo, with its question label.
-  const cardsWithPhotos = (assessment.hazardResponses ?? []).flatMap((r: any) =>
-    (r.cards ?? [])
-      .filter((c: any) => (c.photos ?? []).length > 0)
-      .map((c: any) => ({
-        ...c,
-        questionLabel:
-          HAZARD_QUESTIONS.find((q) => q.key === r.questionKey)?.label ?? r.questionKey,
-      }))
-  );
+  const checkedCount = SUPERVISOR_CHECKLIST.filter((c) => checklist[c.key]).length;
 
   const submitDecision = (finalDecision: "approved" | "changes_required") => async (dataUrl: string) => {
     if (!selectedSupervisorId) return;
@@ -116,95 +104,43 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
     }
   };
 
-  return (
-    <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-md mx-auto pb-16">
-      <p className="text-sm font-medium text-emerald-700 uppercase tracking-wide">
-        {project.name}
-      </p>
-      <h1 className="text-xl font-bold text-neutral-900 mt-1">Supervisor review</h1>
-      <p className="text-neutral-600 text-sm mt-1">
-        Version {assessment.version} &middot; Completed by {assessment.completedByWorker?.name}
-      </p>
+  const field =
+    "w-full rounded-xl border border-neutral-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600";
 
-      <a href={`/api/assessments/${assessment.id}/pdf?view=1`} target="_blank" rel="noreferrer" className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted">
-        Download a PDF record of this assessment
-      </a>
+  const pdfButton = (
+    <a href={`/api/assessments/${assessment.id}/pdf?view=1`} target="_blank" rel="noreferrer" className="text-sm px-4 py-2 rounded-xl bg-white text-emerald-800 font-semibold border border-emerald-200 shadow-sm hover:bg-emerald-50">
+      Open PDF
+    </a>
+  );
 
-      {reviews.length > 1 && (
-        <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-3">
-          <p className="text-xs font-semibold text-neutral-700 mb-1">Previous versions</p>
-          <ul className="text-xs text-neutral-600 space-y-1">
-            {reviews.slice(0, -1).map((r: any) => (
-              <li key={r.id}>
-                Version {r.version} — {r.decision.replace(/_/g, " ")} by {r.supervisor?.name}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
+  // ---------- The review panel (right column on a computer) ----------
+  const reviewPanel = (
+    <div className="space-y-4">
       {notReady && (
-        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm font-medium text-amber-800">
-          This assessment is currently <strong>{assessment.status.replace(/_/g, " ")}</strong> and
-          is not awaiting review right now.
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          This assessment is currently{" "}
+          <strong className="capitalize">{assessment.status.replace(/_/g, " ")}</strong> and is not
+          waiting for review right now.
         </div>
       )}
 
       {alreadyReviewed && (
-        <div className="mt-4 rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
-          This assessment was already reviewed by{" "}
-          {latestReview?.supervisor?.name ?? "a supervisor"} — decision:{" "}
-          <strong>{latestReview?.decision?.replace(/_/g, " ")}</strong>.
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
+          Already reviewed by <strong>{latestReview?.supervisor?.name ?? "a supervisor"}</strong> —{" "}
+          <strong className="capitalize">{latestReview?.decision?.replace(/_/g, " ")}</strong>.
         </div>
       )}
 
-      {cardsWithPhotos.length > 0 && (
-        <section className="mt-6">
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="font-semibold text-neutral-900">Hazard photos</h2>
-            <span className="text-xs text-neutral-500">Tap a photo to enlarge</span>
-          </div>
-          <div className="space-y-4">
-            {cardsWithPhotos.map((c: any) => {
-              const hazardPhotos = c.photos.filter((p: any) => p.kind === "hazard");
-              const controlPhotos = c.photos.filter((p: any) => p.kind === "control");
-              return (
-                <div key={c.id} className="rounded-xl border border-neutral-200 bg-white overflow-hidden shadow-sm">
-                  <div className="flex items-start justify-between gap-3 px-4 py-2.5 bg-neutral-50 border-b border-neutral-200">
-                    <p className="text-xs font-medium text-neutral-600 leading-snug">{c.questionLabel}</p>
-                    {c.residualRisk && (
-                      <span className={`shrink-0 text-[11px] font-semibold capitalize px-2 py-0.5 rounded-full ${RISK_BADGE[c.residualRisk] ?? "bg-neutral-100 text-neutral-700"}`}>
-                        {c.residualRisk} risk
-                      </span>
-                    )}
-                  </div>
-                  <div className="px-4 py-3 space-y-3">
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Hazard</p>
-                        <p className="text-sm text-neutral-900">{c.description || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Controls</p>
-                        <p className="text-sm text-neutral-900">{c.controls || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <PhotoColumn title="Hazard" photos={hazardPhotos} />
-                      <PhotoColumn title="Control in place" photos={controlPhotos} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       {!notReady && !alreadyReviewed && (
-        <>
-          <div className="mt-6">
-            <h2 className="font-semibold text-neutral-900 mb-2">Reviewing supervisor</h2>
+        <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 md:p-5 space-y-5">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            <h2 className="font-bold text-neutral-900">Your review</h2>
+          </div>
+
+          {/* 1. Who is reviewing */}
+          <div>
+            <p className="text-sm font-semibold text-neutral-800 mb-1.5">1. Reviewing supervisor</p>
             <input
               type="text"
               placeholder="Search your name..."
@@ -213,10 +149,10 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
                 setQuery(e.target.value);
                 setSelectedSupervisorId(null);
               }}
-              className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+              className={field}
             />
             {query && !selectedSupervisorId && (
-              <div className="mt-1 border border-neutral-200 rounded-lg divide-y bg-white max-h-48 overflow-y-auto">
+              <div className="mt-1 border border-neutral-200 rounded-xl divide-y divide-neutral-100 bg-white max-h-48 overflow-y-auto shadow-sm">
                 {availableSupervisors.map((s: any) => (
                   <button
                     key={s.id}
@@ -225,7 +161,7 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
                       setSelectedSupervisorId(s.id);
                       setQuery(s.name);
                     }}
-                    className="w-full text-left px-4 py-3 active:bg-neutral-100"
+                    className="w-full text-left px-4 py-3 hover:bg-emerald-50 active:bg-emerald-50"
                   >
                     {s.name}
                   </button>
@@ -235,116 +171,145 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
                 )}
               </div>
             )}
+            {selectedSupervisorId && (
+              <p className="mt-1.5 text-xs font-semibold text-emerald-700">✓ Reviewing as {query}</p>
+            )}
           </div>
 
           {selectedSupervisorId && (
             <>
-              <div className="mt-6 space-y-3">
-                <h2 className="font-semibold text-neutral-900">Checklist</h2>
-                {SUPERVISOR_CHECKLIST.map((c) => (
-                  <label
-                    key={c.key}
-                    className="flex items-start gap-3 border border-neutral-200 rounded-lg p-3 bg-white"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!checklist[c.key]}
-                      onChange={(e) =>
-                        setChecklist((prev) => ({ ...prev, [c.key]: e.target.checked }))
-                      }
-                      className="w-5 h-5 mt-0.5 flex-shrink-0"
-                    />
-                    <span className="text-neutral-800 text-sm">{c.label}</span>
-                  </label>
-                ))}
+              {/* 2. Checklist */}
+              <div>
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <p className="text-sm font-semibold text-neutral-800">2. Checklist</p>
+                  <span className="text-xs text-neutral-500">
+                    {checkedCount}/{SUPERVISOR_CHECKLIST.length}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {SUPERVISOR_CHECKLIST.map((c) => (
+                    <label
+                      key={c.key}
+                      className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
+                        checklist[c.key]
+                          ? "border-emerald-300 bg-emerald-50"
+                          : "border-neutral-200 bg-white hover:border-emerald-200"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!checklist[c.key]}
+                        onChange={(e) =>
+                          setChecklist((prev) => ({ ...prev, [c.key]: e.target.checked }))
+                        }
+                        className="w-5 h-5 mt-0.5 flex-shrink-0 accent-emerald-700"
+                      />
+                      <span className="text-neutral-800 text-sm">{c.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
-              <div className="mt-6 space-y-3">
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-1">
-                    Comments (optional)
-                  </label>
+              {/* 3. Notes */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-neutral-800">3. Notes</p>
+                <label className="block text-xs font-semibold text-neutral-600">
+                  Comments (optional)
                   <textarea
                     value={comments}
                     onChange={(e) => setComments(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                    className={`${field} mt-1 font-normal text-sm`}
                     placeholder="Any notes for the worker, especially if requesting changes..."
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-neutral-700 mb-1">
-                    Additional controls (optional)
-                  </label>
+                </label>
+                <label className="block text-xs font-semibold text-neutral-600">
+                  Additional controls (optional)
                   <textarea
                     value={additionalControls}
                     onChange={(e) => setAdditionalControls(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-neutral-300 px-4 py-3"
+                    className={`${field} mt-1 font-normal text-sm`}
                   />
-                </div>
+                </label>
               </div>
 
+              {/* 4. Decision */}
               {!decision && (
-                <div className="mt-6 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDecision("changes_required")}
-                    disabled={!canRequestChanges}
-                    className="flex-1 py-3 rounded-lg border-2 border-amber-600 text-amber-700 font-semibold disabled:opacity-40"
-                  >
-                    Request changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDecision("approved")}
-                    disabled={!canApprove}
-                    className="flex-1 py-3 rounded-lg bg-emerald-700 text-white font-semibold disabled:opacity-40"
-                  >
-                    Approve
-                  </button>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-800 mb-1.5">4. Decision</p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDecision("changes_required")}
+                      disabled={!canRequestChanges}
+                      className="flex-1 py-3 rounded-xl border-2 border-amber-500 text-amber-700 font-semibold bg-white hover:bg-amber-50 disabled:opacity-40"
+                    >
+                      Request changes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDecision("approved")}
+                      disabled={!canApprove}
+                      className="flex-1 py-3 rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800 disabled:opacity-40"
+                    >
+                      Approve
+                    </button>
+                  </div>
+                  {!canApprove && (
+                    <p className="text-xs text-neutral-500 mt-2 text-center">
+                      Tick every checklist item to approve. You can still request changes without
+                      it.
+                    </p>
+                  )}
                 </div>
-              )}
-              {!canApprove && !decision && (
-                <p className="text-xs text-neutral-500 mt-2 text-center">
-                  All checklist items must be confirmed to approve. You can still request changes
-                  without completing the checklist.
-                </p>
               )}
 
               {decision && (
-                <div className="mt-6 space-y-3">
-                  <p className="text-sm text-neutral-700">
+                <div className="space-y-3">
+                  <div
+                    className={`rounded-xl px-3 py-2 text-sm font-medium ${
+                      decision === "approved"
+                        ? "bg-emerald-50 text-emerald-900"
+                        : "bg-amber-50 text-amber-900"
+                    }`}
+                  >
                     {decision === "approved"
                       ? "Sign below to confirm this assessment is approved."
                       : "Sign below to confirm you are sending this assessment back for changes."}
-                  </p>
+                  </div>
                   <SignaturePad onCapture={submitDecision(decision)} disabled={submitting} />
                   <button
                     type="button"
                     onClick={() => setDecision(null)}
-                    className="text-sm text-neutral-600 underline decoration-dotted"
+                    className="text-sm font-semibold text-emerald-700"
                   >
-                    Change decision
+                    ← Change decision
                   </button>
                   {submitError && (
-                    <p className="text-red-700 text-sm font-medium">{submitError}</p>
+                    <p className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm font-medium text-red-800">
+                      {submitError}
+                    </p>
                   )}
                 </div>
               )}
             </>
           )}
-        </>
+        </section>
       )}
+    </div>
+  );
 
-      <div className="mt-8 pt-5 border-t border-neutral-200">
-        <Link
-          href={backHref}
-          className="block text-center py-3 rounded-lg border border-neutral-400 text-neutral-700 font-medium"
-        >
-          Back to dashboard
-        </Link>
+  return shell(
+    "Supervisor review",
+    `${assessment.completedByWorker?.name ?? "Worker"} · Version ${assessment.version}`,
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+      {/* Read the assessment first; the review panel sits beside it on a computer, below it on a phone. */}
+      <div className="min-w-0">
+        <AssessmentRecord a={assessment} />
       </div>
-    </main>
+      <div>{reviewPanel}</div>
+    </div>,
+    pdfButton
   );
 }
