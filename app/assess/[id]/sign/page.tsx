@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAssessmentData } from "@/lib/useAssessment";
 import SignaturePad from "@/components/SignaturePad";
 import NotifyMe from "@/components/NotifyMe";
+import WorkerHeader from "@/components/WorkerHeader";
 import { SIGNON_CONFIRMATION_TEXT } from "@/lib/constants";
 
 const STATUS_MESSAGES: Record<string, { text: string; tone: "info" | "success" | "warning" }> = {
@@ -39,7 +40,7 @@ function StatusBanner({ status }: { status: string }) {
     warning: "bg-amber-50 border-amber-300 text-amber-800",
   }[msg.tone];
   return (
-    <div className={`mt-4 rounded-lg border p-4 text-sm font-medium ${toneClasses}`}>
+    <div className={`rounded-2xl border px-4 py-3 text-sm font-medium ${toneClasses}`}>
       {msg.text}
     </div>
   );
@@ -71,9 +72,27 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
     [availableWorkers, query]
   );
 
-  if (loading) return <p className="p-6 text-center text-neutral-500">Loading...</p>;
+  if (loading)
+    return (
+      <main className="min-h-dvh w-full min-w-0 bg-neutral-50">
+        <WorkerHeader title="Team sign-on" />
+        <div className="max-w-md mx-auto px-4 py-5 space-y-3 animate-pulse">
+          <div className="h-16 bg-white rounded-2xl border border-neutral-200" />
+          <div className="h-40 bg-white rounded-2xl border border-neutral-200" />
+        </div>
+      </main>
+    );
   if (error || !assessment || !project)
-    return <p className="p-6 text-center text-red-700">{error ?? "Not found."}</p>;
+    return (
+      <main className="min-h-dvh w-full min-w-0 bg-neutral-50">
+        <WorkerHeader title="Team sign-on" />
+        <div className="max-w-md mx-auto px-4 py-5">
+          <p className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-800">
+            {error ?? "Not found."}
+          </p>
+        </div>
+      </main>
+    );
 
   const addNewWorker = async () => {
     const trimmedName = query.trim();
@@ -126,121 +145,155 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const signedCount = assessment.signOns.length;
+
   return (
-    <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-md mx-auto">
-      <p className="text-sm font-medium text-emerald-700 uppercase tracking-wide">
-        {project.name}
-      </p>
-      <h1 className="text-xl font-bold text-neutral-900 mt-1">Team sign-on</h1>
-      <p className="text-neutral-600 text-sm mt-1">
-        {assessment.signOns.length} team member{assessment.signOns.length === 1 ? "" : "s"}{" "}
-        signed on
-      </p>
+    <main className="min-h-dvh w-full min-w-0 bg-neutral-50 pb-10">
+      <WorkerHeader
+        context={project.name}
+        title="Team sign-on"
+        subtitle={`${
+          assessment.completedByWorker?.name ? `${assessment.completedByWorker.name}'s` : "Today's"
+        } JSAFE${assessment.team?.label ? ` · ${assessment.team.label}` : ""}`}
+        backHref={`/${project.qrSlug}`}
+        backLabel="Home"
+      />
 
-      <StatusBanner status={assessment.status} />
+      <div className="max-w-md mx-auto px-4 py-5 space-y-4">
+        <StatusBanner status={assessment.status} />
 
-      <a
-        href={`/api/assessments/${assessment.id}/pdf`}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-block mt-3 text-sm text-emerald-700 font-medium underline decoration-dotted"
-      >
-        Download a PDF record of this assessment
-      </a>
-
-      <div className="mt-4 space-y-2">
-        {assessment.signOns.map((s: any) => (
-          <div key={s.id} className="flex items-center justify-between border border-neutral-200 rounded-lg p-3 bg-white">
-            <span className="font-medium text-neutral-800">
-              {s.worker.name}
-              {s.isPrimary && <span className="ml-2 text-xs text-emerald-700 font-semibold">PRIMARY</span>}
-            </span>
-            <span className="text-xs text-neutral-500">
-              {new Date(s.signedAt).toLocaleTimeString("en-AU")}
-            </span>
+        {/* Who has signed */}
+        <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-bold text-neutral-900">
+              Signed on <span className="text-neutral-400 font-semibold">{signedCount}</span>
+            </h2>
+            <a href={`/api/assessments/${assessment.id}/pdf`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-700">
+              Save PDF
+            </a>
           </div>
-        ))}
-      </div>
-
-      {assessment.status !== "draft" && (
-        <div className="mt-6 border-t border-neutral-200 pt-5">
-          <h2 className="font-semibold text-neutral-900 mb-2">Add your signature</h2>
-          <input
-            type="text"
-            placeholder="Search your name..."
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelectedWorkerId(null);
-            }}
-            className="w-full rounded-lg border border-neutral-300 px-4 py-3"
-          />
-          {query && !selectedWorkerId && (
-            <div className="mt-1 border border-neutral-200 rounded-lg divide-y bg-white max-h-48 overflow-y-auto">
-              {availableWorkers.map((w: any) => (
-                <button
-                  key={w.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedWorkerId(w.id);
-                    setQuery(w.name);
-                  }}
-                  className="w-full text-left px-4 py-3 active:bg-neutral-100"
-                >
-                  {w.name}
-                </button>
+          {signedCount === 0 ? (
+            <p className="text-sm text-neutral-500">No one has signed yet.</p>
+          ) : (
+            <ul className="divide-y divide-neutral-100">
+              {assessment.signOns.map((s: any) => (
+                <li key={s.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+                  <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
+                    {s.worker.name
+                      .trim()
+                      .split(/\s+/)
+                      .map((p: string) => p[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase()}
+                  </span>
+                  <span className="flex-1 min-w-0 font-medium text-neutral-800 truncate">
+                    {s.worker.name}
+                    {s.isPrimary && (
+                      <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        Primary
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-xs text-neutral-500 shrink-0">
+                    {new Date(s.signedAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </li>
               ))}
-              {availableWorkers.length === 0 && (
-                <p className="p-3 text-sm text-neutral-500">No matching worker found.</p>
-              )}
-              {!exactMatchExists && query.trim().length > 1 && (
-                <button
-                  type="button"
-                  onClick={addNewWorker}
-                  disabled={addingNew}
-                  className="w-full text-left px-4 py-3 text-emerald-700 font-medium active:bg-emerald-50 disabled:opacity-50"
+            </ul>
+          )}
+        </section>
+
+        {assessment.status !== "draft" && (
+          <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4">
+            <h2 className="font-bold text-neutral-900 mb-3">Add your signature</h2>
+            <input
+              type="text"
+              placeholder="Search your name..."
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSelectedWorkerId(null);
+              }}
+              className="w-full rounded-xl border border-neutral-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600"
+            />
+            {query && !selectedWorkerId && (
+              <div className="mt-1 border border-neutral-200 rounded-xl divide-y divide-neutral-100 bg-white max-h-56 overflow-y-auto shadow-sm">
+                {availableWorkers.map((w: any) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedWorkerId(w.id);
+                      setQuery(w.name);
+                    }}
+                    className="w-full text-left px-4 py-3 active:bg-emerald-50"
+                  >
+                    {w.name}
+                  </button>
+                ))}
+                {availableWorkers.length === 0 && (
+                  <p className="p-3 text-sm text-neutral-500">No matching worker found.</p>
+                )}
+                {!exactMatchExists && query.trim().length > 1 && (
+                  <button
+                    type="button"
+                    onClick={addNewWorker}
+                    disabled={addingNew}
+                    className="w-full text-left px-4 py-3 text-emerald-700 font-semibold active:bg-emerald-50 disabled:opacity-50"
+                  >
+                    {addingNew ? "Adding..." : `+ Add "${query.trim()}" as a new worker`}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {selectedWorkerId && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-neutral-700 rounded-xl bg-neutral-50 px-3 py-2">
+                  {SIGNON_CONFIRMATION_TEXT}
+                </p>
+                <label
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-sm font-medium cursor-pointer ${
+                    confirmed ? "border-emerald-300 bg-emerald-50" : "border-neutral-200 bg-white"
+                  }`}
                 >
-                  {addingNew ? "Adding..." : `+ Add "${query.trim()}" as a new worker`}
-                </button>
-              )}
-            </div>
-          )}
-
-          {selectedWorkerId && (
-            <div className="mt-4 space-y-3">
-              <p className="text-sm text-neutral-700">{SIGNON_CONFIRMATION_TEXT}</p>
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
-                  className="w-5 h-5"
-                />
-                I confirm I have reviewed and understood this assessment
-              </label>
-              {confirmed && <SignaturePad onCapture={capture} disabled={saving} />}
-              {signError && <p className="text-red-700 text-sm font-medium">{signError}</p>}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="mt-8 pt-5 border-t border-neutral-200">
-        <p className="text-sm text-neutral-600 mb-3">
-          Once everyone who needs to has signed on, you're done on this device — a supervisor
-          will review the assessment separately.
-        </p>
-        {assessment.status === "awaiting_supervisor_review" && (
-          <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-800">
-            <NotifyMe assessmentId={assessment.id} />
-          </div>
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    onChange={(e) => setConfirmed(e.target.checked)}
+                    className="w-5 h-5 shrink-0 accent-emerald-700"
+                  />
+                  I confirm I have reviewed and understood this assessment
+                </label>
+                {confirmed && <SignaturePad onCapture={capture} disabled={saving} />}
+                {signError && (
+                  <p className="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm font-medium text-red-800">
+                    {signError}
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
         )}
-        <Link
-          href={`/${project.qrSlug}`}
-          className="block text-center py-3 rounded-lg border border-neutral-400 text-neutral-700 font-medium"
-        >
-          Return to project home
-        </Link>
+
+        <section className="pt-2 space-y-3">
+          <p className="text-sm text-neutral-600 text-center">
+            Once everyone who needs to has signed on, you&apos;re done on this device — a supervisor
+            will review the assessment separately.
+          </p>
+          {assessment.status === "awaiting_supervisor_review" && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-emerald-800">
+              <NotifyMe assessmentId={assessment.id} />
+            </div>
+          )}
+          <Link
+            href={`/${project.qrSlug}`}
+            className="block text-center py-3 rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800"
+          >
+            Back to JSAFE home
+          </Link>
+        </section>
       </div>
     </main>
   );
