@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { SIGNON_CONFIRMATION_TEXT } from "@/lib/constants";
+import { notifySupervisorsToReview } from "@/lib/push";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json();
@@ -74,6 +75,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       afterJson: JSON.stringify({ whatChanged, newVersion }),
     },
   });
+
+  await notifySupervisorsToReview(params.id, "reassessed");
 
   return NextResponse.json({ reassessment, version: newVersion });
 }
