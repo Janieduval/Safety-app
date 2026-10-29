@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import StartAssessmentForm from "./StartAssessmentForm";
+import WorkerDemo from "@/components/demo/WorkerDemo";
 
 // Always build this page fresh, so the greeting and date are never stale.
 export const dynamic = "force-dynamic";
@@ -88,6 +89,11 @@ export default async function ProjectLandingPage({
           <div className="mt-4 pt-3 border-t border-white/20">
             <p className="text-lg font-bold leading-tight">{greetingSydney()}</p>
             <p className="text-sm text-emerald-50/90">{todayLabel}</p>
+          </div>
+
+          {/* "New here? Watch the demo" — only on this home page */}
+          <div className="mt-4">
+            <WorkerDemo />
           </div>
         </div>
       </header>
