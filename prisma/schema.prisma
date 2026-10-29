@@ -59,6 +59,35 @@ model Supervisor {
   createdAt DateTime @default(now())
 
   supervisorReviews SupervisorReview[]
+  teams             SupervisorTeam[]
+  pushSubscriptions SupervisorPushSubscription[]
+}
+
+// The teams a supervisor looks after. They get a notification when one of
+// these teams submits a JSAFE for review.
+model SupervisorTeam {
+  supervisorId String
+  supervisor   Supervisor @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         TeamOption @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([supervisorId, teamId])
+  @@index([teamId])
+}
+
+// A supervisor's phone or computer that has notifications turned on.
+model SupervisorPushSubscription {
+  id           String     @id @default(uuid())
+  supervisorId String
+  supervisor   Supervisor @relation(fields: [supervisorId], references: [id], onDelete: Cascade)
+  endpoint     String
+  p256dh       String
+  auth         String
+  createdAt    DateTime   @default(now())
+
+  @@unique([endpoint, supervisorId])
+  @@index([supervisorId])
 }
 
 // ---------- Admin-managed option lists (project-scoped) ----------
@@ -102,6 +131,7 @@ model TeamOption {
 
   assessments Assessment[]
   hazardTemplates HazardTemplate[]
+  supervisors SupervisorTeam[]
 }
 
 // Reusable hazard/control answers, scoped per team, so recurring hazards
