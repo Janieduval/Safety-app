@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { canSubmitWorkerAssessment } from "@/lib/validation";
+import { notifySupervisorsToReview } from "@/lib/push";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json();
@@ -63,6 +64,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       afterJson: JSON.stringify({ status: updated.status, version: updated.version }),
     },
   });
+
+  await notifySupervisorsToReview(params.id, "amended");
 
   return NextResponse.json({ ok: true, assessment: updated });
 }
