@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import AdminDemo from "@/components/demo/AdminDemo";
 import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
 import ArchiveButton from "@/components/ArchiveButton";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
@@ -248,6 +249,9 @@ export default async function AdminDashboard({
         <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
           Take 5. Work safe. Go home safe.
         </p>
+        <div className="mt-4 px-2">
+          <AdminDemo autoShow={false} />
+        </div>
 
         <nav className="mt-8 space-y-1">
           <Link
@@ -303,6 +307,10 @@ export default async function AdminDashboard({
             <div className="mt-4 pt-3 border-t border-white/20">
               <p className="text-lg font-bold leading-tight">{greetingSydney()}</p>
               <p className="text-sm text-emerald-50/90">{todayLabel}</p>
+            </div>
+            {/* "New here? Watch the demo" — only on the dashboard */}
+            <div className="mt-3">
+              <AdminDemo />
             </div>
           </header>
 
