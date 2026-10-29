@@ -3,7 +3,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import SupervisorDemo from "@/components/demo/SupervisorDemo";
+import SupervisorMyTeams from "@/components/SupervisorMyTeams";
 import { verifySupervisorSessionToken } from "@/lib/supervisorSession";
+import { getSupervisorTeams } from "@/lib/supervisorTeams";
 
 export const dynamic = "force-dynamic";
 
@@ -128,7 +130,7 @@ function TodayBadge() {
 export default async function SupervisorDashboard({
   searchParams,
 }: {
-  searchParams: { status?: string; projectId?: string; worker?: string };
+  searchParams: { status?: string; projectId?: string; worker?: string; mine?: string };
 }) {
   const supervisorId = await verifySupervisorSessionToken(
     cookies().get("supervisor_session")?.value
@@ -143,7 +145,12 @@ export default async function SupervisorDashboard({
 
   const projects = await prisma.project.findMany({ orderBy: { name: "asc" } });
 
+  // The teams this supervisor looks after ("My teams").
+  const { teams, teamIds: myTeamIds } = await getSupervisorTeams(supervisorId);
+  const showingMine = searchParams.mine === "1" && myTeamIds.length > 0;
+
   const where: any = {};
+  if (showingMine) where.teamId = { in: myTeamIds };
   if (searchParams.status) where.status = searchParams.status;
   if (searchParams.projectId) where.projectId = searchParams.projectId;
   if (searchParams.worker?.trim()) {
@@ -176,6 +183,7 @@ export default async function SupervisorDashboard({
 
   const counts = await prisma.assessment.groupBy({
     by: ["status"],
+    where: showingMine ? { teamId: { in: myTeamIds } } : undefined,
     _count: true,
   });
   const countMap: Record<string, number> = Object.fromEntries(
@@ -184,11 +192,24 @@ export default async function SupervisorDashboard({
   const totalCount = counts.reduce((sum, c) => sum + c._count, 0);
   const toReview = countMap["awaiting_supervisor_review"] ?? 0;
 
-  // Builds a supervisor dashboard link for a status, keeping the chosen project.
+  // Builds a supervisor dashboard link for a status, keeping the chosen
+  // project and the "My teams" choice.
   const statusHref = (status?: string) => {
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (searchParams.projectId) params.set("projectId", searchParams.projectId);
+    if (showingMine) params.set("mine", "1");
+    const q = params.toString();
+    return `/supervisor${q ? `?${q}` : ""}`;
+  };
+
+  // Links for the "All teams | My teams" switch, keeping everything else.
+  const teamsHref = (mine: boolean) => {
+    const params = new URLSearchParams();
+    if (searchParams.status) params.set("status", searchParams.status);
+    if (searchParams.projectId) params.set("projectId", searchParams.projectId);
+    if (searchParams.worker) params.set("worker", searchParams.worker);
+    if (mine) params.set("mine", "1");
     const q = params.toString();
     return `/supervisor${q ? `?${q}` : ""}`;
   };
@@ -362,6 +383,15 @@ export default async function SupervisorDashboard({
             <span className="text-neutral-400">→</span>
           </Link>
 
+          {/* ---------- My teams + notifications ---------- */}
+          <SupervisorMyTeams
+            teams={teams}
+            initialTeamIds={myTeamIds}
+            showingMine={showingMine}
+            allHref={teamsHref(false)}
+            mineHref={teamsHref(true)}
+          />
+
           {/* ---------- Status filters: pills on a phone ---------- */}
           <div className="md:hidden flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 mb-3">
             {statusOptions.map((s) => (
@@ -429,7 +459,9 @@ export default async function SupervisorDashboard({
           {/* ---------- Heading + search ---------- */}
           <div className="md:flex md:items-center md:justify-between md:gap-4 mb-3">
             <div className="flex items-baseline justify-between gap-3 mb-3 md:mb-0">
-              <h2 className="text-base md:text-lg font-bold text-neutral-900">Assessments</h2>
+              <h2 className="text-base md:text-lg font-bold text-neutral-900">
+                {showingMine ? "My teams' assessments" : "Assessments"}
+              </h2>
               <span className="text-xs text-neutral-500 md:ml-2">
                 {assessments.length === 100 ? "Latest 100" : `${assessments.length} shown`}
               </span>
@@ -439,6 +471,7 @@ export default async function SupervisorDashboard({
               {searchParams.projectId && (
                 <input type="hidden" name="projectId" value={searchParams.projectId} />
               )}
+              {showingMine && <input type="hidden" name="mine" value="1" />}
               <input
                 type="text"
                 name="worker"
@@ -454,7 +487,7 @@ export default async function SupervisorDashboard({
               </button>
               {searchParams.worker && (
                 <Link
-                  href={`/supervisor${searchParams.status ? `?status=${searchParams.status}` : ""}`}
+                  href={statusHref(searchParams.status)}
                   className="text-sm px-4 py-2 rounded-xl border border-neutral-300 text-neutral-700 font-medium bg-white"
                 >
                   Clear
