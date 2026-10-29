@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { canSubmitWorkerAssessment } from "@/lib/validation";
+import { notifySupervisorsToReview } from "@/lib/push";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const result = await canSubmitWorkerAssessment(params.id);
@@ -34,6 +35,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       afterJson: JSON.stringify({ status: updated.status }),
     },
   });
+
+  // Let the supervisors of this team know (only the first time it arrives).
+  if (before?.status !== "awaiting_supervisor_review") {
+    await notifySupervisorsToReview(params.id, "new");
+  }
 
   return NextResponse.json({ ok: true, assessment: updated });
 }
