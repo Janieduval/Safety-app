@@ -59,3 +59,73 @@ export async function notifyAssessmentReviewed(
     // swallow: notifications are best-effort
   }
 }
+
+// Tells the supervisors who look after this JSAFE's team that it's waiting
+// for review. "amended" = sent back after changes, "reassessed" = a new
+// version after the job changed. Never throws.
+export async function notifySupervisorsToReview(
+  assessmentId: string,
+  kind: "new" | "amended" | "reassessed" = "new"
+) {
+  try {
+    if (!configure()) return;
+    const a = await prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      select: {
+        teamId: true,
+        version: true,
+        projectId: true,
+        team: { select: { label: true } },
+        completedByWorker: { select: { name: true } },
+      },
+    });
+    if (!a?.teamId) return;
+
+    const subs = await prisma.supervisorPushSubscription.findMany({
+      where: {
+        supervisor: {
+          active: true,
+          archived: false,
+          projectId: a.projectId,
+          teams: { some: { teamId: a.teamId } },
+        },
+      },
+    });
+    if (subs.length === 0) return;
+
+    const who = a.completedByWorker?.name ?? "A worker";
+    const body =
+      kind === "amended"
+        ? `${who} sent back an amended JSAFE (version ${a.version}) for review.`
+        : kind === "reassessed"
+        ? `${who} reassessed a JSAFE (version ${a.version}). It needs a new review.`
+        : `${who} submitted a JSAFE for review.`;
+    const payload = JSON.stringify({
+      title: `JSAFE to review · ${a.team?.label ?? "Your team"}`,
+      body,
+      url: `/assess/${assessmentId}/supervisor-review?from=supervisor`,
+      tag: `jsafe-review-${assessmentId}`,
+    });
+
+    // The same phone can be linked to more than one supervisor: send once.
+    const seen = new Set<string>();
+    await Promise.all(
+      subs
+        .filter((s) => (seen.has(s.endpoint) ? false : (seen.add(s.endpoint), true)))
+        .map(async (s) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              payload
+            );
+          } catch (e: any) {
+            if (e?.statusCode === 404 || e?.statusCode === 410) {
+              await prisma.supervisorPushSubscription.deleteMany({ where: { endpoint: s.endpoint } });
+            }
+          }
+        })
+    );
+  } catch {
+    // swallow: notifications are best-effort
+  }
+}
