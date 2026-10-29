@@ -525,6 +525,230 @@ function PullRefresh() {
   );
 }
 
+// ---------- My teams & notifications ----------
+
+const TEAM_CHIPS = [
+  "Piling",
+  "Piling remediation",
+  "Post-head installation",
+  "Quality inspections",
+  "Rails installation",
+  "Remediation",
+  "Splice plates installation",
+  "Surveying",
+];
+const MY_TEAMS = ["Piling", "Rails installation"];
+
+function MyTeamsCard({ stage }: { stage: "none" | "picking" | "saved" | "ask" | "on" | "mine" }) {
+  const chosen = stage !== "none" && stage !== "picking";
+  return (
+    <div className="rounded-xl bg-white border border-neutral-200 shadow-sm p-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11.5px] font-bold">My teams</p>
+          <p className="text-[8.5px] text-neutral-500 leading-snug">
+            Get a notification when one of your teams submits a JSAFE for review.
+          </p>
+        </div>
+        {stage !== "picking" && (
+          <span
+            data-demo="choose"
+            className="shrink-0 text-[9.5px] px-2 py-1 rounded-full border border-emerald-700 text-emerald-700 font-semibold cursor-pointer"
+          >
+            {chosen ? "Edit" : "Choose teams"}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-2">
+        {stage === "picking" ? (
+          <div>
+            <p className="text-[8.5px] text-neutral-500 mb-1">Tap the teams you're responsible for.</p>
+            <div className="flex flex-wrap gap-1">
+              {TEAM_CHIPS.map((t) => {
+                const on = MY_TEAMS.includes(t);
+                return (
+                  <span
+                    key={t}
+                    className={`text-[9px] px-2 py-1 rounded-full border font-medium ${
+                      on ? "bg-emerald-700 border-emerald-700 text-white" : "bg-white border-neutral-300 text-neutral-700"
+                    }`}
+                  >
+                    {on ? "✓ " : ""}
+                    {t}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex gap-1.5">
+              <span
+                data-demo="save-teams"
+                className="text-[9.5px] px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer"
+              >
+                Save teams
+              </span>
+              <span className="text-[9.5px] px-2.5 py-1.5 rounded-lg border border-neutral-300 bg-white text-neutral-700">
+                Cancel
+              </span>
+            </div>
+          </div>
+        ) : chosen ? (
+          <div className="flex flex-wrap gap-1">
+            {MY_TEAMS.map((t) => (
+              <span
+                key={t}
+                className="text-[8.5px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[9.5px] text-neutral-500">No teams chosen yet.</p>
+        )}
+      </div>
+
+      {stage !== "picking" && (
+        <div className="mt-2 pt-2 border-t border-neutral-100">
+          {stage === "on" || stage === "mine" ? (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[9.5px] text-emerald-800 font-medium">✓ Notifications are on for this device</p>
+              <span className="text-[8.5px] font-semibold text-neutral-500 underline">Turn off</span>
+            </div>
+          ) : (
+            <span
+              data-demo="notify-on"
+              className="inline-block text-[9.5px] px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer"
+            >
+              Turn on notifications
+            </span>
+          )}
+        </div>
+      )}
+
+      {chosen && (
+        <div className="mt-2 flex p-0.5 rounded-full bg-neutral-100">
+          <span
+            className={`flex-1 text-center text-[9.5px] py-1 rounded-full font-semibold ${
+              stage !== "mine" ? "bg-emerald-700 text-white" : "text-neutral-600"
+            }`}
+          >
+            All teams
+          </span>
+          <span
+            data-demo="mine"
+            className={`flex-1 text-center text-[9.5px] py-1 rounded-full font-semibold cursor-pointer ${
+              stage === "mine" ? "bg-emerald-700 text-white" : "text-neutral-600"
+            }`}
+          >
+            My teams
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeamsDash({ stage }: { stage: "none" | "picking" | "saved" | "ask" | "on" | "mine" }) {
+  const mine = stage === "mine";
+  return (
+    <div className="h-full flex flex-col relative">
+      <DashHeader role="Supervisor" greeting="Good morning, Jordan" />
+      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
+        <MyTeamsCard stage={stage} />
+        {stage !== "picking" && (
+          <>
+            <StatusPills
+              counts={
+                mine ? { All: 12, "To review": 1, Completed: 0, Draft: 1, Changes: 0, Approved: 10, Archived: 0 } : undefined
+              }
+            />
+            <p className="text-[11px] font-bold text-neutral-900">{mine ? "My teams' assessments" : "Assessments"}</p>
+            <AssessmentCard
+              name="Alex Nguyen"
+              team="Rails installation"
+              when="29 Oct, 6:58 am"
+              status="Awaiting Supervisor Review"
+              tone="amber"
+              flags={["High/Extreme risk"]}
+              review
+            />
+            {!mine && (
+              <AssessmentCard
+                name="Sam Taylor"
+                team="Surveying"
+                when="29 Oct, 6:45 am"
+                status="Awaiting Supervisor Review"
+                tone="amber"
+                review
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {stage === "ask" && (
+        <div className="absolute inset-0 bg-black/30 flex items-start justify-center pt-24 px-4">
+          <div className="w-full rounded-2xl bg-white shadow-2xl p-3">
+            <p className="text-[11px] font-semibold text-neutral-900">safety-app01.vercel.app wants to</p>
+            <p className="mt-1 text-[10px] text-neutral-700 flex items-center gap-1.5">
+              <Bell className="w-3.5 h-3.5" />
+              Show notifications
+            </p>
+            <div className="mt-3 flex justify-end gap-2">
+              <span className="text-[10px] px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700 font-medium">
+                Block
+              </span>
+              <span
+                data-demo="allow"
+                className="text-[10px] px-3 py-1.5 rounded-full bg-blue-600 text-white font-semibold cursor-pointer"
+              >
+                Allow
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Bell({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+
+// A phone lock screen with the JSAFE notification on it.
+function LockScreen() {
+  return (
+    <div
+      className="h-full flex flex-col items-center px-3 pt-10 text-white"
+      style={{ background: "linear-gradient(170deg,#1e293b 0%,#0f172a 60%,#064e3b 100%)" }}
+    >
+      <p className="text-[10px] text-white/70">Wednesday 29 October</p>
+      <p className="text-[40px] font-semibold leading-none mt-1">7:02</p>
+      <div
+        data-demo="notif"
+        className="mt-8 w-full rounded-2xl bg-white/90 text-neutral-900 p-2.5 shadow-lg cursor-pointer"
+      >
+        <div className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded-md flex items-center justify-center text-[7px] font-black text-white" style={{ background: GRADIENT }}>
+            J
+          </span>
+          <span className="text-[8.5px] font-semibold uppercase tracking-wide text-neutral-500 flex-1">JSAFE</span>
+          <span className="text-[8.5px] text-neutral-500">now</span>
+        </div>
+        <p className="mt-1 text-[10.5px] font-semibold">JSAFE to review · Rails installation</p>
+        <p className="text-[9.5px] text-neutral-700">Alex Nguyen submitted a JSAFE for review.</p>
+      </div>
+    </div>
+  );
+}
+
 // ---------- Demos ----------
 
 const REVIEW_SCENES: DemoScene[] = [
@@ -537,7 +761,7 @@ const REVIEW_SCENES: DemoScene[] = [
   },
   {
     title: "To review",
-    text: "Today's ones waiting for you are always at the top. Red tags like High/Extreme risk or Stop-work show what to look at first. Tap Review.",
+    text: "Today's ones waiting for you are always at the top. Red tags like High/Extreme risk or Stop-work show what to look at first. Tap Review to open it.",
     target: "review",
     wait: 3000,
     render: () => <Dashboard filter="To review" target="review" />,
@@ -670,7 +894,7 @@ const DASH_SCENES: DemoScene[] = [
   },
   {
     title: "Statistics",
-    text: "Back on the dashboard, tap View statistics.",
+    text: "On the dashboard, tap View statistics.",
     target: "stats",
     wait: 2000,
     render: () => <Dashboard />,
@@ -688,13 +912,90 @@ const DASH_SCENES: DemoScene[] = [
   },
 ];
 
+const TEAMS_SCENES: DemoScene[] = [
+  {
+    title: "My teams",
+    text: "On your dashboard, the My teams card lets you choose the teams you're responsible for. Tap Choose teams.",
+    target: "choose",
+    wait: 3000,
+    render: () => <TeamsDash stage="none" />,
+  },
+  {
+    title: "Choose your teams",
+    text: "Tap the teams you're responsible for — they turn green with a tick. Then tap Save teams.",
+    target: "save-teams",
+    wait: 3200,
+    render: () => <TeamsDash stage="picking" />,
+  },
+  {
+    title: "Turn on notifications",
+    text: "Your teams now show on the card. Tap Turn on notifications.",
+    target: "notify-on",
+    wait: 2600,
+    render: () => <TeamsDash stage="saved" />,
+  },
+  {
+    title: "Allow",
+    text: "Your phone or browser asks if JSAFE can send notifications. Tap Allow.",
+    target: "allow",
+    wait: 2400,
+    render: () => <TeamsDash stage="ask" />,
+  },
+  {
+    title: "Notifications are on",
+    text: "Do this on each phone or computer you use. On an iPhone, open JSAFE from your home screen icon first.",
+    wait: 3400,
+    render: () => <TeamsDash stage="on" />,
+  },
+  {
+    title: "JSAFE to review",
+    text: "When one of your teams submits a JSAFE for review — or sends back an amended one — you get a notification, even with the app closed. Tap it.",
+    target: "notif",
+    wait: 3800,
+    render: () => <LockScreen />,
+  },
+  {
+    title: "Supervisor review",
+    text: "It opens the Supervisor review for that Take 5, ready for you to check and sign.",
+    wait: 3000,
+    render: () => <ReviewTop />,
+  },
+  {
+    title: "All teams | My teams",
+    text: "Back on the dashboard, tap My teams to see only your teams' JSAFEs.",
+    target: "mine",
+    wait: 2600,
+    render: () => <TeamsDash stage="on" />,
+  },
+  {
+    title: "My teams' assessments",
+    text: "Only your teams are listed, and the numbers change to match. Tap All teams to see everything again.",
+    render: () => <TeamsDash stage="mine" />,
+  },
+];
+
+// Short, focused demos (each one is a few steps).
 const CHAPTERS: DemoChapter[] = [
   {
-    id: "review",
-    title: "Review a Take 5",
-    text: "From “Needs your review” to approved and signed",
+    id: "find",
+    title: "Find what needs reviewing",
+    text: "The dashboard and the “Needs your review” box",
+    icon: <I name="list" className="w-5 h-5" />,
+    scenes: REVIEW_SCENES.slice(0, 2),
+  },
+  {
+    id: "check",
+    title: "Check a Take 5",
+    text: "Summary, hazards, controls and photos",
+    icon: <I name="doc" className="w-5 h-5" />,
+    scenes: REVIEW_SCENES.slice(2, 4),
+  },
+  {
+    id: "approve",
+    title: "Approve & sign",
+    text: "Your name, the checklist, your decision and signature",
     icon: <I name="check" className="w-5 h-5" />,
-    scenes: REVIEW_SCENES,
+    scenes: REVIEW_SCENES.slice(4),
   },
   {
     id: "changes",
@@ -704,11 +1005,25 @@ const CHAPTERS: DemoChapter[] = [
     scenes: CHANGES_SCENES,
   },
   {
-    id: "dash",
-    title: "Dashboard & statistics",
-    text: "Filters, search, records, PDFs and statistics",
+    id: "records",
+    title: "Find records & PDFs",
+    text: "Status filters, search, the full record and the PDF",
+    icon: <I name="search" className="w-5 h-5" />,
+    scenes: DASH_SCENES.slice(0, 5),
+  },
+  {
+    id: "stats",
+    title: "Statistics & refresh",
+    text: "Today's numbers, trends and pull down to refresh",
     icon: <I name="stats" className="w-5 h-5" />,
-    scenes: DASH_SCENES,
+    scenes: DASH_SCENES.slice(5),
+  },
+  {
+    id: "teams",
+    title: "My teams & notifications",
+    text: "Choose your teams and get notified when they submit",
+    icon: <Bell className="w-5 h-5" />,
+    scenes: TEAMS_SCENES,
   },
 ];
 
