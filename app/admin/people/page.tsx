@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
+import { AdminSupervisorTeams } from "@/components/TeamPicker";
 
 type Project = { id: string; name: string; qrSlug: string };
 type Person = {
@@ -12,6 +13,7 @@ type Person = {
   archived: boolean;
   needsReview?: boolean;
   hasPin?: boolean;
+  teamLabels?: string[];
 };
 
 const BRAND_GRADIENT = "linear-gradient(135deg, #10b981 0%, #047857 55%, #064e3b 100%)";
@@ -580,6 +582,7 @@ export default function ManagePeoplePage() {
                     onUpdate={(patch) => updatePerson(p.id, patch)}
                     isSupervisor={tab === "supervisors"}
                     onSetPin={(pin) => setPin(p.id, pin)}
+                    onTeamsSaved={loadPeople}
                   />
                 ))}
               </div>
@@ -616,6 +619,7 @@ export default function ManagePeoplePage() {
                           onUpdate={(patch) => updatePerson(p.id, patch)}
                           isSupervisor={tab === "supervisors"}
                           onSetPin={(pin) => setPin(p.id, pin)}
+                          onTeamsSaved={loadPeople}
                         />
                       ))}
                     </div>
@@ -653,12 +657,15 @@ function PersonRow({
   onUpdate,
   isSupervisor,
   onSetPin,
+  onTeamsSaved,
 }: {
   person: Person;
   onUpdate: (patch: Partial<Person>) => void;
   isSupervisor: boolean;
   onSetPin: (pin: string) => void;
+  onTeamsSaved: () => void;
 }) {
+  const [editingTeams, setEditingTeams] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(person.name);
   const [settingPin, setSettingPin] = useState(false);
@@ -728,6 +735,13 @@ function PersonRow({
               {isSupervisor &&
                 (person.hasPin ? <Badge tone="green">PIN set</Badge> : <Badge tone="grey">No PIN</Badge>)}
             </div>
+            {isSupervisor && (
+              <p className="mt-1 text-xs text-neutral-500">
+                {person.teamLabels && person.teamLabels.length > 0
+                  ? `Teams: ${person.teamLabels.join(", ")}`
+                  : "No teams chosen"}
+              </p>
+            )}
           </div>
         </div>
 
@@ -744,6 +758,11 @@ function PersonRow({
           {isSupervisor && (
             <button type="button" onClick={() => setSettingPin((s) => !s)} className={chip}>
               {person.hasPin ? "Change PIN" : "Set PIN"}
+            </button>
+          )}
+          {isSupervisor && !person.archived && (
+            <button type="button" onClick={() => setEditingTeams((s) => !s)} className={chip}>
+              Teams
             </button>
           )}
           {!person.archived && (
@@ -783,6 +802,18 @@ function PersonRow({
             Save PIN
           </button>
           {pinError && <p className="text-xs text-red-700 font-medium">{pinError}</p>}
+        </div>
+      )}
+
+      {editingTeams && (
+        <div className="mt-3 ml-[52px]">
+          <AdminSupervisorTeams
+            supervisorId={person.id}
+            onDone={(saved) => {
+              setEditingTeams(false);
+              if (saved) onTeamsSaved();
+            }}
+          />
         </div>
       )}
     </div>
