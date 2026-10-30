@@ -104,10 +104,10 @@ function Dashboard({
   );
 }
 
-function ReviewTop() {
+function ReviewTop({ v = 1 }: { v?: number }) {
   return (
     <div className="h-full flex flex-col">
-      <PageHeader title="Supervisor review" sub="Alex Nguyen · Version 1" />
+      <PageHeader title="Supervisor review" sub={`Alex Nguyen · Version ${v}`} />
       <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
         <div className="flex">
           <span className="text-[9.5px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-emerald-200 text-emerald-800">
@@ -117,7 +117,7 @@ function ReviewTop() {
         <Card>
           <div className="flex flex-wrap gap-1">
             <Pill tone="amber">Awaiting Supervisor Review</Pill>
-            <Pill>Version 1</Pill>
+            <Pill>Version {v}</Pill>
             <Pill tone="red">High/Extreme risk</Pill>
           </div>
           <p className="mt-1.5 text-[11.5px] font-semibold leading-snug">Install rails on rows 41–48</p>
@@ -190,10 +190,10 @@ function ReviewHazards() {
   );
 }
 
-function YourReview({ stage }: { stage: "name" | "picked" | "checklist" | "decide" | "changes" }) {
+function YourReview({ stage, v = 1 }: { stage: "name" | "picked" | "checklist" | "decide" | "changes"; v?: number }) {
   return (
     <div className="h-full flex flex-col">
-      <PageHeader title="Supervisor review" sub="Alex Nguyen · Version 1" />
+      <PageHeader title="Supervisor review" sub={`Alex Nguyen · Version ${v}`} />
       <div className="px-3 pt-2.5 overflow-hidden">
         <Card className="space-y-2">
           <div className="flex items-center gap-1.5">
@@ -293,10 +293,10 @@ function YourReview({ stage }: { stage: "name" | "picked" | "checklist" | "decid
   );
 }
 
-function SignDecision({ decision }: { decision: "approved" | "changes" }) {
+function SignDecision({ decision, v = 1 }: { decision: "approved" | "changes"; v?: number }) {
   return (
     <div className="h-full flex flex-col">
-      <PageHeader title="Supervisor review" sub="Alex Nguyen · Version 1" />
+      <PageHeader title="Supervisor review" sub={`Alex Nguyen · Version ${v}`} />
       <div className="px-3 pt-2.5 overflow-hidden">
         <Card className="space-y-2">
           <p className="text-[11.5px] font-bold">Your review</p>
@@ -328,18 +328,14 @@ function SignDecision({ decision }: { decision: "approved" | "changes" }) {
   );
 }
 
-function Reviewed({ decision }: { decision: "approved" | "changes required" }) {
+function Reviewed({ decision, v = 1 }: { decision: "approved" | "changes required"; v?: number }) {
+  const rows: { ver: number; d: "approved" | "changes required" }[] =
+    v === 2 ? [{ ver: 1, d: "changes required" }, { ver: 2, d: decision }] : [{ ver: 1, d: decision }];
   return (
     <div className="h-full flex flex-col">
-      <PageHeader title="Supervisor review" sub="Alex Nguyen · Version 1" />
+      <PageHeader title="Supervisor review" sub={`Alex Nguyen · Version ${v}`} />
       <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
-        <div
-          className={`rounded-xl border p-2.5 text-[10px] ${
-            decision === "approved"
-              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-              : "border-emerald-300 bg-emerald-50 text-emerald-900"
-          }`}
-        >
+        <div className="rounded-xl border p-2.5 text-[10px] border-emerald-300 bg-emerald-50 text-emerald-900">
           Already reviewed by <b>{ME}</b> — <b className="capitalize">{decision}</b>.
         </div>
         <Card>
@@ -347,21 +343,83 @@ function Reviewed({ decision }: { decision: "approved" | "changes required" }) {
             <Pill tone={decision === "approved" ? "green" : "orange"}>
               {decision === "approved" ? "Approved" : "Changes Required"}
             </Pill>
-            <Pill>Version 1</Pill>
+            <Pill>Version {v}</Pill>
           </div>
           <p className="mt-1.5 text-[11px] font-bold">Supervisor reviews</p>
-          <div className="mt-1 rounded-lg border border-neutral-200 p-1.5">
-            <div className="flex items-center justify-between">
-              <p className="text-[9.5px] font-semibold">Version 1 · {ME}</p>
-              <Pill tone={decision === "approved" ? "green" : "orange"}>{decision}</Pill>
-            </div>
-            {decision !== "approved" && (
-              <p className="mt-0.5 text-[9px] text-neutral-700">
-                <b>Comments:</b> Add the spotter for the telehandler lifts.
-              </p>
-            )}
+          <div className="mt-1 space-y-1">
+            {rows.map((r) => (
+              <div key={r.ver} className="rounded-lg border border-neutral-200 p-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[9.5px] font-semibold">
+                    Version {r.ver} · {ME}
+                  </p>
+                  <Pill tone={r.d === "approved" ? "green" : "orange"}>{r.d}</Pill>
+                </div>
+                {r.d !== "approved" && (
+                  <p className="mt-0.5 text-[9px] text-neutral-700">
+                    <b>Comments:</b> Add the spotter for the telehandler lifts.
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         </Card>
+      </div>
+    </div>
+  );
+}
+
+// What the worker sees on their side after you request changes.
+function WorkerSide({ stage }: { stage: "list" | "fix" }) {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="px-3.5 pt-4 pb-3.5 text-white rounded-b-2xl" style={{ background: GRADIENT }}>
+        <div className="flex items-center gap-1.5">
+          <span className="w-7 h-7 rounded-lg bg-white/20 ring-1 ring-white/30 flex items-center justify-center text-[10px] font-black">
+            J
+          </span>
+          <div>
+            <p className="text-[13px] font-extrabold tracking-wide leading-none">JSAFE</p>
+            <p className="text-[9px] text-emerald-50/90 mt-0.5">Blind Creek Solar Farm</p>
+          </div>
+        </div>
+        <p className="mt-2 text-[9px] font-semibold text-emerald-50/90">The worker&apos;s phone · Alex Nguyen</p>
+      </div>
+      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
+        {stage === "list" ? (
+          <Card>
+            <p className="text-[13px] font-bold">My assessments</p>
+            <div className="mt-2 relative overflow-hidden rounded-xl border border-neutral-200 bg-white pl-3 pr-2 py-1.5">
+              <span className="absolute left-0 top-0 bottom-0 w-1 bg-orange-400" />
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10.5px] font-bold">Rails installation</span>
+                <Pill tone="orange">Changes required</Pill>
+              </div>
+              <p className="text-[8.5px] text-neutral-500 mt-0.5">
+                <span className="mr-1 px-1 py-px rounded bg-blue-100 text-blue-800 text-[7.5px] font-bold">TODAY</span>
+                6:58 am
+              </p>
+              <p className="text-[8.5px] font-semibold text-amber-700 mt-0.5">View supervisor comments ▴</p>
+              <div className="mt-1 rounded-lg bg-amber-50 border border-amber-200 px-1.5 py-1 text-[9px] text-amber-900">
+                <b>{ME}:</b> Add the spotter for the telehandler lifts.
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card className="space-y-2">
+            <p className="text-[11px] font-bold">Step 9 · Identify hazards</p>
+            <div className="rounded-lg bg-amber-50 border-2 border-amber-400 p-2 text-[9.5px] text-amber-900">
+              <p className="font-semibold">Changes requested by {ME} (Version 1):</p>
+              <p className="mt-0.5">Add the spotter for the telehandler lifts.</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-semibold text-neutral-600">Controls to be implemented</p>
+              <Input>
+                Gloves on, two-person lift, <span className="bg-emerald-100">spotter for telehandler lifts</span>
+              </Input>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
@@ -751,19 +809,67 @@ function LockScreen() {
 
 // ---------- Demos ----------
 
-const REVIEW_SCENES: DemoScene[] = [
+// 2. Dashboard — how to get around it.
+const DASH_SCENES: DemoScene[] = [
   {
     title: "Your dashboard",
     text: "Every Take 5 on site. The amber “Needs your review” box shows how many are waiting — tap it to see just those.",
     target: "needs",
     wait: 3000,
-    render: () => <Dashboard target="review" />,
+    render: () => <Dashboard />,
   },
   {
     title: "To review",
-    text: "Today's ones waiting for you are always at the top. Red tags like High/Extreme risk or Stop-work show what to look at first. Tap Review to open it.",
-    target: "review",
+    text: "Today's ones waiting for you are always at the top, and reviewed ones drop to the bottom. Red tags like High/Extreme risk or Stop-work show what to look at first.",
+    wait: 3600,
+    render: () => <Dashboard filter="To review" />,
+  },
+  {
+    title: "Status filters",
+    text: "Tap a status — All, To review, Completed, Draft, Changes, Approved, Archived — to see only those. The numbers show how many of each.",
+    wait: 3600,
+    render: () => <Dashboard />,
+  },
+  {
+    title: "Search",
+    text: "Search by worker or team to find a Take 5 fast.",
     wait: 3000,
+    render: () => <SearchDash />,
+  },
+  {
+    title: "View the full record",
+    text: "Tap View on any Take 5 to see everything that was filled in.",
+    target: "view",
+    wait: 2200,
+    render: () => <Dashboard target="view" />,
+  },
+  {
+    title: "The record",
+    text: "Every answer, hazard, photo, sign-on and review. Tap Open PDF for a copy you can print or send.",
+    target: "pdf",
+    wait: 3000,
+    render: () => <RecordView />,
+  },
+  {
+    title: "The PDF",
+    text: "It opens straight in your browser.",
+    wait: 2400,
+    render: () => <PdfOpen />,
+  },
+  {
+    title: "Pull down to refresh",
+    text: "On your phone, pull down from the top of the dashboard to load the newest Take 5s.",
+    render: () => <PullRefresh />,
+  },
+];
+
+// 3. Review a Take 5 — from start to approved, including a round of changes.
+const REVIEW_SCENES: DemoScene[] = [
+  {
+    title: "To review",
+    text: "On your dashboard, tap Review on a Take 5 that's waiting for you.",
+    target: "review",
+    wait: 2600,
     render: () => <Dashboard filter="To review" target="review" />,
   },
   {
@@ -799,23 +905,69 @@ const REVIEW_SCENES: DemoScene[] = [
   },
   {
     title: "3. Notes · 4. Decision",
-    text: "Comments and additional controls are optional. Then choose Approve or Request changes.",
-    target: "approve",
-    wait: 2800,
+    text: "Comments and additional controls are optional. Then choose Approve or Request changes. First, let's see what happens when something needs fixing.",
+    target: "changes",
+    wait: 3600,
     render: () => <YourReview stage="decide" />,
+  },
+  {
+    title: "Request changes",
+    text: "Write what needs changing in Comments — the worker sees exactly what you write. You don't need the full checklist to send it back.",
+    target: "changes",
+    wait: 4200,
+    render: () => <YourReview stage="changes" />,
   },
   {
     title: "Sign",
     text: "Sign with your finger (or mouse) and tap Confirm signature.",
     target: "confirm",
-    wait: 2600,
-    render: () => <SignDecision decision="approved" />,
+    wait: 2400,
+    render: () => <SignDecision decision="changes" />,
+  },
+  {
+    title: "Sent back to the worker",
+    text: "Your decision and comments are saved on the record.",
+    wait: 2800,
+    render: () => <Reviewed decision="changes required" />,
+  },
+  {
+    title: "What the worker sees",
+    text: "In My assessments, the worker sees “Changes required”. They tap View supervisor comments to read what you wrote.",
+    wait: 3600,
+    render: () => <WorkerSide stage="list" />,
+  },
+  {
+    title: "The worker fixes it",
+    text: "Your comments show at the top while they fix it. They submit again — it becomes version 2, and the crew signs the new version.",
+    wait: 3800,
+    render: () => <WorkerSide stage="fix" />,
+  },
+  {
+    title: "It comes back to you",
+    text: "It's back in your list marked “Amended — v2 ready for review”. Tap Review.",
+    target: "review",
+    wait: 3000,
+    render: () => <Dashboard filter="To review" amended target="review" />,
+  },
+  {
+    title: "Review version 2",
+    text: "Check the change, tick the checklist, then tap Approve.",
+    target: "approve",
+    wait: 3000,
+    render: () => <YourReview stage="decide" v={2} />,
+  },
+  {
+    title: "Sign",
+    text: "Sign and tap Confirm signature.",
+    target: "confirm",
+    wait: 2400,
+    render: () => <SignDecision decision="approved" v={2} />,
   },
   {
     title: "Approved",
-    text: "Done. The worker can see it's approved, and your review is saved on the record and the PDF.",
-    wait: 2800,
-    render: () => <Reviewed decision="approved" />,
+    text: "Done. The worker sees it's approved. Both versions and both of your reviews are kept on the record and the PDF.",
+    wait: 3400,
+    render: () => <Reviewed decision="approved" v={2} />,
   },
   {
     title: "Back on the dashboard",
@@ -824,94 +976,23 @@ const REVIEW_SCENES: DemoScene[] = [
   },
 ];
 
-const CHANGES_SCENES: DemoScene[] = [
-  {
-    title: "Something needs fixing?",
-    text: "If the Take 5 isn't right, write what needs changing in Comments — the worker sees exactly what you write.",
-    target: "changes",
-    wait: 4200,
-    render: () => <YourReview stage="changes" />,
-  },
-  {
-    title: "Request changes",
-    text: "You don't need the full checklist to send it back. Sign to confirm.",
-    target: "confirm",
-    wait: 2400,
-    render: () => <SignDecision decision="changes" />,
-  },
-  {
-    title: "Sent back to the worker",
-    text: "The worker sees “Changes required” with your comments in My assessments, fixes it and submits again.",
-    wait: 3200,
-    render: () => <Reviewed decision="changes required" />,
-  },
-  {
-    title: "The new version comes back",
-    text: "It returns to your list marked “Amended — v2 ready for review”, and the crew signs the new version. Review it the same way.",
-    target: "review",
-    wait: 3200,
-    render: () => <Dashboard filter="To review" amended target="review" />,
-  },
-  {
-    title: "That's it",
-    text: "Review → Approve or Request changes → sign. Every version and decision is kept on the record.",
-    render: () => <Reviewed decision="changes required" />,
-  },
-];
-
-const DASH_SCENES: DemoScene[] = [
-  {
-    title: "Status filters",
-    text: "Tap a status — To review, Draft, Changes, Approved… — to see only those. The numbers show how many of each.",
-    wait: 3200,
-    render: () => <Dashboard />,
-  },
-  {
-    title: "Search",
-    text: "Search by worker or team to find a Take 5 fast.",
-    wait: 3000,
-    render: () => <SearchDash />,
-  },
-  {
-    title: "View the full record",
-    text: "Tap View on any Take 5 to see everything that was filled in.",
-    target: "view",
-    wait: 2200,
-    render: () => <Dashboard target="view" />,
-  },
-  {
-    title: "The record",
-    text: "Every answer, hazard, photo, sign-on and review. Tap Open PDF for a copy you can print or send.",
-    target: "pdf",
-    wait: 3000,
-    render: () => <RecordView />,
-  },
-  {
-    title: "The PDF",
-    text: "It opens straight in your browser.",
-    wait: 2200,
-    render: () => <PdfOpen />,
-  },
+// 4. Statistics.
+const STATS_SCENES: DemoScene[] = [
   {
     title: "Statistics",
     text: "On the dashboard, tap View statistics.",
     target: "stats",
-    wait: 2000,
+    wait: 2200,
     render: () => <Dashboard />,
   },
   {
     title: "Statistics",
     text: "Today's numbers, Take 5s done, people signed on, reviews and the most common hazards — by day, week or month. Tap a bar for that day.",
-    wait: 4200,
     render: () => <Stats />,
-  },
-  {
-    title: "Pull down to refresh",
-    text: "On your phone, pull down from the top of the dashboard to load the newest Take 5s.",
-    render: () => <PullRefresh />,
   },
 ];
 
+// 1. My teams & notifications.
 const TEAMS_SCENES: DemoScene[] = [
   {
     title: "My teams",
@@ -974,56 +1055,34 @@ const TEAMS_SCENES: DemoScene[] = [
   },
 ];
 
-// Short, focused demos (each one is a few steps).
 const CHAPTERS: DemoChapter[] = [
   {
-    id: "find",
-    title: "Find what needs reviewing",
-    text: "The dashboard and the “Needs your review” box",
-    icon: <I name="list" className="w-5 h-5" />,
-    scenes: REVIEW_SCENES.slice(0, 2),
+    id: "teams",
+    title: "My teams",
+    text: "Choose your teams and get a notification when they submit a Take 5",
+    icon: <Bell className="w-5 h-5" />,
+    scenes: TEAMS_SCENES,
   },
   {
-    id: "check",
-    title: "Check a Take 5",
-    text: "Summary, hazards, controls and photos",
-    icon: <I name="doc" className="w-5 h-5" />,
-    scenes: REVIEW_SCENES.slice(2, 4),
+    id: "dash",
+    title: "Dashboard",
+    text: "Getting around: filters, search, records and PDFs",
+    icon: <I name="home" className="w-5 h-5" />,
+    scenes: DASH_SCENES,
   },
   {
-    id: "approve",
-    title: "Approve & sign",
-    text: "Your name, the checklist, your decision and signature",
+    id: "review",
+    title: "Review a Take 5",
+    text: "Start to finish: request changes, what the worker sees, then approve",
     icon: <I name="check" className="w-5 h-5" />,
-    scenes: REVIEW_SCENES.slice(4),
-  },
-  {
-    id: "changes",
-    title: "Request changes",
-    text: "Send it back with comments, then review version 2",
-    icon: <I name="back" className="w-5 h-5" />,
-    scenes: CHANGES_SCENES,
-  },
-  {
-    id: "records",
-    title: "Find records & PDFs",
-    text: "Status filters, search, the full record and the PDF",
-    icon: <I name="search" className="w-5 h-5" />,
-    scenes: DASH_SCENES.slice(0, 5),
+    scenes: REVIEW_SCENES,
   },
   {
     id: "stats",
-    title: "Statistics & refresh",
-    text: "Today's numbers, trends and pull down to refresh",
+    title: "Statistics",
+    text: "Today's numbers and trends by day, week or month",
     icon: <I name="stats" className="w-5 h-5" />,
-    scenes: DASH_SCENES.slice(5),
-  },
-  {
-    id: "teams",
-    title: "My teams & notifications",
-    text: "Choose your teams and get notified when they submit",
-    icon: <Bell className="w-5 h-5" />,
-    scenes: TEAMS_SCENES,
+    scenes: STATS_SCENES,
   },
 ];
 
