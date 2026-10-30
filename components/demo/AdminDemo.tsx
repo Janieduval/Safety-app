@@ -84,6 +84,8 @@ function PersonRow({
   amber = false,
   confirmId,
   pinId,
+  teamsLine,
+  teamsId,
 }: {
   name: string;
   tags?: React.ReactNode;
@@ -91,6 +93,8 @@ function PersonRow({
   amber?: boolean;
   confirmId?: string;
   pinId?: string;
+  teamsLine?: string;
+  teamsId?: string;
 }) {
   return (
     <div className={`px-2.5 py-2 ${amber ? "bg-amber-50/70" : ""}`}>
@@ -99,13 +103,14 @@ function PersonRow({
         <div className="min-w-0">
           <p className="text-[10.5px] font-semibold">{name}</p>
           {tags && <div className="flex gap-1 mt-0.5">{tags}</div>}
+          {teamsLine && <p className="mt-0.5 text-[8.5px] text-neutral-500">{teamsLine}</p>}
         </div>
       </div>
       <div className="mt-1 ml-8 flex flex-wrap gap-1">
         {actions.map((a) => (
           <span
             key={a}
-            data-demo={a === "Confirm" ? confirmId : a.includes("PIN") ? pinId : undefined}
+            data-demo={a === "Confirm" ? confirmId : a.includes("PIN") ? pinId : a === "Teams" ? teamsId : undefined}
             className={`text-[8.5px] px-2 py-0.5 rounded-full cursor-pointer ${
               a === "Confirm"
                 ? "bg-emerald-700 text-white font-semibold"
@@ -167,10 +172,66 @@ function People({ tab = "workers", typing = false, confirmed = false }: { tab?: 
           </>
         ) : (
           <div className="bg-white rounded-xl border border-neutral-200 divide-y divide-neutral-100">
-            <PersonRow name="Jordan Micallef" tags={<Pill tone="green">PIN set</Pill>} actions={["Change PIN", "Set inactive", "Archive"]} />
-            <PersonRow name="Priya Ramesh" tags={<Pill>No PIN</Pill>} actions={["Set PIN", "Set inactive", "Archive"]} pinId="pin" />
+            <PersonRow
+              name="Jordan Micallef"
+              tags={<Pill tone="green">PIN set</Pill>}
+              teamsLine="Teams: Piling, Rails installation"
+              actions={["Change PIN", "Teams", "Set inactive", "Archive"]}
+              teamsId="teams"
+            />
+            <PersonRow
+              name="Priya Ramesh"
+              tags={<Pill>No PIN</Pill>}
+              teamsLine="No teams chosen"
+              actions={["Set PIN", "Teams", "Set inactive", "Archive"]}
+              pinId="pin"
+            />
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SupervisorTeams() {
+  const chips = ["Piling", "Piling remediation", "Post-head installation", "Rails installation", "Surveying", "Tubes installation"];
+  const on = ["Piling", "Rails installation", "Surveying"];
+  return (
+    <div className="h-full flex flex-col">
+      <PageHeader title="People" sub="Workers & supervisors · Blind Creek Solar Farm" />
+      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
+        <div className="bg-white rounded-xl border border-neutral-200 px-2.5 py-2">
+          <div className="flex items-center gap-2">
+            <Avatar name="Jordan Micallef" />
+            <div>
+              <p className="text-[10.5px] font-semibold">Jordan Micallef</p>
+              <Pill tone="green">PIN set</Pill>
+              <p className="mt-0.5 text-[8.5px] text-neutral-500">Teams: Piling, Rails installation</p>
+            </div>
+          </div>
+          <div className="mt-2 ml-8">
+            <p className="text-[8.5px] text-neutral-500 mb-1">Tap the teams you're responsible for.</p>
+            <div className="flex flex-wrap gap-1">
+              {chips.map((t) => (
+                <span
+                  key={t}
+                  className={`text-[9px] px-2 py-1 rounded-full border font-medium ${
+                    on.includes(t) ? "bg-emerald-700 border-emerald-700 text-white" : "bg-white border-neutral-300 text-neutral-700"
+                  }`}
+                >
+                  {on.includes(t) ? "✓ " : ""}
+                  {t}
+                </span>
+              ))}
+            </div>
+            <div className="mt-2 flex gap-1.5">
+              <span data-demo="save-teams" className="text-[9.5px] px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">
+                Save teams
+              </span>
+              <span className="text-[9.5px] px-2.5 py-1.5 rounded-lg border border-neutral-300 bg-white text-neutral-700">Cancel</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -475,7 +536,7 @@ const DASH_SCENES: DemoScene[] = [
   },
   {
     title: "That's the dashboard",
-    text: "Pull down from the top on your phone to refresh. Next, try the People, Saved answers or Export demos.",
+    text: "Pull down from the top on your phone to refresh. The other demos show People, Saved answers and Export.",
     render: () => <Dashboard />,
   },
 ];
@@ -504,10 +565,24 @@ const PEOPLE_SCENES: DemoScene[] = [
   },
   {
     title: "Supervisors",
-    text: "Switch to Supervisors. Each supervisor needs a PIN to log in.",
+    text: "Switch to Supervisors. Here you set their teams and their PIN.",
     target: "sup-tab",
     wait: 2200,
     render: () => <People confirmed />,
+  },
+  {
+    title: "Teams",
+    text: "Under each supervisor you can see the teams they look after. Tap Teams to change them.",
+    target: "teams",
+    wait: 2800,
+    render: () => <People tab="supervisors" />,
+  },
+  {
+    title: "Save teams",
+    text: "Tap teams on or off, then Save teams. They'll get a notification when those teams submit a JSAFE. Supervisors can also choose their own teams from their dashboard.",
+    target: "save-teams",
+    wait: 4200,
+    render: () => <SupervisorTeams />,
   },
   {
     title: "Set PIN",
@@ -634,7 +709,7 @@ const CHAPTERS: DemoChapter[] = [
   {
     id: "people",
     title: "People",
-    text: "Add workers, confirm new ones, PINs and duplicates",
+    text: "Add workers, confirm new ones, supervisors' teams and PINs, duplicates",
     icon: <I name="people" className="w-5 h-5" />,
     scenes: PEOPLE_SCENES,
   },
