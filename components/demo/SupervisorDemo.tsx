@@ -514,8 +514,53 @@ function PdfOpen() {
   );
 }
 
-function Stats() {
+function Stats({ hazardsOpen = false }: { hazardsOpen?: boolean }) {
   const bars = [3, 5, 4, 6, 2, 0, 5, 7, 6, 4, 5, 3, 6, 8];
+  if (hazardsOpen) {
+    const answers = [
+      ["Lifting rails onto the tracker", "Two-person lift, keep back straight", "medium", "low", "Alex Nguyen · Rails installation · Wed 29 Oct"],
+      ["Carrying post-heads across the row", "Use the trolley, max 2 at a time", "high", "low", "Dev Patel · Post-head installation · Tue 28 Oct"],
+    ];
+    return (
+      <div className="h-full flex flex-col">
+        <PageHeader title="Statistics" sub="Last 30 days · Supervisor" />
+        <div className="px-3 pt-2.5 overflow-hidden">
+          <Card>
+            <p className="text-[10.5px] font-bold">Most common hazards</p>
+            <p className="text-[8px] text-neutral-500">Times answered &quot;Yes&quot; · tap one to see what people wrote</p>
+            <div className="mt-1.5 rounded-lg bg-rose-50/60 ring-1 ring-rose-100 p-1.5">
+              <div className="flex justify-between text-[9px]">
+                <span>1. Could I strain or overexert myself?</span>
+                <span className="font-bold">42</span>
+              </div>
+              <p className="mt-1 text-[8px] text-neutral-500">58 answers · newest first</p>
+              <div className="mt-1 space-y-1">
+                {answers.map(([d, c, i, r, m]) => (
+                  <div key={d} className="rounded-lg border border-neutral-200 bg-white p-1.5">
+                    <p className="text-[9.5px] font-semibold">{d}</p>
+                    <p className="text-[8.5px] text-neutral-700">
+                      <span className="text-[7.5px] font-semibold uppercase text-neutral-500">Controls </span>
+                      {c}
+                    </p>
+                    <div className="mt-0.5 flex items-center gap-1">
+                      <Pill tone={i === "high" ? "orange" : "amber"}>{i}</Pill>
+                      <span className="text-[8px] text-neutral-400">→</span>
+                      <Pill tone="green">{r}</Pill>
+                    </div>
+                    <div className="mt-0.5 flex justify-between gap-1 text-[7.5px] text-neutral-500">
+                      <span>{m}</span>
+                      <span className="font-semibold text-emerald-700 shrink-0">View JSAFE →</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="mt-1.5 text-[9px] text-neutral-700">2. Could I slip, trip, fall…? · 38</p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="h-full flex flex-col">
       <PageHeader title="Statistics" sub="Last 30 days · Supervisor" />
@@ -559,7 +604,7 @@ function Stats() {
         </Card>
         <Card>
           <p className="text-[10.5px] font-bold">Most common hazards</p>
-          <p className="text-[9px] text-neutral-700 mt-0.5">1. Could I strain or overexert myself? · 42</p>
+          <p data-demo="hz1" className="text-[9px] text-neutral-700 mt-0.5 cursor-pointer">1. Could I strain or overexert myself? · 42</p>
           <p className="text-[9px] text-neutral-700">2. Could I slip, trip, fall…? · 38</p>
         </Card>
       </div>
@@ -987,8 +1032,15 @@ const STATS_SCENES: DemoScene[] = [
   },
   {
     title: "Statistics",
-    text: "Today's numbers, Take 5s done, people signed on, reviews and the most common hazards — by day, week or month. Tap a bar for that day.",
+    text: "Today's numbers, Take 5s done, people signed on, reviews and the most common hazards — by day, week or month. Tap a bar for that day. Tap a hazard to see what people wrote.",
+    target: "hz1",
+    wait: 4200,
     render: () => <Stats />,
+  },
+  {
+    title: "What people wrote",
+    text: "Every answer for that hazard: what they wrote, their controls, the risk before and after, and who wrote it. Tap View JSAFE to open the full Take 5.",
+    render: () => <Stats hazardsOpen />,
   },
 ];
 
@@ -1080,7 +1132,7 @@ const CHAPTERS: DemoChapter[] = [
   {
     id: "stats",
     title: "Statistics",
-    text: "Today's numbers and trends by day, week or month",
+    text: "Today's numbers, trends and what people wrote for each hazard",
     icon: <I name="stats" className="w-5 h-5" />,
     scenes: STATS_SCENES,
   },
