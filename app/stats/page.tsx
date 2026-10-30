@@ -445,7 +445,7 @@ export default function StatsPage() {
 
               {/* Hazards + teams */}
               <div className="grid gap-5 md:gap-6 lg:grid-cols-2 items-start">
-                <HazardList hazards={stats.hazards} period={period} />
+                <HazardList hazards={stats.hazards} period={period} role={viewer?.role ?? "supervisor"} />
                 <TeamSection stats={stats} period={period} />
               </div>
             </div>
@@ -661,16 +661,119 @@ function BarChart({
   );
 }
 
+type HazardAnswer = {
+  id: string;
+  description: string;
+  controls: string;
+  initialRisk: string;
+  residualRisk: string;
+  assessmentId: string;
+  dateTime: string;
+  worker: string | null;
+  team: string | null;
+};
+
+const RISK_PILL: Record<string, string> = {
+  low: "bg-emerald-100 text-emerald-800",
+  medium: "bg-amber-100 text-amber-800",
+  high: "bg-orange-100 text-orange-800",
+  extreme: "bg-red-100 text-red-800",
+};
+
+function RiskPill({ risk }: { risk: string }) {
+  return (
+    <span className={`text-[11px] font-semibold capitalize px-2 py-0.5 rounded-full ${RISK_PILL[risk] ?? "bg-neutral-100 text-neutral-600"}`}>
+      {risk}
+    </span>
+  );
+}
+
+// Tap a hazard to see what people actually wrote for it in this period.
+function HazardAnswers({
+  hazardKey,
+  period,
+  role,
+}: {
+  hazardKey: string;
+  period: Period;
+  role: "admin" | "supervisor";
+}) {
+  const [data, setData] = useState<{ total: number; answers: HazardAnswer[] } | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setData(null);
+    setError(false);
+    fetch(`/api/stats?period=${period}&hazard=${encodeURIComponent(hazardKey)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(setData)
+      .catch(() => setError(true));
+  }, [hazardKey, period]);
+
+  if (error) return <p className="text-sm text-red-700 py-2">Could not load the answers. Try again.</p>;
+  if (!data) return <p className="text-sm text-neutral-500 py-2">Loading answers...</p>;
+  if (data.answers.length === 0) return <p className="text-sm text-neutral-500 py-2">No written answers for this one.</p>;
+
+  const recordBase = role === "admin" ? "/admin/assessments" : "/supervisor/assessments";
+
+  return (
+    <div className="mt-2">
+      <p className="text-xs text-neutral-500 mb-2">
+        {data.total} answer{data.total === 1 ? "" : "s"} · newest first
+        {data.total > data.answers.length ? ` · showing the latest ${data.answers.length}` : ""}
+      </p>
+      <ul className="max-h-96 overflow-y-auto space-y-2 pr-1">
+        {data.answers.map((a) => (
+          <li key={a.id} className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3">
+            <p className="text-sm font-semibold text-neutral-900 break-words">{a.description || "—"}</p>
+            {a.controls && (
+              <p className="mt-1 text-sm text-neutral-700 break-words">
+                <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Controls </span>
+                {a.controls}
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+              <RiskPill risk={a.initialRisk} />
+              <span className="text-neutral-400">→</span>
+              <RiskPill risk={a.residualRisk} />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+              <span>
+                {[a.worker, a.team].filter(Boolean).join(" · ")}
+                {a.worker || a.team ? " · " : ""}
+                {new Date(a.dateTime).toLocaleDateString("en-AU", {
+                  timeZone: "Australia/Sydney",
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                })}
+              </span>
+              <Link href={`${recordBase}/${a.assessmentId}`} className="font-semibold text-emerald-700 hover:text-emerald-800">
+                View JSAFE →
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function HazardList({
   hazards,
   period,
+  role,
 }: {
   hazards: { key: string; label: string; count: number }[];
   period: Period;
+  role: "admin" | "supervisor";
 }) {
   const [showAll, setShowAll] = useState(false);
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const max = hazards.length ? Math.max(...hazards.map((h) => h.count)) : 0;
   const list = showAll ? hazards : hazards.slice(0, 8);
+
+  useEffect(() => setOpenKey(null), [period]);
 
   return (
     <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 md:p-5">
@@ -679,36 +782,62 @@ function HazardList({
         <h2 className="font-semibold text-neutral-900">Most common hazards</h2>
       </div>
       <p className="text-xs text-neutral-500 mt-0.5 mb-4">
-        Times answered &quot;Yes&quot; · {PERIOD_TEXT[period].title.toLowerCase()}
+        Times answered &quot;Yes&quot; · {PERIOD_TEXT[period].title.toLowerCase()} · tap one to see what people wrote
       </p>
 
       {hazards.length === 0 ? (
         <EmptyNote text="No hazards recorded in this period." />
       ) : (
         <>
-          <ol className="space-y-3">
-            {list.map((h, i) => (
-              <li key={h.key} className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-neutral-100 text-neutral-600 text-xs font-bold flex items-center justify-center shrink-0">
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between gap-3 text-sm">
-                    <span className="text-neutral-800 truncate">{h.label}</span>
-                    <span className="font-semibold text-neutral-900 tabular-nums">{h.count}</span>
-                  </div>
-                  <div className="h-2 bg-neutral-100 rounded-full mt-1.5 overflow-hidden">
-                    <div
-                      className="h-2 rounded-full"
-                      style={{
-                        width: `${max ? (h.count / max) * 100 : 0}%`,
-                        background: COLORS.hazards,
-                      }}
-                    />
-                  </div>
-                </div>
-              </li>
-            ))}
+          <ol className="space-y-1">
+            {list.map((h, i) => {
+              const open = openKey === h.key;
+              return (
+                <li key={h.key} className={`rounded-xl ${open ? "bg-rose-50/40 ring-1 ring-rose-100" : ""}`}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenKey(open ? null : h.key)}
+                    aria-expanded={open}
+                    className="w-full flex items-center gap-3 text-left rounded-xl px-2 py-2 hover:bg-neutral-50"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-neutral-100 text-neutral-600 text-xs font-bold flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between gap-3 text-sm">
+                        <span className={`text-neutral-800 ${open ? "" : "truncate"}`}>{h.label}</span>
+                        <span className="font-semibold text-neutral-900 tabular-nums">{h.count}</span>
+                      </div>
+                      <div className="h-2 bg-neutral-100 rounded-full mt-1.5 overflow-hidden">
+                        <div
+                          className="h-2 rounded-full"
+                          style={{
+                            width: `${max ? (h.count / max) * 100 : 0}%`,
+                            background: COLORS.hazards,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <svg
+                      viewBox="0 0 24 24"
+                      className={`w-4 h-4 shrink-0 text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+                  {open && (
+                    <div className="px-2 pb-3">
+                      <HazardAnswers hazardKey={h.key} period={period} role={role} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ol>
           {hazards.length > 8 && (
             <button
