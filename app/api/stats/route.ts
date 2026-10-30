@@ -67,6 +67,63 @@ export async function GET(req: NextRequest) {
   // One extra day of slack either side so the Sydney/UTC boundary can't clip data.
   const since = new Date(`${addDays(windowStart, -1)}T00:00:00Z`);
 
+  // ?hazard=<question key> → what people actually wrote for that hazard
+  // question in this period (newest first), instead of the full statistics.
+  const hazardKey = req.nextUrl.searchParams.get("hazard");
+  if (hazardKey) {
+    const cards = await prisma.hazardCard.findMany({
+      where: {
+        hazardResponse: {
+          questionKey: hazardKey,
+          present: true,
+          assessment: { dateTime: { gte: since }, status: { not: "draft" } },
+        },
+      },
+      select: {
+        id: true,
+        description: true,
+        controls: true,
+        initialRisk: true,
+        residualRisk: true,
+        hazardResponse: {
+          select: {
+            assessment: {
+              select: {
+                id: true,
+                dateTime: true,
+                otherTeamText: true,
+                team: { select: { label: true } },
+                completedByWorker: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    const answers = cards
+      .filter((c) => bucketSet.has(bucketOf(sydneyDate(c.hazardResponse.assessment.dateTime), period)))
+      .sort(
+        (a, b) =>
+          new Date(b.hazardResponse.assessment.dateTime).getTime() -
+          new Date(a.hazardResponse.assessment.dateTime).getTime()
+      )
+      .map((c) => {
+        const a = c.hazardResponse.assessment;
+        return {
+          id: c.id,
+          description: c.description,
+          controls: c.controls,
+          initialRisk: c.initialRisk,
+          residualRisk: c.residualRisk,
+          assessmentId: a.id,
+          dateTime: a.dateTime,
+          worker: a.completedByWorker?.name ?? null,
+          team: a.team?.label ?? (a.otherTeamText?.trim() || null),
+        };
+      });
+    return NextResponse.json({ total: answers.length, answers: answers.slice(0, 200) });
+  }
+
   const [assessments, signOns, reviews, hazardRows] = await Promise.all([
     // "Done" = anything past draft (submitted, in review, approved, etc.).
     prisma.assessment.findMany({
