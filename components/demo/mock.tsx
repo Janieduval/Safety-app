@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Little building blocks for the demo screens — simplified copies of the real
 // JSAFE pages, sized for the pretend phone.
@@ -396,6 +396,237 @@ export function Input({ children, muted = false }: { children: React.ReactNode; 
       }`}
     >
       {children}
+    </div>
+  );
+}
+
+// ---------- Site photos ----------
+// Real photos live in /public/demo: trench.jpg (or .png) and excavator.jpg
+// (or .png). Until they're uploaded, a simple drawing shows instead.
+export function SitePhoto({ kind, className = "" }: { kind: "trench" | "excavator"; className?: string }) {
+  const tries = [`/demo/${kind}.jpg`, `/demo/${kind}.png`];
+  const [n, setN] = useState(0);
+  if (n >= tries.length) {
+    return kind === "trench" ? (
+      <svg viewBox="0 0 120 120" className={`bg-sky-200 ${className}`} preserveAspectRatio="xMidYMid slice">
+        <rect y="48" width="120" height="72" fill="#b08455" />
+        <path d="M18 70 L102 64 L106 96 L14 104 Z" fill="#4a3725" />
+        <path d="M18 70 L102 64 L100 72 L22 78 Z" fill="#6b4f33" />
+      </svg>
+    ) : (
+      <svg viewBox="0 0 120 120" className={`bg-sky-200 ${className}`} preserveAspectRatio="xMidYMid slice">
+        <rect y="70" width="120" height="50" fill="#b08455" />
+        <rect x="56" y="56" width="34" height="18" rx="2" fill="#f59e0b" />
+        <rect x="52" y="74" width="44" height="8" rx="3" fill="#374151" />
+        <path d="M60 58 L36 34 L20 52 L26 56 L38 42 L56 62 Z" fill="#d97706" />
+      </svg>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={tries[n]}
+      alt={kind === "trench" ? "Open trench" : "Excavator working"}
+      onError={() => setN((v) => v + 1)}
+      className={`object-cover ${className}`}
+    />
+  );
+}
+
+// ---------- Timing helpers ----------
+
+// Shows `children` only after `at` ms (and `before` until then).
+export function Later({ at, children, before = null }: { at: number; children: React.ReactNode; before?: React.ReactNode }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setOn(true), at);
+    return () => window.clearTimeout(t);
+  }, [at]);
+  return <>{on ? children : before}</>;
+}
+
+// Scrolls its content like a finger swiping up the screen. Each stop scrolls
+// to an element marked data-scroll="name" (or "end" for the bottom) at `at` ms.
+export function AutoScroll({
+  children,
+  stops,
+  className = "",
+}: {
+  children: React.ReactNode;
+  stops: { at: number; to: string }[];
+  className?: string;
+}) {
+  const outer = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const [y, setY] = useState(0);
+  useEffect(() => {
+    const timers = stops.map((s) =>
+      window.setTimeout(() => {
+        const o = outer.current;
+        const i = inner.current;
+        if (!o || !i) return;
+        const max = Math.max(0, i.scrollHeight - o.clientHeight);
+        let target = max;
+        if (s.to !== "end") {
+          const el = i.querySelector(`[data-scroll="${s.to}"]`) as HTMLElement | null;
+          if (el) target = el.offsetTop - 6;
+        }
+        setY(Math.min(max, Math.max(0, target)));
+      }, s.at)
+    );
+    return () => timers.forEach((t) => window.clearTimeout(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div ref={outer} className={`h-full overflow-hidden ${className}`}>
+      <div
+        ref={inner}
+        className="relative"
+        style={{ transform: `translateY(${-y}px)`, transition: "transform 1.1s ease-in-out" }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Ticks a list of checkboxes one by one.
+export function AutoChecks({ labels, start = 400, every = 350, show }: { labels: string[]; start?: number; every?: number; show?: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const timers = labels.map((_, i) => window.setTimeout(() => setN(i + 1), start + i * every));
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [labels, start, every]);
+  return (
+    <div className="space-y-1">
+      {labels.slice(0, show ?? labels.length).map((c, i) => (
+        <Check key={c} label={c} on={i < n} />
+      ))}
+    </div>
+  );
+}
+
+// ---------- The PDF ----------
+// A scrolling copy of the real JSAFE PDF, section by section.
+export type PdfSignOn = { name: string; primary?: boolean; when: string };
+export type PdfReview = { version: number; decision: "approved" | "changes required"; comments?: string };
+
+export function PdfDoc({
+  file = "JSAFE_Alex-Nguyen_2026-10-29.pdf",
+  status = "AWAITING SUPERVISOR REVIEW",
+  version = 1,
+  signOns = [{ name: "Alex Nguyen", primary: true, when: "29/10/2026, 6:58 am" }],
+  reviews = [],
+  scrollFrom = 1200,
+}: {
+  file?: string;
+  status?: string;
+  version?: number;
+  signOns?: PdfSignOn[];
+  reviews?: PdfReview[];
+  scrollFrom?: number;
+}) {
+  const h2 = "mt-2 text-[9px] font-bold text-neutral-900 border-b border-neutral-300 pb-0.5";
+  const t = "text-[7.5px] text-neutral-800 leading-snug";
+  const row = (l: string, v: string) => (
+    <div className="flex justify-between gap-2">
+      <span className={t}>{l}</span>
+      <span className={`${t} font-semibold`}>{v}</span>
+    </div>
+  );
+  return (
+    <div className="h-full flex flex-col bg-neutral-300">
+      <div className="px-3 py-2 bg-neutral-800 text-white text-[9px] flex items-center justify-between gap-2">
+        <span className="truncate">{file}</span>
+        <span className="text-neutral-300 shrink-0">Share ↑</span>
+      </div>
+      <div className="flex-1 min-h-0 p-2.5">
+        <AutoScroll stops={[{ at: scrollFrom, to: "hazards" }, { at: scrollFrom + 2600, to: "end" }]}>
+          <div className="bg-white shadow rounded-sm px-3 py-3 space-y-0.5">
+            <p className="text-[11px] font-bold">Daily Task Safety Awareness</p>
+            <p className={t}>Status: {status}</p>
+            <p className={t}>Version: {version}</p>
+            <p className={t}>Project: Blind Creek Solar Farm — 851 Tarago Road, Lake George NSW 2581 — ACLE Services Pty Ltd</p>
+            <p className={t}>Date/time: 29/10/2026, 6:45 am</p>
+            <p className={t}>Team: Rails installation | Location: Block C, rows 41–48</p>
+            <p className={t}>Completed by: Alex Nguyen</p>
+            <p className={t}>Task: Install rails on rows 41–48</p>
+
+            <p className={h2}>Step 1 — Plan the task</p>
+            {row("Do I understand today's task?", "Yes")}
+            {row("Do I have the required skills, training and licences?", "Yes")}
+            {row("Do I have everything required to complete the task safely?", "Yes")}
+            {row("Are my tools and equipment in good condition?", "Yes")}
+
+            <p className={h2}>SWMS</p>
+            <p className={t}>Manual handling, General site works, Outdoor work, heat and lightning</p>
+            <p className={h2}>PPE</p>
+            <p className={t}>Hard hat, Gloves, Safety glasses, Hi-vis clothing, Long sleeves &amp; pants, Steel-toed boots, Sun protection</p>
+            <p className={h2}>Permits</p>
+            <p className={t}>Not required</p>
+            <p className={h2}>Access &amp; changes</p>
+            <p className={t}>Access route safe: Yes</p>
+
+            <p className={h2} data-scroll="hazards">Hazards identified</p>
+            <p className={`${t} font-bold`}>Could I slip, trip, fall or lose my footing?: Yes</p>
+            <div className="border border-neutral-300 rounded-sm p-1.5 space-y-0.5">
+              <p className={t}>Open trench beside the row 44 walkway</p>
+              <p className={t}>Initial risk: High → Residual risk: Low</p>
+              <p className={t}>Controls: Walk the marked path only, barricade and flag the trench edge</p>
+              <p className={t}>Responsible: Alex Nguyen</p>
+              <p className={t}>Control confirmed</p>
+              <p className="text-[6.5px] text-neutral-500 pt-0.5">Photo of the hazard</p>
+              <SitePhoto kind="trench" className="w-20 h-20 rounded-sm" />
+            </div>
+            <p className={`${t} font-bold pt-1`}>Could I be struck by moving plant, vehicles or falling objects?: Yes</p>
+            <div className="border border-neutral-300 rounded-sm p-1.5 space-y-0.5">
+              <p className={t}>Excavator digging next to row 44</p>
+              <p className={t}>Initial risk: High → Residual risk: Low</p>
+              <p className={t}>Controls: Stay outside the swing radius, eye contact with the operator before approaching</p>
+              <p className={t}>Responsible: Alex Nguyen</p>
+              <p className={t}>Control confirmed</p>
+              <p className="text-[6.5px] text-neutral-500 pt-0.5">Photo of the hazard</p>
+              <SitePhoto kind="excavator" className="w-20 h-20 rounded-sm" />
+            </div>
+
+            <p className={h2}>Declarations</p>
+            <p className={t}>I have identified the hazards associated with today&apos;s work: Confirmed</p>
+            <p className={t}>I have implemented the required controls: Confirmed</p>
+            <p className={t}>If conditions change, I will stop and reassess before continuing: Confirmed</p>
+            <p className={t}>I am satisfied that the task can be completed safely: Confirmed</p>
+
+            <p className={h2}>Team sign-on ({signOns.length})</p>
+            {signOns.map((s) => (
+              <div key={s.name} className="pb-1">
+                <p className={t}>
+                  {s.name} {s.primary ? "(Primary)" : ""} · Version {version} — {s.when}
+                </p>
+                <svg viewBox="0 0 200 60" className="w-16 h-5">
+                  <path
+                    d="M10 40 C 25 10, 35 55, 50 30 S 75 15, 85 38 S 110 50, 120 25 S 150 20, 160 40"
+                    fill="none"
+                    stroke="#111"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+            ))}
+
+            {reviews.length > 0 && (
+              <>
+                <p className={h2}>Version history — supervisor reviews</p>
+                {reviews.map((r) => (
+                  <p key={r.version} className={t}>
+                    Version {r.version} — Jordan Micallef — {r.decision}
+                    {r.comments ? ` — ${r.comments}` : ""}
+                  </p>
+                ))}
+              </>
+            )}
+          </div>
+        </AutoScroll>
+      </div>
     </div>
   );
 }
