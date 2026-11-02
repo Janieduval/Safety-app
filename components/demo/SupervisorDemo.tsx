@@ -1,8 +1,14 @@
 "use client";
 
 import DemoPlayer, { DemoChapter, DemoScene } from "./DemoPlayer";
+import { useEffect, useRef, useState } from "react";
 import {
   AssessmentCard,
+  AutoChecks,
+  AutoScroll,
+  Later,
+  PdfDoc,
+  SitePhoto,
   Card,
   Check,
   DashHeader,
@@ -104,190 +110,235 @@ function Dashboard({
   );
 }
 
-function ReviewTop({ v = 1 }: { v?: number }) {
+// The real Supervisor review page, scrolling from the summary down through
+// the hazards (with photos) and the team sign-ons, to "Your review".
+function ReviewPage({ v = 1, scroll = true }: { v?: number; scroll?: boolean }) {
+  const card = "rounded-xl bg-white border border-neutral-200 shadow-sm p-2.5";
+  const label = "text-[8px] font-semibold uppercase tracking-wide text-neutral-500";
   return (
     <div className="h-full flex flex-col">
       <PageHeader title="Supervisor review" sub={`Alex Nguyen · Version ${v}`} />
-      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
-        <div className="flex">
-          <span className="text-[9.5px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-emerald-200 text-emerald-800">
-            Open PDF
-          </span>
-        </div>
-        <Card>
-          <div className="flex flex-wrap gap-1">
-            <Pill tone="amber">Awaiting Supervisor Review</Pill>
-            <Pill>Version {v}</Pill>
-            <Pill tone="red">High/Extreme risk</Pill>
+      <div className="flex-1 min-h-0 px-3 pt-2.5">
+        <AutoScroll
+          stops={
+            scroll
+              ? [
+                  { at: 2000, to: "step1" },
+                  { at: 3600, to: "hazards" },
+                  { at: 5600, to: "excavator" },
+                  { at: 7400, to: "signons" },
+                ]
+              : []
+          }
+        >
+          <div className="space-y-2 pb-3">
+            <div className="flex">
+              <span className="text-[9.5px] font-semibold px-2.5 py-1 rounded-lg bg-white border border-emerald-200 text-emerald-800">
+                Open PDF
+              </span>
+            </div>
+            <div className={card}>
+              <div className="flex flex-wrap gap-1">
+                <Pill tone="amber">Awaiting Supervisor Review</Pill>
+                <Pill>Version {v}</Pill>
+              </div>
+              <p className="mt-1.5 text-[11.5px] font-semibold leading-snug">Install rails on rows 41–48</p>
+              <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[9px]">
+                <div>
+                  <p className={label}>Date</p>29 Oct 2026
+                </div>
+                <div>
+                  <p className={label}>Completed by</p>Alex Nguyen
+                </div>
+                <div>
+                  <p className={label}>Team</p>Rails installation
+                </div>
+                <div>
+                  <p className={label}>Location</p>Block C, rows 41–48
+                </div>
+              </div>
+            </div>
+            <div className={card} data-scroll="step1">
+              <p className="text-[11px] font-bold">Step 1 — plan the task</p>
+              {[
+                "Do I understand today's task?",
+                "Do I have the required skills, training and licences for the task?",
+                "Do I have everything required to complete the task safely?",
+                "Are my tools and equipment in good condition?",
+              ].map((q) => (
+                <div key={q} className="mt-1 flex items-start justify-between gap-2">
+                  <span className="text-[9.5px] text-neutral-800">{q}</span>
+                  <Pill tone="green">Yes</Pill>
+                </div>
+              ))}
+            </div>
+            <div className={card}>
+              <p className="text-[11px] font-bold">SWMS</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                <Pill>Manual handling</Pill>
+                <Pill>General site works</Pill>
+                <Pill>Outdoor work, heat and lightning</Pill>
+              </div>
+              <p className="mt-2 text-[11px] font-bold">PPE</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {["Hard hat", "Gloves", "Safety glasses", "Hi-vis clothing", "Steel-toed boots"].map((x) => (
+                  <Pill key={x}>{x}</Pill>
+                ))}
+              </div>
+            </div>
+            <div className={card} data-scroll="hazards">
+              <p className="text-[11px] font-bold">
+                Hazards identified <span className="text-neutral-400">2</span>
+              </p>
+              <p className="mt-1 text-[8.5px] text-neutral-500">Could I slip, trip, fall or lose my footing?</p>
+              <div className="mt-1 rounded-lg border border-neutral-200 p-2">
+                <p className="text-[10px] font-semibold">Open trench beside the row 44 walkway</p>
+                <div className="mt-1 flex items-center gap-1 text-[8.5px]">
+                  <span className="text-neutral-500">Initial</span>
+                  <Pill tone="orange">high</Pill>
+                  <span className="text-neutral-400">→</span>
+                  <span className="text-neutral-500">Residual</span>
+                  <Pill tone="green">low</Pill>
+                </div>
+                <div className="mt-1 rounded bg-neutral-50 px-1.5 py-1 text-[9px]">
+                  <span className={`${label} block`}>Controls</span>
+                  Walk the marked path only, barricade and flag the trench edge
+                </div>
+                <div className="mt-1 flex items-center justify-between text-[8.5px]">
+                  <span className="text-neutral-600">
+                    Responsible: <b className="font-medium">Alex Nguyen</b>
+                  </span>
+                  <Pill tone="green">Control in place</Pill>
+                </div>
+                <div className="mt-1.5 inline-block text-center">
+                  <SitePhoto kind="trench" className="w-20 h-20 rounded-lg border border-neutral-200" />
+                  <p className="text-[7.5px] text-neutral-500">hazard</p>
+                </div>
+              </div>
+              <p data-scroll="excavator" className="mt-2 text-[8.5px] text-neutral-500">Could I be struck by moving plant, vehicles or falling objects?</p>
+              <div className="mt-1 rounded-lg border border-neutral-200 p-2">
+                <p className="text-[10px] font-semibold">Excavator digging next to row 44</p>
+                <div className="mt-1 flex items-center gap-1 text-[8.5px]">
+                  <span className="text-neutral-500">Initial</span>
+                  <Pill tone="orange">high</Pill>
+                  <span className="text-neutral-400">→</span>
+                  <span className="text-neutral-500">Residual</span>
+                  <Pill tone="green">low</Pill>
+                </div>
+                <div className="mt-1 rounded bg-neutral-50 px-1.5 py-1 text-[9px]">
+                  <span className={`${label} block`}>Controls</span>
+                  Stay outside the swing radius, eye contact with the operator before approaching
+                </div>
+                <div className="mt-1.5 inline-block text-center">
+                  <SitePhoto kind="excavator" className="w-20 h-20 rounded-lg border border-neutral-200" />
+                  <p className="text-[7.5px] text-neutral-500">hazard</p>
+                </div>
+              </div>
+              <p className="mt-1.5 text-[9px] font-semibold text-emerald-700">Other hazard questions (10) ▾</p>
+            </div>
+            <div className={card}>
+              <p className="text-[11px] font-bold">Final check</p>
+              <p className="text-[9px] text-neutral-700">All 4 statements confirmed ✓</p>
+            </div>
+            <div className={card} data-scroll="signons">
+              <p className="text-[11px] font-bold">
+                Team sign-ons <span className="text-neutral-400">3</span>
+              </p>
+              {[
+                ["Alex Nguyen", "6:58 am", true],
+                ["Brianna Fields", "7:04 am", false],
+                ["Dev Patel", "7:06 am", false],
+              ].map(([n, t, p]) => (
+                <div key={n as string} className="mt-1 flex items-center justify-between text-[9.5px]">
+                  <span>
+                    {n as string}
+                    {p && <span className="ml-1 text-[7.5px] font-semibold px-1 rounded-full bg-emerald-100 text-emerald-800">Primary</span>}
+                  </span>
+                  <span className="text-neutral-500">{t as string}</span>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-xl border-2 border-amber-300 bg-white p-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <p className="text-[11.5px] font-bold">Your review</p>
+              </div>
+              <p className="text-[9px] text-neutral-500 mt-0.5">On a phone it&apos;s here, below the Take 5. On a computer it sits beside it.</p>
+            </div>
           </div>
-          <p className="mt-1.5 text-[11.5px] font-semibold leading-snug">Install rails on rows 41–48</p>
-          <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[9px]">
-            <div>
-              <p className="font-semibold text-neutral-500 uppercase text-[8px]">Date</p>29 Oct 2026
-            </div>
-            <div>
-              <p className="font-semibold text-neutral-500 uppercase text-[8px]">Completed by</p>Alex Nguyen
-            </div>
-            <div>
-              <p className="font-semibold text-neutral-500 uppercase text-[8px]">Team</p>Rails installation
-            </div>
-            <div>
-              <p className="font-semibold text-neutral-500 uppercase text-[8px]">Location</p>Block C, rows 41–48
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <p className="text-[11px] font-bold">Step 1 — plan the task</p>
-          {["Do I understand today's task?", "Do I have the required skills, training and licences for the task?"].map((q) => (
-            <div key={q} className="mt-1 flex items-start justify-between gap-2">
-              <span className="text-[9.5px] text-neutral-800">{q}</span>
-              <Pill tone="green">Yes</Pill>
-            </div>
-          ))}
-        </Card>
+        </AutoScroll>
       </div>
     </div>
   );
 }
 
-function ReviewHazards() {
-  return (
-    <div className="h-full flex flex-col">
-      <PageHeader title="Supervisor review" sub="Alex Nguyen · Version 1" />
-      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
-        <Card>
-          <p className="text-[11px] font-bold">
-            Hazards identified <span className="text-neutral-400">1</span>
-          </p>
-          <p className="mt-1 text-[8.5px] text-neutral-500">Could I be caught in, on or between anything?</p>
-          <div className="mt-1 rounded-lg border border-neutral-200 p-2">
-            <p className="text-[10px] font-semibold">Pinch points lifting rails onto posts</p>
-            <div className="mt-1 flex items-center gap-1 text-[8.5px]">
-              <span className="text-neutral-500">Initial</span>
-              <Pill tone="orange">High</Pill>
-              <span className="text-neutral-400">→</span>
-              <span className="text-neutral-500">Residual</span>
-              <Pill tone="green">Low</Pill>
-            </div>
-            <div className="mt-1 rounded bg-neutral-50 px-1.5 py-1 text-[9px]">
-              <span className="font-semibold text-neutral-500 text-[8px] uppercase block">Controls</span>
-              Gloves on, two-person lift, keep hands clear of the rail ends
-            </div>
-            <div className="mt-1.5 flex gap-1.5">
-              <div className="w-11 h-11 rounded-lg" style={{ background: "linear-gradient(160deg,#94a3b8,#475569 60%,#1e293b)" }} />
-              <div className="w-11 h-11 rounded-lg" style={{ background: "linear-gradient(160deg,#a7f3d0,#059669 60%,#064e3b)" }} />
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <p className="text-[11px] font-bold">
-            Team sign-ons <span className="text-neutral-400">3</span>
-          </p>
-          <p className="text-[9.5px] text-neutral-600">Alex Nguyen · Brianna Fields · Dev Patel</p>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-function YourReview({ stage, v = 1 }: { stage: "name" | "picked" | "checklist" | "decide" | "changes"; v?: number }) {
+// "Your review", filled in from top to bottom: name, the 9 checks, notes, decision.
+// mode "changes" types a comment and heads for Request changes; "approve" for Approve.
+function ReviewPanel({ mode, v = 1 }: { mode: "changes" | "approve"; v?: number }) {
+  const changes = mode === "changes";
   return (
     <div className="h-full flex flex-col">
       <PageHeader title="Supervisor review" sub={`Alex Nguyen · Version ${v}`} />
-      <div className="px-3 pt-2.5 overflow-hidden">
-        <Card className="space-y-2">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            <p className="text-[11.5px] font-bold">Your review</p>
-          </div>
-          {(stage === "name" || stage === "picked") && (
+      <div className="flex-1 min-h-0 px-3 pt-2.5">
+        <AutoScroll
+          stops={[
+            { at: 2600, to: "checklist" },
+            { at: changes ? 6200 : 5400, to: "notes" },
+            { at: changes ? 9000 : 6800, to: "end" },
+          ]}
+        >
+          <div className="rounded-xl bg-white border border-neutral-200 shadow-sm p-2.5 space-y-2 mb-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <p className="text-[11.5px] font-bold">Your review</p>
+            </div>
             <div>
               <p className="text-[10px] font-semibold text-neutral-800 mb-1">1. Reviewing supervisor</p>
-              <Input>{stage === "name" ? <Typing text="Jordan" /> : ME}</Input>
-              {stage === "name" && (
-                <div className="mt-1 rounded-lg border border-neutral-200 bg-white">
-                  <div data-demo="me" className="px-2 py-1.5 text-[10.5px] cursor-pointer">
-                    {ME}
-                  </div>
-                </div>
-              )}
-              {stage === "picked" && (
+              <Later at={1600} before={<Input><Typing text="Jordan" delay={300} speed={110} /></Input>}>
+                <Input>{ME}</Input>
                 <p className="mt-1 text-[9px] font-semibold text-emerald-700">✓ Reviewing as {ME}</p>
-              )}
+              </Later>
             </div>
-          )}
-          {stage === "picked" && (
-            <div>
-              <div className="flex justify-between">
-                <p className="text-[10px] font-semibold text-neutral-800 mb-1">2. Checklist</p>
-                <span className="text-[9px] text-neutral-500">0/9</span>
-              </div>
-              <div className="space-y-1">
-                {CHECKLIST.slice(0, 4).map((c) => (
-                  <Check key={c} label={c} on={false} />
-                ))}
-              </div>
+            <div data-scroll="checklist">
+              <p className="text-[10px] font-semibold text-neutral-800 mb-1">2. Checklist</p>
+              <AutoChecks labels={CHECKLIST} start={2900} every={changes ? 330 : 250} />
             </div>
-          )}
-          {stage === "checklist" && (
-            <div>
-              <div className="flex justify-between">
-                <p className="text-[10px] font-semibold text-neutral-800 mb-1">2. Checklist</p>
-                <span className="text-[9px] text-neutral-500">9/9</span>
-              </div>
-              <div className="space-y-1">
-                {CHECKLIST.slice(0, 6).map((c) => (
-                  <Check key={c} label={c} />
-                ))}
-              </div>
-            </div>
-          )}
-          {(stage === "decide" || stage === "changes") && (
-            <>
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-semibold text-neutral-800">3. Notes</p>
-                <div>
-                  <p className="text-[9px] font-semibold text-neutral-600">Comments (optional)</p>
-                  <Input muted={stage === "decide"}>
-                    {stage === "changes" ? (
-                      <Typing text="Add the spotter for the telehandler lifts." speed={45} />
-                    ) : (
-                      "Any notes for the worker, especially if requesting changes..."
-                    )}
-                  </Input>
-                </div>
-                <div>
-                  <p className="text-[9px] font-semibold text-neutral-600">Additional controls (optional)</p>
-                  <Input muted>&nbsp;</Input>
-                </div>
+            <div className="space-y-1.5" data-scroll="notes">
+              <p className="text-[10px] font-semibold text-neutral-800">3. Notes</p>
+              <div>
+                <p className="text-[9px] font-semibold text-neutral-600">Comments (optional)</p>
+                <Input muted={!changes}>
+                  {changes ? (
+                    <Typing text="Add a spotter for the telehandler lifts near the trench." delay={6900} speed={38} />
+                  ) : (
+                    "Any notes for the worker, especially if requesting changes..."
+                  )}
+                </Input>
               </div>
               <div>
-                <p className="text-[10px] font-semibold text-neutral-800 mb-1">4. Decision</p>
-                <div className="flex gap-1.5">
-                  <div
-                    data-demo="changes"
-                    className="flex-1 text-center text-[10px] font-semibold py-2 rounded-lg border-2 border-amber-500 text-amber-700 bg-white cursor-pointer"
-                  >
-                    Request changes
-                  </div>
-                  <div
-                    data-demo="approve"
-                    className={`flex-1 text-center text-[10px] font-semibold py-2 rounded-lg bg-emerald-700 text-white cursor-pointer ${
-                      stage === "changes" ? "opacity-40" : ""
-                    }`}
-                  >
-                    Approve
-                  </div>
-                </div>
-                {stage === "changes" && (
-                  <p className="mt-1 text-[8.5px] text-neutral-500 text-center">
-                    Tick every checklist item to approve. You can still request changes without it.
-                  </p>
-                )}
+                <p className="text-[9px] font-semibold text-neutral-600">Additional controls (optional)</p>
+                <Input muted>&nbsp;</Input>
               </div>
-            </>
-          )}
-        </Card>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-neutral-800 mb-1">4. Decision</p>
+              <div className="flex gap-1.5">
+                <div
+                  data-demo="changes"
+                  className="flex-1 text-center text-[10px] font-semibold py-2 rounded-lg border-2 border-amber-500 text-amber-700 bg-white cursor-pointer"
+                >
+                  Request changes
+                </div>
+                <div
+                  data-demo="approve"
+                  className="flex-1 text-center text-[10px] font-semibold py-2 rounded-lg bg-emerald-700 text-white cursor-pointer"
+                >
+                  Approve
+                </div>
+              </div>
+            </div>
+          </div>
+        </AutoScroll>
       </div>
     </div>
   );
@@ -454,7 +505,30 @@ function SearchDash() {
   );
 }
 
+// What a supervisor sees when they tap View on a Take 5 that's still a Draft.
+function DraftDash() {
+  return (
+    <div className="h-full flex flex-col">
+      <DashHeader role="Supervisor" greeting="Good morning, Jordan" />
+      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
+        <StatusPills active="Draft" />
+        <p className="text-[11px] font-bold text-neutral-900">Assessments</p>
+        <AssessmentCard
+          name="Alex Nguyen"
+          team="Rails installation"
+          when="29 Oct, 6:45 am"
+          status="Draft"
+          tone="grey"
+          viewId="view"
+        />
+        <AssessmentCard name="Sam Taylor" team="Surveying" when="29 Oct, 6:31 am" status="Draft" tone="grey" />
+      </div>
+    </div>
+  );
+}
+
 function RecordView() {
+  const card = "rounded-xl bg-white border border-neutral-200 shadow-sm p-2.5";
   return (
     <div className="h-full flex flex-col">
       <div className="px-3.5 pt-3.5 pb-3 text-white rounded-b-2xl" style={{ background: GRADIENT }}>
@@ -465,50 +539,160 @@ function RecordView() {
         <p className="mt-2 text-[15px] font-extrabold leading-tight">Alex Nguyen</p>
         <p className="text-[9.5px] text-emerald-50/90">Rails installation · 29 Oct 2026</p>
         <div className="mt-2 flex gap-1.5">
-          <span className="text-[9.5px] font-semibold px-2.5 py-1 rounded-lg bg-amber-500 text-white">Review</span>
           <span data-demo="pdf" className="text-[9.5px] font-semibold px-2.5 py-1 rounded-lg bg-white text-emerald-800 cursor-pointer">
             Open PDF
           </span>
         </div>
       </div>
-      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
-        <Card>
-          <div className="flex flex-wrap gap-1">
-            <Pill tone="amber">Awaiting Supervisor Review</Pill>
-            <Pill tone="red">High/Extreme risk</Pill>
+      <div className="flex-1 min-h-0 px-3 pt-2.5">
+        <AutoScroll stops={[{ at: 2200, to: "hazards" }, { at: 4200, to: "top" }]}>
+          <div className="space-y-2 pb-3" data-scroll="top">
+            <div className={card}>
+              <div className="flex flex-wrap gap-1">
+                <Pill>Draft</Pill>
+                <Pill>Version 1</Pill>
+              </div>
+              <p className="mt-1 text-[11px] font-semibold">Install rails on rows 41–48</p>
+              <p className="text-[9px] text-neutral-500">Still being filled in — you see everything written so far.</p>
+            </div>
+            <div className={card}>
+              <p className="text-[11px] font-bold">Step 1 — plan the task</p>
+              <p className="text-[9px] text-neutral-700">4 of 4 answered · all Yes</p>
+            </div>
+            <div className={card}>
+              <p className="text-[11px] font-bold">SWMS</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                <Pill>Manual handling</Pill>
+                <Pill>General site works</Pill>
+              </div>
+            </div>
+            <div className={card} data-scroll="hazards">
+              <p className="text-[11px] font-bold">
+                Hazards identified <span className="text-neutral-400">2</span>
+              </p>
+              <p className="text-[9.5px] font-semibold mt-1">Open trench beside the row 44 walkway</p>
+              <SitePhoto kind="trench" className="mt-1 w-14 h-14 rounded-lg" />
+              <p className="text-[9.5px] font-semibold mt-1.5">Excavator digging next to row 44</p>
+              <SitePhoto kind="excavator" className="mt-1 w-14 h-14 rounded-lg" />
+            </div>
+            <div className={card}>
+              <p className="text-[11px] font-bold">
+                Team sign-ons <span className="text-neutral-400">0</span>
+              </p>
+              <p className="text-[9px] text-neutral-500">Not signed yet.</p>
+            </div>
           </div>
-          <p className="mt-1 text-[11px] font-semibold">Install rails on rows 41–48</p>
-        </Card>
-        <Card>
-          <p className="text-[11px] font-bold">SWMS</p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            <Pill>Manual handling</Pill>
-            <Pill>General site works</Pill>
-          </div>
-        </Card>
-        <Card>
-          <p className="text-[11px] font-bold">Audit trail</p>
-          <p className="text-[9px] text-emerald-700 font-semibold">Show ▾</p>
-        </Card>
+        </AutoScroll>
       </div>
     </div>
   );
 }
 
-function PdfOpen() {
+// A pointer clicks through the status filters and the list changes each time.
+const FILTER_LISTS: Record<string, { name: string; team: string; when: string; status: string; tone: string; review?: boolean }[]> = {
+  All: [
+    { name: "Alex Nguyen", team: "Rails installation", when: "29 Oct, 6:58 am", status: "Awaiting Supervisor Review", tone: "amber", review: true },
+    { name: "Sam Taylor", team: "Surveying", when: "29 Oct, 6:31 am", status: "Draft", tone: "grey" },
+  ],
+  "To review": [
+    { name: "Alex Nguyen", team: "Rails installation", when: "29 Oct, 6:58 am", status: "Awaiting Supervisor Review", tone: "amber", review: true },
+    { name: "Chris Doukas", team: "Piling", when: "29 Oct, 6:40 am", status: "Awaiting Supervisor Review", tone: "amber", review: true },
+  ],
+  Draft: [
+    { name: "Sam Taylor", team: "Surveying", when: "29 Oct, 6:31 am", status: "Draft", tone: "grey" },
+    { name: "Elena Kovac", team: "Staging", when: "29 Oct, 6:20 am", status: "Draft", tone: "grey" },
+  ],
+  Changes: [{ name: "Dev Patel", team: "Post-head installation", when: "29 Oct, 6:12 am", status: "Changes Required", tone: "orange" }],
+  Approved: [
+    { name: "Brianna Fields", team: "Staging", when: "29 Oct, 6:05 am", status: "Approved", tone: "green" },
+    { name: "Chris Doukas", team: "Piling", when: "28 Oct, 6:35 am", status: "Approved", tone: "green" },
+  ],
+};
+const TOUR = ["To review", "Draft", "Changes", "Approved", "All"];
+
+function FilterTour() {
+  const pills = ["All", "To review", "Completed", "Draft", "Changes", "Approved", "Archived"];
+  const counts: Record<string, number> = { All: 48, "To review": 3, Completed: 0, Draft: 2, Changes: 1, Approved: 41, Archived: 1 };
+  const [step, setStep] = useState(-1);
+  const [active, setActive] = useState("All");
+  const [shift, setShift] = useState(0);
+  const [ptr, setPtr] = useState({ x: 180, y: 260, click: false });
+  const rowRef = useRef<HTMLDivElement>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timers = TOUR.map((_, i) => window.setTimeout(() => setStep(i), 900 + i * 1900));
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, []);
+
+  useEffect(() => {
+    if (step < 0) return;
+    const name = TOUR[step];
+    const row = rowRef.current;
+    const screen = screenRef.current;
+    const pill = row?.querySelector(`[data-pill="${name}"]`) as HTMLElement | null;
+    if (!row || !screen || !pill) return;
+    const visible = row.parentElement!.clientWidth;
+    const newShift = Math.max(0, pill.offsetLeft + pill.offsetWidth - visible + 8);
+    setShift(newShift);
+    const r = screen.getBoundingClientRect();
+    const rr = row.parentElement!.getBoundingClientRect();
+    const x = rr.left - r.left + pill.offsetLeft - newShift + pill.offsetWidth / 2;
+    const y = rr.top - r.top + pill.offsetHeight / 2;
+    setPtr({ x, y, click: false });
+    const t1 = window.setTimeout(() => setPtr((p) => ({ ...p, click: true })), 750);
+    const t2 = window.setTimeout(() => setActive(name), 850);
+    const t3 = window.setTimeout(() => setPtr((p) => ({ ...p, click: false })), 1150);
+    return () => [t1, t2, t3].forEach((t) => window.clearTimeout(t));
+  }, [step]);
+
   return (
-    <div className="h-full flex flex-col bg-neutral-200">
-      <div className="px-3 py-2 bg-neutral-800 text-white text-[9.5px]">JSAFE_Alex-Nguyen_2026-10-29.pdf</div>
-      <div className="m-3 flex-1 rounded bg-white shadow p-3 space-y-1.5">
-        <p className="text-[11px] font-bold">Daily Task Safety Awareness</p>
-        <p className="text-[8.5px] text-neutral-500">Blind Creek Solar Farm · Wed 29 Oct 2026</p>
-        {[70, 90, 60, 85, 75, 50, 80, 65, 72].map((w, n) => (
-          <div key={n} className="h-1.5 rounded bg-neutral-200" style={{ width: `${w}%` }} />
-        ))}
-        <div className="flex gap-1.5 pt-1">
-          <div className="w-10 h-10 rounded" style={{ background: "linear-gradient(160deg,#94a3b8,#475569)" }} />
-          <div className="w-10 h-10 rounded" style={{ background: "linear-gradient(160deg,#a7f3d0,#059669)" }} />
+    <div ref={screenRef} className="h-full flex flex-col relative">
+      <DashHeader role="Supervisor" greeting="Good morning, Jordan" />
+      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
+        <div className="overflow-hidden">
+          <div
+            ref={rowRef}
+            className="flex gap-1"
+            style={{ transform: `translateX(${-shift}px)`, transition: "transform .5s ease-in-out" }}
+          >
+            {pills.map((s) => (
+              <span
+                key={s}
+                data-pill={s}
+                className={`shrink-0 flex items-center gap-1 text-[9px] px-2 py-1 rounded-full border transition-colors ${
+                  s === active
+                    ? "bg-emerald-700 border-emerald-700 text-white font-semibold"
+                    : "bg-white border-neutral-300 text-neutral-700"
+                }`}
+              >
+                {s}
+                <span className={`text-[8px] font-bold px-1 rounded-full ${s === active ? "bg-white/25" : "bg-neutral-100 text-neutral-600"}`}>
+                  {counts[s]}
+                </span>
+              </span>
+            ))}
+          </div>
         </div>
+        <p className="text-[11px] font-bold text-neutral-900">Assessments</p>
+        <div key={active} className="space-y-2" style={{ animation: "demoIn .35s ease-out" }}>
+          {(FILTER_LISTS[active] ?? []).map((c) => (
+            <AssessmentCard key={c.name + c.when} name={c.name} team={c.team} when={c.when} status={c.status} tone={c.tone} review={c.review} />
+          ))}
+        </div>
+      </div>
+
+      {/* Mouse pointer */}
+      <div
+        className="pointer-events-none absolute z-20"
+        style={{ left: ptr.x - 3, top: ptr.y - 2, transition: "left .6s ease-in-out, top .6s ease-in-out" }}
+      >
+        {ptr.click && (
+          <span className="absolute -left-3 -top-3 w-7 h-7 rounded-full bg-emerald-400/50" style={{ animation: "demoTap .5s ease-out forwards" }} />
+        )}
+        <svg viewBox="0 0 24 24" className="w-5 h-5 drop-shadow-md" fill="#fff" stroke="#111" strokeWidth="1.4" strokeLinejoin="round">
+          <path d="M4 3l14 7-6 1.5L9.5 18z" />
+        </svg>
       </div>
     </div>
   );
@@ -871,9 +1055,9 @@ const DASH_SCENES: DemoScene[] = [
   },
   {
     title: "Status filters",
-    text: "Tap a status — All, To review, Completed, Draft, Changes, Approved, Archived — to see only those. The numbers show how many of each.",
-    wait: 3600,
-    render: () => <Dashboard />,
+    text: "Tap a status — To review, Draft, Changes, Approved… — to see only those. The numbers show how many of each. Tap All to see everything again.",
+    wait: 10600,
+    render: () => <FilterTour />,
   },
   {
     title: "Search",
@@ -882,24 +1066,24 @@ const DASH_SCENES: DemoScene[] = [
     render: () => <SearchDash />,
   },
   {
-    title: "View the full record",
-    text: "Tap View on any Take 5 to see everything that was filled in.",
+    title: "View assessment",
+    text: "Tap View on any Take 5 to open it — even a Draft that's still being filled in.",
     target: "view",
-    wait: 2200,
-    render: () => <Dashboard target="view" />,
+    wait: 2600,
+    render: () => <DraftDash />,
   },
   {
-    title: "The record",
-    text: "Every answer, hazard, photo, sign-on and review. Tap Open PDF for a copy you can print or send.",
+    title: "View assessment",
+    text: "You see everything written so far: answers, hazards, photos and sign-ons. Tap Open PDF for a copy you can print or send.",
     target: "pdf",
-    wait: 3000,
+    wait: 5200,
     render: () => <RecordView />,
   },
   {
     title: "The PDF",
-    text: "It opens straight in your browser.",
-    wait: 2400,
-    render: () => <PdfOpen />,
+    text: "The whole Take 5 on one PDF — it opens straight in your browser.",
+    wait: 6000,
+    render: () => <PdfDoc status="DRAFT" />,
   },
   {
     title: "Pull down to refresh",
@@ -919,48 +1103,16 @@ const REVIEW_SCENES: DemoScene[] = [
   },
   {
     title: "Supervisor review",
-    text: "The whole Take 5 is on this page — no need to open the PDF. Start with the summary: task, team, location and any red flags.",
-    wait: 3600,
-    render: () => <ReviewTop />,
+    text: "The whole Take 5 is on this page — no need to open the PDF. Scroll through the summary, every answer, each hazard with its photos and controls, and who signed on.",
+    wait: 9200,
+    render: () => <ReviewPage />,
   },
   {
-    title: "Hazards, controls & photos",
-    text: "Scroll through each hazard with its risk before and after, the controls, and the worker's photos. Tap a photo to see it bigger.",
-    wait: 3800,
-    render: () => <ReviewHazards />,
-  },
-  {
-    title: "Your review · 1. Reviewing supervisor",
-    text: "On a computer this panel sits beside the Take 5; on a phone it's below it. Start typing your name and tap it.",
-    target: "me",
-    wait: 2400,
-    render: () => <YourReview stage="name" />,
-  },
-  {
-    title: "2. Checklist",
-    text: "Nine checks. Tick each one once you're happy with it.",
-    wait: 2600,
-    render: () => <YourReview stage="picked" />,
-  },
-  {
-    title: "All ticked",
-    text: "You need all 9 ticked to approve. Then add any notes for the crew.",
-    wait: 2600,
-    render: () => <YourReview stage="checklist" />,
-  },
-  {
-    title: "3. Notes · 4. Decision",
-    text: "Comments and additional controls are optional. Then choose Approve or Request changes. First, let's see what happens when something needs fixing.",
+    title: "Your review",
+    text: "Type your name and tap it, tick the 9 checks, add notes, then decide. Here something needs fixing: write it in Comments — the worker sees exactly what you write — and tap Request changes.",
     target: "changes",
-    wait: 3600,
-    render: () => <YourReview stage="decide" />,
-  },
-  {
-    title: "Request changes",
-    text: "Write what needs changing in Comments — the worker sees exactly what you write. You don't need the full checklist to send it back.",
-    target: "changes",
-    wait: 4200,
-    render: () => <YourReview stage="changes" />,
+    wait: 11400,
+    render: () => <ReviewPanel mode="changes" />,
   },
   {
     title: "Sign",
@@ -998,8 +1150,8 @@ const REVIEW_SCENES: DemoScene[] = [
     title: "Review version 2",
     text: "Check the change, tick the checklist, then tap Approve.",
     target: "approve",
-    wait: 3000,
-    render: () => <YourReview stage="decide" v={2} />,
+    wait: 8000,
+    render: () => <ReviewPanel mode="approve" v={2} />,
   },
   {
     title: "Sign",
@@ -1090,8 +1242,8 @@ const TEAMS_SCENES: DemoScene[] = [
   {
     title: "Supervisor review",
     text: "It opens the Supervisor review for that Take 5, ready for you to check and sign.",
-    wait: 3000,
-    render: () => <ReviewTop />,
+    wait: 6000,
+    render: () => <ReviewPage />,
   },
   {
     title: "All teams | My teams",
