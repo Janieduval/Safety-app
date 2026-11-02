@@ -6,6 +6,7 @@ import {
   Avatar,
   Card,
   DashHeader,
+  GRADIENT,
   I,
   Input,
   NeedsReview,
@@ -232,6 +233,42 @@ function SupervisorTeams() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function Bell({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+
+// The supervisor's phone when one of their teams submits a JSAFE.
+function SupervisorNotified() {
+  return (
+    <div
+      className="h-full flex flex-col items-center px-3 pt-10 text-white"
+      style={{ background: "linear-gradient(170deg,#1e293b 0%,#0f172a 60%,#064e3b 100%)" }}
+    >
+      <p className="text-[10px] text-white/70">Jordan&apos;s phone · Wednesday 29 October</p>
+      <p className="text-[40px] font-semibold leading-none mt-1">7:02</p>
+      <div className="mt-8 w-full rounded-2xl bg-white/90 text-neutral-900 p-2.5 shadow-lg">
+        <div className="flex items-center gap-1.5">
+          <span
+            className="w-4 h-4 rounded-md flex items-center justify-center text-[7px] font-black text-white"
+            style={{ background: GRADIENT }}
+          >
+            J
+          </span>
+          <span className="text-[8.5px] font-semibold uppercase tracking-wide text-neutral-500 flex-1">JSAFE</span>
+          <span className="text-[8.5px] text-neutral-500">now</span>
+        </div>
+        <p className="mt-1 text-[10.5px] font-semibold">JSAFE to review · Rails installation</p>
+        <p className="text-[9.5px] text-neutral-700">Alex Nguyen submitted a JSAFE for review.</p>
       </div>
     </div>
   );
@@ -619,6 +656,42 @@ const PEOPLE_SCENES: DemoScene[] = [
   },
 ];
 
+const TEAMS_SCENES: DemoScene[] = [
+  {
+    title: "People",
+    text: "Supervisors' teams are set on the People page. Tap People.",
+    target: "people",
+    wait: 2400,
+    render: () => <Dashboard showCard={false} />,
+  },
+  {
+    title: "Supervisors",
+    text: "Switch to Supervisors.",
+    target: "sup-tab",
+    wait: 2200,
+    render: () => <People confirmed />,
+  },
+  {
+    title: "Teams",
+    text: "Under each supervisor you can see the teams they look after. Tap Teams to change them.",
+    target: "teams",
+    wait: 3000,
+    render: () => <People tab="supervisors" />,
+  },
+  {
+    title: "Save teams",
+    text: "Tap teams on or off, then Save teams. Supervisors can also choose their own teams from the My teams card on their dashboard.",
+    target: "save-teams",
+    wait: 4200,
+    render: () => <SupervisorTeams />,
+  },
+  {
+    title: "What the supervisor gets",
+    text: "Once they've turned on notifications, the supervisor gets a notification when one of their teams submits a JSAFE for review — tapping it opens the review.",
+    render: () => <SupervisorNotified />,
+  },
+];
+
 const SAVED_SCENES: DemoScene[] = [
   {
     title: "Saved answers",
@@ -699,6 +772,13 @@ const EXPORT_SCENES: DemoScene[] = [
 ];
 
 const CHAPTERS: DemoChapter[] = [
+  {
+    id: "teams",
+    title: "Supervisors' teams",
+    text: "Set which teams each supervisor looks after, so they get notified",
+    icon: <Bell className="w-5 h-5" />,
+    scenes: TEAMS_SCENES,
+  },
   {
     id: "dash",
     title: "Dashboard",
