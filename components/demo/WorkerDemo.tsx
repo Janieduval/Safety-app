@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DemoPlayer, { DemoChapter, DemoScene } from "./DemoPlayer";
-import { Avatar, Btn, Card, GRADIENT, Header, I, Pill, SavedToast, Signing, Typing } from "./mock";
+import { AutoScroll, Avatar, Btn, Card, GRADIENT, Header, I, Later, PdfDoc, Pill, SavedToast, Signing, SitePhoto, Typing } from "./mock";
 
 // The worker demo follows the real app screen by screen, with a made-up
 // worker (Alex Nguyen) so nobody's real name appears.
@@ -175,7 +175,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function YesNo({ value }: { value: "yes" | "no" }) {
+function YesNo({ value }: { value: "yes" | "no" | "none" }) {
   const on = "border-2 border-emerald-600 bg-emerald-50 text-emerald-800";
   const onNo = "border-2 border-neutral-700 bg-neutral-100 text-neutral-900";
   const off = "border border-neutral-300 text-neutral-500 bg-white";
@@ -342,50 +342,147 @@ function LookAround() {
   );
 }
 
-function HazardCardTop() {
+// The real risk buttons: Low / Medium / High / Extreme.
+function RiskSelect({ value }: { value?: "low" | "medium" | "high" | "extreme" }) {
+  const on: Record<string, string> = {
+    low: "bg-emerald-700 border-emerald-700 text-white",
+    medium: "bg-amber-500 border-amber-500 text-white",
+    high: "bg-orange-600 border-orange-600 text-white",
+    extreme: "bg-red-700 border-red-700 text-white",
+  };
   return (
-    <Step n={9} title="Identify hazards" nextId="none">
-      <H>Step 2.1 — Identify hazards</H>
-      <div className="rounded-lg border border-neutral-200 bg-white p-2 space-y-1.5">
-        <p className="text-[10px] font-medium leading-snug">Could I be caught in, on or between anything?</p>
-        <YesNo value="yes" />
-        <Field label="Hazard description">Pinch points lifting rails onto posts</Field>
-        <div
-          data-demo="photo"
-          className="flex items-center justify-center gap-1 text-[9.5px] font-semibold py-1.5 rounded-lg border border-dashed border-emerald-400 text-emerald-700 cursor-pointer"
+    <div className="grid grid-cols-4 gap-1">
+      {(["low", "medium", "high", "extreme"] as const).map((r) => (
+        <span
+          key={r}
+          className={`text-center text-[8.5px] font-semibold capitalize py-1 rounded-md border-2 ${
+            value === r ? on[r] : "bg-white border-neutral-300 text-neutral-700"
+          }`}
         >
-          <I name="camera" className="w-3 h-3" /> Photo of the hazard (optional)
-        </div>
-        <div className="flex items-center gap-1 text-[9.5px]">
-          <span className="font-semibold text-neutral-700">Initial risk rating</span>
-          <Pill tone="orange">High</Pill>
-        </div>
-      </div>
-    </Step>
+          {r}
+        </span>
+      ))}
+    </div>
   );
 }
 
-function HazardCardBottom() {
+function PhotoField({ label, kind, at }: { label: string; kind?: "trench" | "excavator"; at?: number }) {
+  if (!kind || at === undefined)
+    return (
+      <div>
+        <p className="text-[9.5px] font-semibold text-neutral-700 mb-0.5">{label}</p>
+        <div className="text-center text-[9.5px] font-medium py-1.5 rounded-lg border-2 border-dashed border-neutral-400 text-neutral-700 bg-white">
+          + Add photo
+        </div>
+      </div>
+    );
+  return (
+    <div>
+      <p className="text-[9.5px] font-semibold text-neutral-700 mb-0.5">{label}</p>
+      <Later
+        at={at}
+        before={
+          <div className="text-center text-[9.5px] font-medium py-1.5 rounded-lg border-2 border-dashed border-neutral-400 text-neutral-700 bg-white">
+            + Add photo
+          </div>
+        }
+      >
+        <div className="flex items-end gap-1.5">
+          <SitePhoto kind={kind} className="w-14 h-14 rounded-lg border border-neutral-300" />
+          <span className="text-[8.5px] text-emerald-700 font-semibold pb-0.5">✓ Photo added</span>
+        </div>
+      </Later>
+    </div>
+  );
+}
+
+// Step 9 in one go: answer Yes, describe the hazard, add a photo, rate it,
+// then scroll down to the controls, photo of the control and residual risk.
+function HazardStep() {
   return (
     <Step n={9} title="Identify hazards">
-      <div className="rounded-lg border border-neutral-200 bg-white p-2 space-y-1.5">
-        <div className="flex gap-1.5">
-          <div className="w-12 h-12 rounded-lg" style={{ background: "linear-gradient(160deg,#94a3b8,#475569 60%,#1e293b)" }} />
-          <p className="text-[9px] text-neutral-500 self-center">Hazard photo added ✓</p>
+      <AutoScroll
+        stops={[
+          { at: 3600, to: "controls" },
+          { at: 7000, to: "residual" },
+          { at: 8500, to: "struck" },
+          { at: 10200, to: "end" },
+        ]}
+      >
+        <div className="space-y-2 pb-2">
+          <H>Step 2.1 — Identify hazards</H>
+          <Note>&ldquo;Yes&rdquo; means the hazard is present or could occur. &ldquo;No&rdquo; means it isn&apos;t relevant today.</Note>
+          <div className="rounded-lg border border-neutral-200 bg-white p-2 space-y-1.5">
+            <p className="text-[10px] font-medium leading-snug">Could I slip, trip, fall or lose my footing?</p>
+            <p className="text-[8.5px] text-neutral-500">e.g. Uneven ground, Mud, Trenches, Holes, Steps, Trip hazards</p>
+            <Later at={500} before={<YesNo value="none" />}>
+              <YesNo value="yes" />
+            </Later>
+            <Later at={700}>
+              <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-2 space-y-1.5">
+                <Field label="Hazard description">
+                  <Typing text="Open trench beside the row 44 walkway" delay={500} speed={40} />
+                </Field>
+                <PhotoField label="Photo of the hazard (optional)" kind="trench" at={1700} />
+                <div>
+                  <p className="text-[9.5px] font-semibold text-neutral-700 mb-0.5">Initial risk rating</p>
+                  <Later at={2300} before={<RiskSelect />}>
+                    <RiskSelect value="high" />
+                  </Later>
+                </div>
+                <div data-scroll="controls">
+                  <Field label="Controls to be implemented">
+                    <Typing text="Walk the marked path only, barricade and flag the trench edge" delay={3300} speed={32} />
+                  </Field>
+                </div>
+                <p className="text-[9px] text-emerald-700 font-medium underline decoration-dotted">
+                  + Save this as a reusable answer for {TEAM}
+                </p>
+                <Field label="Person responsible for the control">{WHO}</Field>
+                <Later at={5500} before={<Tick label="Control has been implemented" on={false} />}>
+                  <Tick label="Control has been implemented" />
+                </Later>
+                <PhotoField label="Photo of the control in place (optional)" />
+                <div data-scroll="residual">
+                  <p className="text-[9.5px] font-semibold text-neutral-700 mb-0.5">Residual risk rating</p>
+                  <Later at={6500} before={<RiskSelect />}>
+                    <RiskSelect value="low" />
+                  </Later>
+                </div>
+                <Field label="Additional comments (optional)">
+                  <span className="text-neutral-400">&nbsp;</span>
+                </Field>
+              </div>
+              <div className="text-center text-[9.5px] font-medium py-1.5 rounded-lg border-2 border-dashed border-neutral-400 text-neutral-700">
+                + Add hazard detail card
+              </div>
+            </Later>
+          </div>
+          <div className="rounded-lg border border-neutral-200 bg-white p-2">
+            <p className="text-[10px] font-medium leading-snug">Could I strain or overexert myself?</p>
+            <YesNo value="no" />
+          </div>
+          <div data-scroll="struck" className="rounded-lg border border-neutral-200 bg-white p-2 space-y-1.5">
+            <p className="text-[10px] font-medium leading-snug">Could I be struck by moving plant, vehicles or falling objects?</p>
+            <YesNo value="yes" />
+            <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-2 space-y-1.5">
+              <Field label="Hazard description">Excavator digging next to row 44</Field>
+              <div className="flex items-end gap-1.5">
+                <SitePhoto kind="excavator" className="w-14 h-14 rounded-lg border border-neutral-300" />
+                <span className="text-[8.5px] text-emerald-700 font-semibold pb-0.5">✓ Photo added</span>
+              </div>
+              <Field label="Controls to be implemented">Stay outside the swing radius, eye contact with the operator before approaching</Field>
+              <div className="flex items-center gap-1 text-[9px]">
+                <span className="font-semibold text-neutral-700">Risk</span>
+                <Pill tone="orange">High</Pill>
+                <span className="text-neutral-400">→</span>
+                <Pill tone="green">Low</Pill>
+              </div>
+            </div>
+          </div>
+          <Note>…and the rest of the 11 hazard questions.</Note>
         </div>
-        <Field label="Controls to be implemented">Gloves on, two-person lift, keep hands clear of the rail ends</Field>
-        <Field label="Person responsible for the control">{WHO}</Field>
-        <Tick label="Control has been implemented" />
-        <div className="flex items-center gap-1 text-[9.5px]">
-          <span className="font-semibold text-neutral-700">Residual risk rating</span>
-          <Pill tone="green">Low</Pill>
-        </div>
-        <p className="text-[9.5px] text-emerald-700 font-semibold">+ Save as a reusable answer for {TEAM}</p>
-      </div>
-      <div className="rounded-lg border border-neutral-200 bg-white p-2">
-        <p className="text-[10px] font-medium leading-snug">Could I slip, trip, fall or lose my footing?</p>
-        <YesNo value="no" />
-      </div>
+      </AutoScroll>
     </Step>
   );
 }
@@ -437,6 +534,10 @@ function TeamAndSubmit() {
       </div>
       <H>Team sign-on</H>
       <Note>Anyone else on the crew can sign now, or later from their own phone. Skip it if it&apos;s just you.</Note>
+      <p className="text-[9.5px] font-medium text-neutral-700">1 signed on so far</p>
+      <p data-demo="pdf" className="text-[9.5px] text-emerald-700 font-medium underline decoration-dotted cursor-pointer">
+        Download a PDF record of this assessment so far
+      </p>
       <div className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-[10px] text-neutral-400">
         <I name="search" className="w-3 h-3" /> Search a team member&apos;s name...
       </div>
@@ -528,6 +629,30 @@ function CrewSign() {
         <Btn tone="white" className="flex-1">Clear</Btn>
         <Btn id="crew-signed" className="flex-1">Confirm signature</Btn>
       </div>
+    </Step>
+  );
+}
+
+function CrewSigned() {
+  return (
+    <Step n={12} title="Sign & submit" viewing nextId="none">
+      <div className="rounded-lg bg-emerald-50 border border-emerald-300 px-2 py-1.5 text-[10px] font-medium text-emerald-800">
+        ✓ Signed — you&apos;re on this Take 5
+      </div>
+      <H>Team sign-on</H>
+      <p className="text-[9.5px] font-medium text-neutral-700">2 signed on so far</p>
+      <p data-demo="pdf" className="text-[9.5px] text-emerald-700 font-medium underline decoration-dotted cursor-pointer">
+        Download a PDF record of this assessment so far
+      </p>
+      {[
+        ["Alex Nguyen", "6:58:12 am"],
+        ["Brianna Fields", "7:04:40 am"],
+      ].map(([n, t]) => (
+        <div key={n} className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
+          <span className="text-[10.5px] font-medium">{n}</span>
+          <span className="text-[9px] text-neutral-500">{t}</span>
+        </div>
+      ))}
     </Step>
   );
 }
@@ -810,17 +935,10 @@ const START_SCENES: DemoScene[] = [
   },
   {
     title: "Step 9 of 12 · Identify hazards",
-    text: "Answer each hazard question. For every Yes, describe the hazard, add a photo if you like, and rate the risk.",
-    target: "photo",
-    wait: 3000,
-    render: () => <HazardCardTop />,
-  },
-  {
-    title: "Controls & residual risk",
-    text: "Add the controls, who's responsible, tick once it's in place, and rate the risk again. Save answers your team uses often.",
+    text: "Go through each hazard question. For every Yes, describe the hazard, add a photo, rate the risk, then add the controls, who's responsible, a photo of the control in place, and rate the risk again.",
     target: "continue",
-    wait: 3400,
-    render: () => <HazardCardBottom />,
+    wait: 11400,
+    render: () => <HazardStep />,
   },
   {
     title: "Step 10 of 12 · New hazards",
@@ -842,10 +960,23 @@ const START_SCENES: DemoScene[] = [
     render: () => <YourSignature />,
   },
   {
-    title: "Team sign-on & submit",
-    text: "Crew members can sign on now on your phone, or later on theirs. Then submit for supervisor review.",
+    title: "Team sign-on",
+    text: "Crew members can sign on now on your phone, or later on theirs. Want a copy? Tap Download a PDF record of this assessment so far.",
+    target: "pdf",
+    wait: 3400,
+    render: () => <TeamAndSubmit />,
+  },
+  {
+    title: "The PDF",
+    text: "Everything you filled in — every answer, hazard, photo, control and signature — on one PDF you can save or send.",
+    wait: 5600,
+    render: () => <PdfDoc status="DRAFT" />,
+  },
+  {
+    title: "Submit",
+    text: "Back on the last step, tap Submit for supervisor review.",
     target: "submit",
-    wait: 3000,
+    wait: 2000,
     render: () => <TeamAndSubmit />,
   },
   {
@@ -886,8 +1017,22 @@ const SIGNON_SCENES: DemoScene[] = [
   },
   {
     title: "You're on the crew",
-    text: "Your signature is added to the Take 5 and shows on the PDF. If it's changed later, you'll be asked to sign the new version.",
-    render: () => <CrewSign />,
+    text: "Your name is now on the list. Tap Download a PDF record of this assessment so far to get a copy.",
+    target: "pdf",
+    wait: 3000,
+    render: () => <CrewSigned />,
+  },
+  {
+    title: "Your signature on the PDF",
+    text: "The whole Take 5 with your signature under Team sign-on. If it's changed later, you'll be asked to sign the new version.",
+    render: () => (
+      <PdfDoc
+        signOns={[
+          { name: "Alex Nguyen", primary: true, when: "29/10/2026, 6:58 am" },
+          { name: "Brianna Fields", when: "29/10/2026, 7:04 am" },
+        ]}
+      />
+    ),
   },
 ];
 
