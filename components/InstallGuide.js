@@ -431,7 +431,7 @@ function AddDialog() {
   );
 }
 
-function HomeScreen({ android }) {
+function HomeScreen({ android, noTap }) {
   const bg = android
     ? "linear-gradient(170deg,#264653,#2a9d8f)"
     : "linear-gradient(160deg,#e07a3f,#3fb0b0)";
@@ -458,7 +458,7 @@ function HomeScreen({ android }) {
                 }}
               >
                 <MiniIcon size={40} />
-                <Tap />
+                {!noTap && <Tap />}
               </div>
               <div style={{ fontSize: 9, color: "#fff", marginTop: 4, fontWeight: 700 }}>
                 JSAFE App
@@ -651,6 +651,11 @@ const ANDROID_MENU = [
 
 const IOS_SCENES = [
   {
+    intro: true,
+    caption: "JSAFE on your home screen, one tap away, just like a normal app.",
+    render: () => <HomeScreen noTap />,
+  },
+  {
     caption: "Tap the ••• button at the bottom right, next to the web address.",
     note: "Older iPhones: tap the Share button at the bottom instead, then skip to step 4.",
     render: () => (
@@ -714,6 +719,11 @@ const IOS_SCENES = [
 ];
 
 const ANDROID_SCENES = [
+  {
+    intro: true,
+    caption: "JSAFE on your home screen, one tap away, just like a normal app.",
+    render: () => <HomeScreen android noTap />,
+  },
   {
     caption: "Tap the ⋮ menu at the top right of Chrome.",
     render: () => (
@@ -856,6 +866,8 @@ export default function InstallGuide() {
   const scene = scenes[Math.min(step, scenes.length - 1)];
   const browserName = tab === "ios" ? "Safari" : "Chrome";
   const wrongBrowser = platform.inApp || platform.iosNotSafari;
+  const stepCount = scenes.filter((s) => !s.intro).length;
+  const stepNum = scenes.slice(0, step + 1).filter((s) => !s.intro).length;
 
   const ctrlBtn = {
     height: 40,
@@ -1068,7 +1080,7 @@ export default function InstallGuide() {
 
               <div style={{ textAlign: "center", marginTop: 14, minHeight: 64 }}>
                 <div style={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>
-                  Step {step + 1} of {scenes.length}
+                  {scene.intro ? "What you’ll get" : `Step ${stepNum} of ${stepCount}`}
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>{scene.caption}</div>
                 {scene.note && (
