@@ -4,9 +4,29 @@ import { cookies } from "next/headers";
 import { verifyAdminSessionToken } from "@/lib/adminSession";
 import JSZip from "jszip";
 
+const TZ = "Australia/Sydney";
+const READY_HOUR = 22; // 10pm local time
+
 function sydneyDateString(d: Date | string): string {
-  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney" });
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
   return fmt.format(new Date(d));
+}
+
+function sydneyHour(d: Date): number {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: TZ,
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "0";
+  return Number(hour);
+}
+
+function isDayReady(date: string, now: Date): boolean {
+  const today = sydneyDateString(now);
+  if (date < today) return true;
+  if (date === today) return sydneyHour(now) >= READY_HOUR;
+  return false;
 }
 
 function cleanText(value: string | null | undefined): string {
@@ -25,6 +45,15 @@ export async function GET(req: NextRequest, { params }: { params: { date: string
   }
 
   const targetDate = params.date;
+
+  // Today's records stay locked until 10pm so supervisor reviews
+  // done during the day are captured in the export.
+  if (!isDayReady(targetDate, new Date())) {
+    return NextResponse.json(
+      { error: "This day can be exported from 10pm, once supervisor reviews are done." },
+      { status: 403 }
+    );
+  }
 
   const target = new Date(targetDate + "T00:00:00Z");
   const since = new Date(target);
@@ -46,32 +75,39 @@ export async function GET(req: NextRequest, { params }: { params: { date: string
   const baseUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`;
   const zip = new JSZip();
 
-  // Reuses the existing, already-working PDF endpoint for each assessment
-  // rather than duplicating PDF-generation logic here — but generates all
-  // of them at once (not one after another), since waiting for each PDF
-  // to finish before starting the next made this painfully slow on any
-  // day with more than a couple of assessments.
+  // Reuses the existing PDF endpoint for each assessment, all at once,
+  // so PDFs reflect the latest data (including supervisor reviews)
+  // at the moment of download.
   const results = await Promise.all(
     matching.map(async (a) => {
       const workerName = cleanText(a.completedByWorker?.name) || "Unknown worker";
       const teamName = cleanText(a.team?.label ?? a.otherTeamText) || "No team";
-      const filename = `${toSafeFilenamePart(workerName)} - ${toSafeFilenamePart(
+      const baseName = `${toSafeFilenamePart(workerName)} - ${toSafeFilenamePart(
         teamName
-      )} - ${targetDate}.pdf`;
+      )} - ${targetDate}`;
 
       try {
-        const pdfRes = await fetch(`${baseUrl}/api/assessments/${a.id}/pdf`);
+        const pdfRes = await fetch(`${baseUrl}/api/assessments/${a.id}/pdf`, {
+          cache: "no-store",
+        });
         if (!pdfRes.ok) return null; // skip any single failure rather than failing the whole zip
         const buffer = await pdfRes.arrayBuffer();
-        return { filename, buffer };
+        return { baseName, buffer };
       } catch {
         return null;
       }
     })
   );
 
+  // Give duplicate names "(2)", "(3)"... so two Take 5s by the same
+  // worker and team on the same day don't overwrite each other.
+  const used: Record<string, number> = {};
   for (const r of results) {
-    if (r) zip.file(r.filename, r.buffer);
+    if (!r) continue;
+    used[r.baseName] = (used[r.baseName] ?? 0) + 1;
+    const n = used[r.baseName];
+    const filename = n === 1 ? `${r.baseName}.pdf` : `${r.baseName} (${n}).pdf`;
+    zip.file(filename, r.buffer);
   }
 
   const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
@@ -81,6 +117,7 @@ export async function GET(req: NextRequest, { params }: { params: { date: string
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename="${targetDate}.zip"`,
+      "Cache-Control": "no-store",
     },
   });
 }
