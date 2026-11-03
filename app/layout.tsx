@@ -3,6 +3,8 @@ import "./globals.css";
 import OfflineSyncManager from "@/components/OfflineSyncManager";
 import DebugToolsLoader from "@/components/DebugToolsLoader";
 import PullToRefresh from "@/components/PullToRefresh";
+import InstallGuide from "@/components/InstallGuide";
+
 export const metadata: Metadata = {
   title: "JSAFE App – Daily Task Safety Awareness",
   description: "Pre-task risk assessment for site workers",
@@ -18,12 +20,14 @@ export const metadata: Metadata = {
     apple: "/icon-192_2.png",
   },
 };
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   themeColor: "#047857",
 };
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
@@ -31,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <OfflineSyncManager />
         <DebugToolsLoader />
         <PullToRefresh />
+        <InstallGuide />
         {children}
       </body>
     </html>
