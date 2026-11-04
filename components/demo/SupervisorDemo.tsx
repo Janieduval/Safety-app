@@ -717,24 +717,27 @@ function Stats({ hazardsOpen = false }: { hazardsOpen?: boolean }) {
                 <span>1. Could I strain or overexert myself?</span>
                 <span className="font-bold">42</span>
               </div>
-              <p className="mt-1 text-[8px] text-neutral-500">58 answers · newest first</p>
+              <p className="mt-1 text-[8px] text-neutral-500">58 hazards written · newest first</p>
               <div className="mt-1 space-y-1">
                 {answers.map(([d, c, i, r, m]) => (
                   <div key={d} className="rounded-lg border border-neutral-200 bg-white p-1.5">
-                    <p className="text-[9.5px] font-semibold">{d}</p>
+                    <p className="text-[9.5px] font-semibold">
+                      <span className="text-[7.5px] font-semibold uppercase text-neutral-500">Hazard </span>
+                      {d}
+                    </p>
                     <p className="text-[8.5px] text-neutral-700">
                       <span className="text-[7.5px] font-semibold uppercase text-neutral-500">Controls </span>
                       {c}
                     </p>
-                    <div className="mt-0.5 flex items-center gap-1">
-                      <Pill tone={i === "high" ? "orange" : "amber"}>{i}</Pill>
-                      <span className="text-[8px] text-neutral-400">→</span>
-                      <Pill tone="green">{r}</Pill>
+                    <div className="mt-0.5 flex items-center justify-between gap-1">
+                      <span className="flex items-center gap-1">
+                        <Pill tone={i === "high" ? "orange" : "amber"}>{i}</Pill>
+                        <span className="text-[8px] text-neutral-400">→</span>
+                        <Pill tone="green">{r}</Pill>
+                      </span>
+                      <span className="text-[7.5px] font-semibold text-emerald-700 shrink-0">View JSAFE →</span>
                     </div>
-                    <div className="mt-0.5 flex justify-between gap-1 text-[7.5px] text-neutral-500">
-                      <span>{m}</span>
-                      <span className="font-semibold text-emerald-700 shrink-0">View JSAFE →</span>
-                    </div>
+                    <p className="mt-0.5 text-[7.5px] text-neutral-500">{m}</p>
                   </div>
                 ))}
               </div>
@@ -1191,7 +1194,7 @@ const STATS_SCENES: DemoScene[] = [
   },
   {
     title: "What people wrote",
-    text: "Every answer for that hazard: what they wrote, their controls, the risk before and after, and who wrote it. Tap View JSAFE to open the full Take 5.",
+    text: "Every hazard written under that question: the hazard, its controls, the risk before and after, and who wrote it. Tap View JSAFE to open the full Take 5.",
     render: () => <Stats hazardsOpen />,
   },
 ];
