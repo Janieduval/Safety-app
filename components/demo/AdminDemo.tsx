@@ -438,16 +438,23 @@ function SavedAnswers({ editing = false, removing = false }: { editing?: boolean
   );
 }
 
-function Export({ open = false }: { open?: boolean }) {
-  const day = (id: string | undefined, wd: string, d: string, label: string, n: number) => (
-    <div data-demo={id} className="flex items-center gap-2 px-2.5 py-2 cursor-pointer">
+function Export({ open = false, today = false }: { open?: boolean; today?: boolean }) {
+  const day = (id: string | undefined, wd: string, d: string, label: string, n: number, locked = false) => (
+    <div data-demo={id} className={`flex items-center gap-2 px-2.5 py-2 cursor-pointer ${today && id === "today" ? "bg-emerald-50/60" : ""}`}>
       <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-800 flex flex-col items-center justify-center leading-none">
         <span className="text-[7px] font-semibold uppercase">{wd}</span>
         <span className="text-[11px] font-bold">{d}</span>
       </span>
       <span className="flex-1">
         <span className="block text-[10.5px] font-semibold">{label}</span>
-        <span className="block text-[8.5px] text-neutral-500">{n} assessments</span>
+        <span className="block text-[8.5px] text-neutral-500">
+          {n} assessments
+          {locked && (
+            <span className="ml-1 inline-block text-[7.5px] font-semibold px-1.5 py-px rounded-full bg-amber-100 text-amber-800">
+              Ready after 10pm
+            </span>
+          )}
+        </span>
       </span>
       <span className="text-neutral-400 text-[10px]">▾</span>
     </div>
@@ -468,6 +475,23 @@ function Export({ open = false }: { open?: boolean }) {
         </div>
         <p className="text-[8.5px] font-semibold uppercase text-neutral-500">October 2026</p>
         <div className="bg-white rounded-xl border border-neutral-200 divide-y divide-neutral-100">
+          {day("today", "Thu", "30", "Thursday 30 Oct", 4, true)}
+          {today && (
+            <div className="px-2.5 pb-2 pt-1 bg-emerald-50/40">
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-2 py-1.5">
+                <p className="text-[9.5px] font-semibold text-amber-900">Ready after 10pm</p>
+                <p className="text-[8px] text-amber-800">
+                  Today&apos;s ZIP unlocks at 10pm Sydney time, once the day&apos;s supervisor reviews are done. You can still open each PDF below.
+                </p>
+              </div>
+              {["Alex Nguyen · Rails installation", "Sam Taylor · Surveying"].map((r) => (
+                <div key={r} className="mt-1.5 flex items-center justify-between rounded-lg bg-white border border-neutral-200 px-2 py-1">
+                  <span className="text-[9px]">{r}</span>
+                  <span className="text-[8.5px] px-1.5 py-0.5 rounded-full border border-emerald-600 text-emerald-700 font-semibold">Open</span>
+                </div>
+              ))}
+            </div>
+          )}
           {day("day", "Wed", "29", "Wednesday 29 Oct", 6)}
           {open && (
             <div className="px-2.5 pb-2 pt-1 bg-emerald-50/40 space-y-1.5">
@@ -483,7 +507,7 @@ function Export({ open = false }: { open?: boolean }) {
             </div>
           )}
           {day(undefined, "Tue", "28", "Tuesday 28 Oct", 9)}
-          {!open && day(undefined, "Mon", "27", "Monday 27 Oct", 7)}
+          {!open && !today && day(undefined, "Mon", "27", "Monday 27 Oct", 7)}
         </div>
       </div>
     </div>
@@ -744,8 +768,21 @@ const EXPORT_SCENES: DemoScene[] = [
     render: () => <Dashboard showCard={false} />,
   },
   {
+    title: "Today: ready after 10pm",
+    text: "Today's ZIP is ready after 10pm Sydney time, so every supervisor review done during the day is in it. Until then it shows “Ready after 10pm”.",
+    target: "today",
+    wait: 3400,
+    render: () => <Export />,
+  },
+  {
+    title: "Ready after 10pm",
+    text: "Open today and you can still open each Take 5's PDF on its own — only the full-day ZIP waits.",
+    wait: 3000,
+    render: () => <Export today />,
+  },
+  {
     title: "Pick a day",
-    text: "Days are grouped by month. Tap one to open it.",
+    text: "Days are grouped by month. Tap an earlier day to open it.",
     target: "day",
     wait: 2800,
     render: () => <Export />,
