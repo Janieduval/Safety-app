@@ -719,39 +719,43 @@ function HazardAnswers({
   return (
     <div className="mt-2">
       <p className="text-xs text-neutral-500 mb-2">
-        {data.total} answer{data.total === 1 ? "" : "s"} · newest first
+        {data.total} hazard{data.total === 1 ? "" : "s"} written · newest first
         {data.total > data.answers.length ? ` · showing the latest ${data.answers.length}` : ""}
       </p>
       <ul className="max-h-96 overflow-y-auto space-y-2 pr-1">
         {data.answers.map((a) => (
           <li key={a.id} className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3">
-            <p className="text-sm font-semibold text-neutral-900 break-words">{a.description || "—"}</p>
+            <p className="text-sm font-semibold text-neutral-900 break-words">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Hazard </span>
+              {a.description || "—"}
+            </p>
             {a.controls && (
               <p className="mt-1 text-sm text-neutral-700 break-words">
                 <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Controls </span>
                 {a.controls}
               </p>
             )}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-              <RiskPill risk={a.initialRisk} />
-              <span className="text-neutral-400">→</span>
-              <RiskPill risk={a.residualRisk} />
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
-              <span>
-                {[a.worker, a.team].filter(Boolean).join(" · ")}
-                {a.worker || a.team ? " · " : ""}
-                {new Date(a.dateTime).toLocaleDateString("en-AU", {
-                  timeZone: "Australia/Sydney",
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                })}
+            {/* Risk ratings on the left, View JSAFE always on the right of the same row. */}
+            <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+              <span className="flex items-center gap-1.5">
+                <RiskPill risk={a.initialRisk} />
+                <span className="text-neutral-400">→</span>
+                <RiskPill risk={a.residualRisk} />
               </span>
-              <Link href={`${recordBase}/${a.assessmentId}`} className="font-semibold text-emerald-700 hover:text-emerald-800">
+              <Link href={`${recordBase}/${a.assessmentId}`} className="shrink-0 font-semibold text-emerald-700 hover:text-emerald-800">
                 View JSAFE →
               </Link>
             </div>
+            <p className="mt-1.5 text-xs text-neutral-500">
+              {[a.worker, a.team].filter(Boolean).join(" · ")}
+              {a.worker || a.team ? " · " : ""}
+              {new Date(a.dateTime).toLocaleDateString("en-AU", {
+                timeZone: "Australia/Sydney",
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              })}
+            </p>
           </li>
         ))}
       </ul>
