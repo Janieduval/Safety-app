@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import StaffShell, { StaffIcon } from "@/components/StaffShell";
 
-type DateFolder = { date: string; count: number };
+// ready = false for today until 10pm Sydney time (the server decides this).
+type DateFolder = { date: string; count: number; ready?: boolean };
 type ExportAssessment = {
   id: string;
   project: string;
@@ -30,6 +31,7 @@ function monthLabel(date: string) {
 
 export default function ExportPage() {
   const [dates, setDates] = useState<DateFolder[] | null>(null);
+  const [readyHour, setReadyHour] = useState(22);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [assessments, setAssessments] = useState<Record<string, ExportAssessment[]>>({});
   const [loadingDate, setLoadingDate] = useState<string | null>(null);
@@ -38,7 +40,10 @@ export default function ExportPage() {
   useEffect(() => {
     fetch("/api/admin/export/dates")
       .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => setDates(data.dates))
+      .then((data) => {
+        setDates(data.dates);
+        if (typeof data.readyHour === "number") setReadyHour(data.readyHour);
+      })
       .catch(() => setError("Could not load export list."));
   }, []);
 
@@ -69,6 +74,8 @@ export default function ExportPage() {
     else months.push({ label, days: [d] });
   }
   const total = (dates ?? []).reduce((n, d) => n + d.count, 0);
+  // 22 -> "10pm"
+  const readyLabel = `${readyHour % 12 === 0 ? 12 : readyHour % 12}${readyHour < 12 ? "am" : "pm"}`;
 
   return (
     <StaffShell
@@ -80,7 +87,8 @@ export default function ExportPage() {
     >
       <p className="text-sm text-neutral-600 mb-5 leading-relaxed">
         Pick a day to see its assessments, then download them all as one ZIP file — ready to
-        upload wherever you keep your records.
+        upload wherever you keep your records. Today&apos;s ZIP is ready after {readyLabel} (Sydney
+        time), so the day&apos;s supervisor reviews are included.
       </p>
 
       {dates !== null && dates.length > 0 && (
@@ -128,6 +136,7 @@ export default function ExportPage() {
             <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden">
               {m.days.map((d) => {
                 const open = expanded === d.date;
+                const locked = d.ready === false;
                 const day = new Date(d.date + "T00:00:00");
                 return (
                   <div key={d.date}>
@@ -154,6 +163,11 @@ export default function ExportPage() {
                         </span>
                         <span className="block text-xs text-neutral-500">
                           {d.count} assessment{d.count === 1 ? "" : "s"}
+                          {locked && (
+                            <span className="ml-1.5 inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                              Ready after {readyLabel}
+                            </span>
+                          )}
                         </span>
                       </span>
                       <svg
@@ -171,10 +185,22 @@ export default function ExportPage() {
 
                     {open && (
                       <div className="px-4 pb-4 pt-1 bg-emerald-50/30">
-                        <a href={`/api/admin/export/${d.date}/zip`} className="inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800">
-                          <StaffIcon name="export" className="w-4 h-4" />
-                          Download all as ZIP
-                        </a>
+                        {locked ? (
+                          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+                            <p className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900">
+                              <StaffIcon name="export" className="w-4 h-4" />
+                              Ready after {readyLabel}
+                            </p>
+                            <p className="mt-0.5 text-xs text-amber-800">
+                              Today&apos;s ZIP unlocks at {readyLabel} Sydney time, once the day&apos;s supervisor reviews are done. You can still open each PDF below.
+                            </p>
+                          </div>
+                        ) : (
+                          <a href={`/api/admin/export/${d.date}/zip`} className="inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl bg-emerald-700 text-white font-semibold hover:bg-emerald-800">
+                            <StaffIcon name="export" className="w-4 h-4" />
+                            Download all as ZIP
+                          </a>
+                        )}
 
                         {loadingDate === d.date && (
                           <p className="mt-3 text-sm text-neutral-500">Loading...</p>
