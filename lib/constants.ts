@@ -134,34 +134,38 @@ export const SIGNON_CONFIRMATION_TEXT =
 
 export const RISK_RATINGS = ["low", "medium", "high", "extreme"] as const;
 
+// Based on the company risk matrix: how bad the injury could be (consequence)
+// and how likely it is to happen (likelihood). Used for both the initial and
+// the residual risk rating.
 export const RISK_RATING_DEFINITIONS: {
   key: (typeof RISK_RATINGS)[number];
   label: string;
-  description: string;
+  consequence: string;
+  likelihood: string;
 }[] = [
   {
     key: "low",
     label: "Low",
-    description:
-      "Unlikely to happen, and if it did, would only cause minor injury (e.g. first aid only).",
+    consequence: "Minor first aid or no treatment needed.",
+    likelihood: "Rare or unlikely — not expected to happen.",
   },
   {
     key: "medium",
     label: "Medium",
-    description:
-      "Could plausibly happen and could cause an injury needing medical treatment beyond first aid.",
+    consequence: "Medical treatment, or a lost time injury.",
+    likelihood: "Possible — could happen about once or several times a year.",
   },
   {
     key: "high",
     label: "High",
-    description:
-      "Likely to happen without further controls, and could cause a serious or long-term injury.",
+    consequence: "Lost time injury or major harm.",
+    likelihood: "Likely — could happen several times a year or more.",
   },
   {
     key: "extreme",
     label: "Extreme",
-    description:
-      "Could realistically result in death or permanent disability. Always requires supervisor intervention.",
+    consequence: "Fatality or permanent disability.",
+    likelihood: "Likely to almost certain.",
   },
 ];
 
