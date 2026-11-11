@@ -17,14 +17,24 @@ export async function seedDatabase(
   }
   log.push(`Seeded ${SEED_TEAMS.length} teams`);
 
+  // The project's details come from environment variables, so a separate copy
+  // of JSAFE (its own Vercel project and database) can set up its own site.
+  // Without them it falls back to Blind Creek, as before.
+  const projectName = process.env.PROJECT_NAME?.trim() || "Blind Creek Solar Farm";
+  const projectSlug =
+    process.env.PROJECT_SLUG?.trim() ||
+    projectName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
   const project = await prisma.project.upsert({
-    where: { qrSlug: "blind-creek-solar-farm" },
+    where: { qrSlug: projectSlug },
     update: {},
     create: {
-      name: "Blind Creek Solar Farm",
-      address: "851 Tarago Road, Lake George NSW 2581",
-      contractor: "ACLE Services Pty Ltd",
-      qrSlug: "blind-creek-solar-farm",
+      name: projectName,
+      address: process.env.PROJECT_ADDRESS?.trim() || "851 Tarago Road, Lake George NSW 2581",
+      contractor: process.env.PROJECT_CONTRACTOR?.trim() || "ACLE Services Pty Ltd",
+      qrSlug: projectSlug,
     },
   });
   log.push(`Project ready: ${project.name} (/${project.qrSlug})`);
@@ -49,7 +59,11 @@ export async function seedDatabase(
   }
   log.push(`Seeded ${SEED_PERMITS.length} permit types`);
 
-  const sampleWorkers = [
+  // Sample people are only for trying the app out. A new site can skip them
+  // by setting SAMPLE_PEOPLE to "no".
+  const addSamples = process.env.SAMPLE_PEOPLE?.trim().toLowerCase() !== "no";
+
+  const sampleWorkers = !addSamples ? [] : [
     "Alex Nguyen",
     "Brianna Fields",
     "Chris Doukas",
@@ -63,7 +77,7 @@ export async function seedDatabase(
   }
   log.push(`Seeded ${sampleWorkers.length} sample workers — replace these in the admin dashboard`);
 
-  const sampleSupervisors = ["Jordan Micallef", "Priya Ramesh"];
+  const sampleSupervisors = !addSamples ? [] : ["Jordan Micallef", "Priya Ramesh"];
   for (const name of sampleSupervisors) {
     const existing = await prisma.supervisor.findFirst({ where: { projectId: project.id, name } });
     if (!existing) await prisma.supervisor.create({ data: { projectId: project.id, name } });
