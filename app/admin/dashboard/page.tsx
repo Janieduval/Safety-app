@@ -224,13 +224,19 @@ export default async function AdminDashboard({
     month: "long",
   }).format(new Date());
 
+  // The project this site is for, e.g. "Yanco BESS" — shown at the top.
+  const projectName = projects.length === 1 ? projects[0].name : null;
+
   const shortcuts = [
     { href: "/admin/people", label: "People", icon: "people" },
     { href: "/admin/hazard-templates", label: "Saved answers", icon: "saved" },
     { href: "/admin/lists", label: "Site lists", icon: "list" },
     { href: "/admin/export", label: "Export", icon: "export" },
     { href: "/stats", label: "Statistics", icon: "stats" },
-    { href: "/supervisor/login", label: "Supervisor", icon: "supervisor" },
+  ];
+  // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
+  const links = [
+    { href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" },
     ...(projects[0] ? [{ href: `/${projects[0].qrSlug}`, label: "Worker page", icon: "phone" }] : []),
   ];
 
@@ -256,6 +262,14 @@ export default async function AdminDashboard({
         <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
           Take 5. Work safe. Go home safe.
         </p>
+        {projectName && (
+          <div className="mt-3 px-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              {projectName}
+            </span>
+          </div>
+        )}
         <div className="mt-4 px-2">
           <AdminDemo autoShow={false} />
         </div>
@@ -269,6 +283,20 @@ export default async function AdminDashboard({
             Dashboard
           </Link>
           {shortcuts.map((s) => (
+            <Link
+              key={s.href}
+              href={s.href}
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
+            >
+              <Icon name={s.icon} className="w-[18px] h-[18px]" />
+              {s.label}
+            </Link>
+          ))}
+        </nav>
+
+        <nav className="mt-6 pt-4 border-t border-white/15 space-y-1">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-50/60">Links</p>
+          {links.map((s) => (
             <Link
               key={s.href}
               href={s.href}
@@ -315,6 +343,14 @@ export default async function AdminDashboard({
               <p className="text-lg font-bold leading-tight">{greetingSydney()}</p>
               <p className="text-sm text-emerald-50/90">{todayLabel}</p>
             </div>
+            {projectName && (
+              <div className="mt-3">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+                  {projectName}
+                </span>
+              </div>
+            )}
             {/* "New here? Watch the demo" — only on the dashboard */}
             <div className="mt-3">
               <AdminDemo />
@@ -325,7 +361,10 @@ export default async function AdminDashboard({
           <div className="hidden md:flex items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl font-bold text-neutral-900">{greetingSydney()}</h1>
-              <p className="text-sm text-neutral-500">{todayLabel} · Admin dashboard</p>
+              <p className="text-sm text-neutral-500">
+                {todayLabel} · Admin dashboard
+                {projectName && <span className="font-semibold text-emerald-800"> · {projectName}</span>}
+              </p>
             </div>
             {toReview > 0 && searchParams.status !== "awaiting_supervisor_review" && (
               <Link
@@ -359,7 +398,7 @@ export default async function AdminDashboard({
           )}
 
           {/* ---------- Phone: shortcut tiles ---------- */}
-          <nav className="md:hidden grid grid-cols-4 gap-2 mb-6">
+          <nav className="md:hidden grid grid-cols-3 gap-2.5 mb-4">
             {shortcuts.map((s) => (
               <Link
                 key={s.href}
@@ -375,6 +414,25 @@ export default async function AdminDashboard({
               </Link>
             ))}
           </nav>
+
+          {/* ---------- Phone: links to the other JSAFE pages ---------- */}
+          <div className="md:hidden mb-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-2">Links</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {links.map((s) => (
+                <Link
+                  key={s.href}
+                  href={s.href}
+                  className="flex items-center gap-2.5 rounded-2xl bg-white border border-neutral-200 px-3 py-2.5 shadow-sm active:bg-neutral-50"
+                >
+                  <span className="w-8 h-8 shrink-0 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                    <Icon name={s.icon} className="w-4 h-4" />
+                  </span>
+                  <span className="text-sm font-medium text-neutral-800 leading-tight">{s.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
 
           {/* ---------- Status filters: pills on a phone ---------- */}
           <div className="md:hidden flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 mb-3">
