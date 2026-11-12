@@ -104,15 +104,20 @@ export default function StaffShell({
   children: React.ReactNode;
 }) {
   const [workerPageSlug, setWorkerPageSlug] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string | null>(null);
   const isAdmin = role === "admin";
   const home = isAdmin ? "/admin/dashboard" : "/supervisor";
 
   useEffect(() => {
     if (!isAdmin) return;
-    // Only for the "Worker page" link in the admin menu.
+    // For the "Worker page" link and the project name shown at the top.
     fetch("/api/admin/projects")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setWorkerPageSlug(data?.projects?.[0]?.qrSlug ?? null))
+      .then((data) => {
+        const projects = data?.projects ?? [];
+        setWorkerPageSlug(projects[0]?.qrSlug ?? null);
+        setProjectName(projects.length === 1 ? projects[0].name : null);
+      })
       .catch(() => {});
   }, [isAdmin]);
 
@@ -124,15 +129,20 @@ export default function StaffShell({
         { href: "/admin/lists", label: "Site lists", icon: "list" },
         { href: "/admin/export", label: "Export", icon: "export" },
         { href: "/stats", label: "Statistics", icon: "stats" },
-        { href: "/supervisor/login", label: "Supervisor", icon: "supervisor" },
-        ...(workerPageSlug
-          ? [{ href: `/${workerPageSlug}`, label: "Worker page", icon: "phone" }]
-          : []),
       ]
     : [
         { href: "/supervisor", label: "Dashboard", icon: "home" },
         { href: "/stats", label: "Statistics", icon: "stats" },
       ];
+  // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
+  const linkItems = isAdmin
+    ? [
+        { href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" },
+        ...(workerPageSlug
+          ? [{ href: `/${workerPageSlug}`, label: "Worker page", icon: "phone" }]
+          : []),
+      ]
+    : [];
   const activeHref = active ?? home;
 
   return (
@@ -157,6 +167,14 @@ export default function StaffShell({
         <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
           Take 5. Work safe. Go home safe.
         </p>
+        {projectName && (
+          <div className="mt-3 px-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              {projectName}
+            </span>
+          </div>
+        )}
 
         <nav className="mt-8 space-y-1">
           {navItems.map((item) => (
@@ -174,6 +192,22 @@ export default function StaffShell({
             </Link>
           ))}
         </nav>
+
+        {linkItems.length > 0 && (
+          <nav className="mt-6 pt-4 border-t border-white/15 space-y-1">
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-50/60">Links</p>
+            {linkItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
+              >
+                <StaffIcon name={item.icon} className="w-[18px] h-[18px]" />
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         <div className="mt-auto pt-6">
           {isAdmin ? (
@@ -233,6 +267,14 @@ export default function StaffShell({
                 {subtitle && <p className="text-sm text-emerald-50/90 mt-0.5">{subtitle}</p>}
               </div>
             </div>
+            {projectName && (
+              <div className="mt-3">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+                  {projectName}
+                </span>
+              </div>
+            )}
             {actions && <div className="mt-4 flex flex-wrap gap-2">{actions}</div>}
           </header>
 
