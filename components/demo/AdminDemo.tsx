@@ -27,7 +27,10 @@ const SHORTCUTS: [string, string, string][] = [
   ["lists", "list", "Site lists"],
   ["export", "export", "Export"],
   ["stats", "stats", "Statistics"],
-  ["supervisor", "check", "Supervisor"],
+];
+// Shown under their own "Links" heading, like the real dashboard.
+const LINKS: [string, string, string][] = [
+  ["supervisor", "check", "Supervisor login"],
   ["worker", "phone", "Worker page"],
 ];
 
@@ -37,7 +40,7 @@ function Dashboard({ showCard = true }: { showCard?: boolean }) {
       <DashHeader role="Admin dashboard" greeting="Good morning" />
       <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
         <NeedsReview n={3} id="needs" />
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5">
           {SHORTCUTS.map(([id, icon, label]) => (
             <div
               key={id}
@@ -50,6 +53,23 @@ function Dashboard({ showCard = true }: { showCard?: boolean }) {
               <span className="text-[8.5px] font-medium text-neutral-700">{label}</span>
             </div>
           ))}
+        </div>
+        <div>
+          <p className="text-[7.5px] font-semibold uppercase tracking-wide text-neutral-500 mb-1">Links</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {LINKS.map(([id, icon, label]) => (
+              <div
+                key={id}
+                data-demo={id}
+                className="flex items-center gap-1.5 rounded-xl bg-white border border-neutral-200 px-2 py-1.5 shadow-sm cursor-pointer"
+              >
+                <span className="w-5 h-5 shrink-0 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  {icon === "phone" ? <Phone className="w-3 h-3" /> : <I name={icon} className="w-3 h-3" />}
+                </span>
+                <span className="text-[8.5px] font-medium text-neutral-800">{label}</span>
+              </div>
+            ))}
+          </div>
         </div>
         <StatusPills />
         {showCard && (
@@ -250,28 +270,22 @@ function Phone({ className = "w-4 h-4" }: { className?: string }) {
 
 // The Site lists page: Teams, SWMS, PPE and Permits.
 function SiteLists({
-  tab = "Teams",
   typing = false,
   added = false,
   removing = false,
 }: {
-  tab?: "Teams" | "PPE";
   typing?: boolean;
   added?: boolean;
   removing?: boolean;
 }) {
+  const tab = "Teams";
   const teams = [
     { label: "Other", note: "Always available — lets workers type their own", fixed: true },
     { label: "Piling", note: "Used 14 times" },
     ...(added ? [{ label: "Rails installation", note: "Not used yet" }] : []),
     { label: "Surveying", note: "Not used yet" },
   ];
-  const ppe = [
-    { label: "Hard hat", note: "Used 20 times", ticked: true },
-    { label: "Gloves", note: "Not used yet", ticked: false },
-    { label: "Other", note: "Always available — lets workers type their own", fixed: true },
-  ];
-  const rows: { label: string; note: string; fixed?: boolean; ticked?: boolean }[] = tab === "Teams" ? teams : ppe;
+  const rows: { label: string; note: string; fixed?: boolean }[] = teams;
   return (
     <div className="h-full flex flex-col">
       <PageHeader title="Site lists" sub="Teams, SWMS, PPE and permits" />
@@ -285,7 +299,6 @@ function SiteLists({
           ].map(([t, n]) => (
             <span
               key={t}
-              data-demo={t === "PPE" ? "ppe-tab" : undefined}
               className={`flex-1 text-center text-[9px] font-semibold py-1 rounded-lg cursor-pointer ${
                 tab === t ? "bg-emerald-700 text-white" : "text-neutral-600"
               }`}
@@ -295,10 +308,10 @@ function SiteLists({
           ))}
         </div>
         <Card>
-          <p className="text-[10px] font-semibold">{tab === "Teams" ? "Add a team" : "Add a PPE item"}</p>
+          <p className="text-[10px] font-semibold">Add a team</p>
           <div className="mt-1 flex gap-1.5">
             <div className="flex-1">
-              <Input muted={!typing}>{typing ? <Typing text="Rails installation" /> : tab === "Teams" ? "e.g. Piling" : "e.g. Hard hat"}</Input>
+              <Input muted={!typing}>{typing ? <Typing text="Rails installation" /> : "e.g. Piling"}</Input>
             </div>
             <span data-demo="add" className="text-[9.5px] px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">
               + Add
@@ -327,18 +340,6 @@ function SiteLists({
                   </span>
                 )}
               </div>
-              {tab === "PPE" && !r.fixed && (
-                <p className="mt-1 flex items-center gap-1 text-[8.5px] text-neutral-700">
-                  <span
-                    className={`w-2.5 h-2.5 rounded-sm border flex items-center justify-center text-[7px] text-white ${
-                      r.ticked ? "bg-emerald-700 border-emerald-700" : "border-neutral-400"
-                    }`}
-                  >
-                    {r.ticked ? "✓" : ""}
-                  </span>
-                  Ticked by default
-                </p>
-              )}
               {removing && r.label === "Piling" && (
                 <div className="mt-1 rounded-lg border-2 border-red-200 bg-red-50 p-1.5">
                   <p className="text-[9px] font-semibold text-red-900">Remove &quot;Piling&quot;?</p>
@@ -490,6 +491,10 @@ function SavedAnswers({ editing = false, removing = false }: { editing?: boolean
           <span className="flex-1 text-center text-[9.5px] font-semibold py-1 rounded-full bg-emerald-700 text-white">To review 1</span>
           <span className="flex-1 text-center text-[9.5px] font-semibold py-1 rounded-full text-neutral-600">All 12</span>
         </div>
+        <div className="flex gap-1">
+          <span className="text-[9px] px-2 py-1 rounded-lg border border-neutral-300 bg-white text-neutral-700">All teams ▾</span>
+          <span className="flex-1 text-[9px] px-2 py-1 rounded-lg border border-neutral-300 bg-white text-neutral-400">Search hazards or controls...</span>
+        </div>
         <div className="rounded-xl border border-amber-300 bg-amber-50/60 p-2">
           <div className="flex items-start justify-between">
             <span className="text-[8.5px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200">
@@ -509,11 +514,14 @@ function SavedAnswers({ editing = false, removing = false }: { editing?: boolean
             </div>
           ) : (
             <>
-              <p className="mt-1 text-[10.5px] font-semibold">Pinch points lifting rails onto posts</p>
-              <div className="mt-1 rounded-lg bg-white border border-neutral-100 px-1.5 py-1">
-                <p className="text-[8px] font-semibold uppercase text-neutral-500">Controls</p>
-                <p className="text-[9.5px]">Gloves on, two-person lift</p>
-              </div>
+              <p className="mt-1 text-[10px] font-semibold">
+                <span className="text-[7.5px] font-semibold uppercase text-neutral-500">Hazard </span>
+                Pinch points lifting rails onto posts
+              </p>
+              <p className="mt-0.5 text-[9px] text-neutral-700">
+                <span className="text-[7.5px] font-semibold uppercase text-neutral-500">Controls </span>
+                Gloves on, two-person lift
+              </p>
               <div className="mt-1 flex items-center gap-1 text-[8.5px]">
                 <span className="text-neutral-500">Initial</span>
                 <Pill tone="orange">high</Pill>
@@ -685,7 +693,7 @@ function RecordView() {
 const DASH_SCENES: DemoScene[] = [
   {
     title: "Your admin dashboard",
-    text: "Everything for the site in one place. The shortcut buttons take you to People, Saved answers, Site lists, Export, Statistics, the supervisor login and the worker page.",
+    text: "Everything for the site in one place. The shortcut buttons take you to People, Saved answers, Site lists, Export and Statistics. Under Links: Supervisor login and the Worker page.",
     wait: 4000,
     render: () => <Dashboard />,
   },
@@ -861,15 +869,8 @@ const LISTS_SCENES: DemoScene[] = [
   },
   {
     title: "Removing",
-    text: "If it's been used, it's only hidden from new Take 5s — old records and PDFs keep it, and you can restore it. Unused ones are deleted.",
-    target: "ppe-tab",
-    wait: 3800,
+    text: "If it's been used, it's only hidden from new Take 5s — old records and PDFs keep it, and you can restore it. Unused ones are deleted. SWMS, PPE and Permits work the same way.",
     render: () => <SiteLists added removing />,
-  },
-  {
-    title: "PPE: ticked by default",
-    text: "On the PPE tab, items “Ticked by default” are already selected when a worker starts a Take 5.",
-    render: () => <SiteLists tab="PPE" />,
   },
 ];
 
