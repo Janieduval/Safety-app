@@ -8,14 +8,22 @@ export async function seedDatabase(
 ) {
   const log: string[] = [];
 
-  for (const label of SEED_TEAMS) {
+  // LISTS = "blank" starts a new site with empty Teams, SWMS, PPE and Permits
+  // lists (just "Other" in each), to be filled in on the admin Site lists page.
+  const blank = process.env.LISTS?.trim().toLowerCase() === "blank";
+  const teams = blank ? ["Other"] : SEED_TEAMS;
+  const swms = blank ? ["Other"] : SEED_SWMS;
+  const ppe = blank ? [{ label: "Other", preselected: false }] : SEED_PPE;
+  const permits = blank ? ["Other"] : SEED_PERMITS;
+
+  for (const label of teams) {
     await prisma.teamOption.upsert({
       where: { label },
       update: {},
       create: { label },
     });
   }
-  log.push(`Seeded ${SEED_TEAMS.length} teams`);
+  log.push(`Seeded ${teams.length} teams`);
 
   // The project's details come from environment variables, so a separate copy
   // of JSAFE (its own Vercel project and database) can set up its own site.
@@ -39,25 +47,25 @@ export async function seedDatabase(
   });
   log.push(`Project ready: ${project.name} (/${project.qrSlug})`);
 
-  for (const label of SEED_SWMS) {
+  for (const label of swms) {
     const existing = await prisma.swmsOption.findFirst({ where: { projectId: project.id, label } });
     if (!existing) await prisma.swmsOption.create({ data: { projectId: project.id, label } });
   }
-  log.push(`Seeded ${SEED_SWMS.length} SWMS options`);
+  log.push(`Seeded ${swms.length} SWMS options`);
 
-  for (const { label, preselected } of SEED_PPE) {
+  for (const { label, preselected } of ppe) {
     const existing = await prisma.ppeOption.findFirst({ where: { projectId: project.id, label } });
     if (!existing) {
       await prisma.ppeOption.create({ data: { projectId: project.id, label, preselected } });
     }
   }
-  log.push(`Seeded ${SEED_PPE.length} PPE options`);
+  log.push(`Seeded ${ppe.length} PPE options`);
 
-  for (const label of SEED_PERMITS) {
+  for (const label of permits) {
     const existing = await prisma.permitType.findFirst({ where: { projectId: project.id, label } });
     if (!existing) await prisma.permitType.create({ data: { projectId: project.id, label } });
   }
-  log.push(`Seeded ${SEED_PERMITS.length} permit types`);
+  log.push(`Seeded ${permits.length} permit types`);
 
   // Sample people are only for trying the app out. A new site can skip them
   // by setting SAMPLE_PEOPLE to "no".
