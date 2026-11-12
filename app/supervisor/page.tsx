@@ -144,6 +144,8 @@ export default async function SupervisorDashboard({
   });
 
   const projects = await prisma.project.findMany({ orderBy: { name: "asc" } });
+  // The project this site is for, e.g. "Yanco BESS" — shown at the top.
+  const projectName = projects.length === 1 ? projects[0].name : null;
 
   // The teams this supervisor looks after ("My teams").
   const { teams, teamIds: myTeamIds } = await getSupervisorTeams(supervisorId);
@@ -252,6 +254,14 @@ export default async function SupervisorDashboard({
         <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
           Take 5. Work safe. Go home safe.
         </p>
+        {projectName && (
+          <div className="mt-3 px-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+              {projectName}
+            </span>
+          </div>
+        )}
         <div className="mt-4 px-2">
           <SupervisorDemo autoShow={false} />
         </div>
@@ -328,6 +338,14 @@ export default async function SupervisorDashboard({
               <p className="text-lg font-bold leading-tight">{greeting}</p>
               <p className="text-sm text-emerald-50/90">{todayLabel}</p>
             </div>
+            {projectName && (
+              <div className="mt-3">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+                  {projectName}
+                </span>
+              </div>
+            )}
             {/* "New here? Watch the demo" — only on the dashboard */}
             <div className="mt-3">
               <SupervisorDemo />
@@ -338,7 +356,10 @@ export default async function SupervisorDashboard({
           <div className="hidden md:flex items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl font-bold text-neutral-900">{greeting}</h1>
-              <p className="text-sm text-neutral-500">{todayLabel} · Supervisor dashboard</p>
+              <p className="text-sm text-neutral-500">
+                {todayLabel} · Supervisor dashboard
+                {projectName && <span className="font-semibold text-emerald-800"> · {projectName}</span>}
+              </p>
             </div>
             {toReview > 0 && searchParams.status !== "awaiting_supervisor_review" && (
               <Link
