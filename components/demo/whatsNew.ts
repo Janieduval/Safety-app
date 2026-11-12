@@ -39,4 +39,18 @@ export const WHATS_NEW: WhatsNew[] = [
     text: "Supervisors now have teams. Set which teams each supervisor looks after, and they get a notification when those teams submit a Take 5.",
     until: "2026-12-31",
   },
+  {
+    demo: "jsafe-demo-admin",
+    chapter: "export",
+    id: "2026-11-admin-export-10pm",
+    text: "Today's export ZIP is now ready after 10pm Sydney time, so it includes every supervisor review done during the day.",
+    until: "2026-12-31",
+  },
+  {
+    demo: "jsafe-demo-admin",
+    chapter: "lists",
+    id: "2026-11-admin-site-lists",
+    text: "New Site lists page: add, rename or remove the Teams, SWMS, PPE and Permits workers pick from.",
+    until: "2027-01-31",
+  },
 ];
