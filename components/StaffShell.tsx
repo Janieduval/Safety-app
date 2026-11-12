@@ -36,6 +36,12 @@ const ICONS: Record<string, React.ReactNode> = {
     </>
   ),
   back: <path d="M15 5l-7 7 7 7" />,
+  list: (
+    <>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M4 6h.01M4 12h.01M4 18h.01" />
+    </>
+  ),
   doc: (
     <>
       <path d="M7 3h7l5 5v13H7z" />
@@ -115,6 +121,7 @@ export default function StaffShell({
         { href: "/admin/dashboard", label: "Dashboard", icon: "home" },
         { href: "/admin/people", label: "People", icon: "people" },
         { href: "/admin/hazard-templates", label: "Saved answers", icon: "saved" },
+        { href: "/admin/lists", label: "Site lists", icon: "list" },
         { href: "/admin/export", label: "Export", icon: "export" },
         { href: "/stats", label: "Statistics", icon: "stats" },
         { href: "/supervisor/login", label: "Supervisor", icon: "supervisor" },
