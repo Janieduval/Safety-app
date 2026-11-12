@@ -1,12 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import StaffShell from "@/components/StaffShell";
 import { HAZARD_QUESTIONS, RISK_RATINGS } from "@/lib/constants";
+
+// Saved answers: hazards and controls workers saved for their team, so they
+// don't retype recurring hazards every day. Admins check, tidy, approve or remove them.
 
 const HAZARD_LABELS: Record<string, string> = Object.fromEntries(
   HAZARD_QUESTIONS.map((q) => [q.key, q.label])
 );
+
+const RISK_PILL: Record<string, string> = {
+  low: "bg-emerald-100 text-emerald-800",
+  medium: "bg-amber-100 text-amber-800",
+  high: "bg-orange-100 text-orange-800",
+  extreme: "bg-red-100 text-red-800",
+};
 
 type Template = {
   id: string;
@@ -23,16 +33,26 @@ type Template = {
   createdAt: string;
 };
 
+function RiskPill({ risk }: { risk: string }) {
+  return (
+    <span className={`text-[11px] font-semibold capitalize px-2 py-0.5 rounded-full ${RISK_PILL[risk] ?? "bg-neutral-100 text-neutral-600"}`}>
+      {risk}
+    </span>
+  );
+}
+
 export default function HazardTemplatesPage() {
   const [templates, setTemplates] = useState<Template[] | null>(null);
   const [filter, setFilter] = useState<"pending" | "all">("pending");
+  const [team, setTeam] = useState("");
+  const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     fetch("/api/admin/hazard-templates")
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => setTemplates(data.templates))
-      .catch(() => setError("Could not load saved hazard answers."));
+      .catch(() => setError("Could not load saved answers."));
   };
 
   useEffect(() => {
@@ -40,233 +60,312 @@ export default function HazardTemplatesPage() {
   }, []);
 
   const update = async (id: string, patch: Partial<Template>) => {
-    await fetch(`/api/admin/hazard-templates/${id}`, {
+    // Show the change straight away, then save it.
+    setTemplates((prev) =>
+      (prev ?? [])
+        .map((t) => (t.id === id ? { ...t, ...patch } : t))
+        .filter((t) => t.active !== false)
+    );
+    const res = await fetch(`/api/admin/hazard-templates/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
-    });
-    load();
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setError("That change didn't save. Check your connection and try again.");
+      load();
+    }
   };
 
-  const visible = (templates ?? []).filter((t) => filter === "all" || t.needsReview);
-  const pendingCount = (templates ?? []).filter((t) => t.needsReview).length;
+  const all = templates ?? [];
+  const pendingCount = all.filter((t) => t.needsReview).length;
+  const teams = Array.from(new Set(all.map((t) => t.team.label))).sort();
+  const term = search.trim().toLowerCase();
+  const visible = all.filter(
+    (t) =>
+      (filter === "all" || t.needsReview) &&
+      (!team || t.team.label === team) &&
+      (!term || `${t.description} ${t.controls}`.toLowerCase().includes(term))
+  );
 
   return (
-    <main className="min-h-dvh bg-neutral-50 px-4 py-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-neutral-900">Saved hazard answers</h1>
-        <Link href="/admin/dashboard" className="text-sm text-emerald-700 font-medium">
-          ← Dashboard
-        </Link>
-      </div>
-
-      <p className="text-sm text-neutral-600 mb-4">
-        Workers can save a hazard and its controls as a reusable answer for their team, so
-        recurring hazards don't need retyping from scratch every day. New ones are visible to
-        the team immediately — review and tidy up the wording here, or remove ones that aren't
-        useful.
+    <StaffShell
+      role="admin"
+      active="/admin/hazard-templates"
+      title="Saved answers"
+      subtitle="Reusable hazards & controls"
+      icon="saved"
+    >
+      <p className="text-sm text-neutral-600 mb-4 leading-relaxed">
+        Workers can save a hazard and its controls for their team, so recurring hazards don&apos;t need
+        retyping every day. New ones show to the team straight away and wait here for you — check the
+        wording and risk ratings, then approve, edit or remove them.
       </p>
 
-      <div className="flex gap-2 mb-5">
-        <button
-          type="button"
-          onClick={() => setFilter("pending")}
-          className={`px-4 py-2 rounded-full text-sm font-medium border ${
-            filter === "pending"
-              ? "bg-neutral-900 text-white border-neutral-900"
-              : "bg-white text-neutral-700 border-neutral-300"
-          }`}
-        >
-          Pending review ({pendingCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("all")}
-          className={`px-4 py-2 rounded-full text-sm font-medium border ${
-            filter === "all"
-              ? "bg-neutral-900 text-white border-neutral-900"
-              : "bg-white text-neutral-700 border-neutral-300"
-          }`}
-        >
-          All ({(templates ?? []).length})
-        </button>
+      {/* To review | All */}
+      <div className="flex gap-1 p-1 rounded-2xl bg-white border border-neutral-200 shadow-sm mb-3">
+        {(
+          [
+            ["pending", "To review", pendingCount],
+            ["all", "All", all.length],
+          ] as const
+        ).map(([key, label, n]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              filter === key ? "bg-emerald-700 text-white shadow" : "text-neutral-600 hover:text-neutral-900"
+            }`}
+          >
+            {label}
+            <span className={`ml-1 text-[11px] ${filter === key ? "text-emerald-100" : "text-neutral-400"}`}>{n}</span>
+          </button>
+        ))}
       </div>
 
-      {error && <p className="text-red-700 text-sm font-medium mb-4">{error}</p>}
+      {/* Team + search */}
+      {all.length > 0 && (
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <select
+            value={team}
+            onChange={(e) => setTeam(e.target.value)}
+            className="rounded-xl border border-neutral-300 px-3 py-2 bg-white text-sm sm:w-56"
+          >
+            <option value="">All teams</option>
+            {teams.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search hazards or controls..."
+            className="flex-1 min-w-0 rounded-xl border border-neutral-300 px-3 py-2 bg-white text-sm"
+          />
+        </div>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm font-medium text-red-800">{error}</p>
+      )}
 
       {templates === null && !error && (
-        <p className="text-neutral-500 text-sm">Loading...</p>
+        <div className="space-y-3 animate-pulse">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-36 bg-white rounded-2xl border border-neutral-200" />
+          ))}
+        </div>
       )}
 
       {templates !== null && visible.length === 0 && (
-        <p className="text-neutral-500 text-sm">
-          {filter === "pending" ? "Nothing pending review." : "No saved answers yet."}
-        </p>
+        <div className="bg-white rounded-2xl border border-neutral-200 px-4 py-8 text-center">
+          <p className="text-sm font-semibold text-neutral-800">
+            {filter === "pending" && !team && !term ? "Nothing waiting for review." : "No saved answers here."}
+          </p>
+          {filter === "pending" && all.length > 0 && (
+            <button type="button" onClick={() => setFilter("all")} className="mt-2 text-sm font-semibold text-emerald-700">
+              See all {all.length} →
+            </button>
+          )}
+        </div>
       )}
 
       <div className="space-y-3">
         {visible.map((t) => (
-          <TemplateRow key={t.id} template={t} onUpdate={update} />
+          <TemplateCard key={t.id} template={t} onUpdate={update} />
         ))}
       </div>
-    </main>
+    </StaffShell>
   );
 }
 
-function TemplateRow({
+function TemplateCard({
   template,
   onUpdate,
 }: {
   template: Template;
   onUpdate: (id: string, patch: Partial<Template>) => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState<"view" | "edit" | "remove">("view");
   const [description, setDescription] = useState(template.description);
   const [controls, setControls] = useState(template.controls);
   const [initialRisk, setInitialRisk] = useState(template.initialRisk);
   const [residualRisk, setResidualRisk] = useState(template.residualRisk);
+  const pending = template.needsReview;
 
-  const saveEdits = () => {
-    onUpdate(template.id, { description, controls, initialRisk, residualRisk });
-    setEditing(false);
-  };
-
-  const cancelEdits = () => {
+  const startEdit = () => {
     setDescription(template.description);
     setControls(template.controls);
     setInitialRisk(template.initialRisk);
     setResidualRisk(template.residualRisk);
-    setEditing(false);
+    setMode("edit");
+  };
+
+  const save = () => {
+    if (!description.trim()) return;
+    onUpdate(template.id, { description: description.trim(), controls: controls.trim(), initialRisk, residualRisk });
+    setMode("view");
   };
 
   return (
     <div
-      className={`border rounded-lg p-4 ${
-        template.needsReview ? "bg-amber-50 border-amber-300" : "bg-white border-neutral-200"
+      className={`rounded-2xl border shadow-sm p-4 ${
+        pending ? "bg-amber-50/60 border-amber-300" : "bg-white border-neutral-200"
       }`}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-700">
-            {template.team.label}
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200">
+          {template.team.label}
+        </span>
+        {pending && (
+          <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+            To review
           </span>
-          <span className="text-xs text-neutral-500">
-            {HAZARD_LABELS[template.questionKey] ?? template.questionKey}
-          </span>
-        </div>
-        {template.needsReview && (
-          <span className="text-xs font-semibold text-amber-700">PENDING REVIEW</span>
         )}
       </div>
+      <p className="mt-1.5 text-xs text-neutral-500">{HAZARD_LABELS[template.questionKey] ?? template.questionKey}</p>
 
-      {editing ? (
-        <div className="space-y-2">
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            placeholder="Hazard description"
-          />
-          <textarea
-            value={controls}
-            onChange={(e) => setControls(e.target.value)}
-            rows={2}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
-            placeholder="Controls"
-          />
-          <div className="flex gap-3">
-            <label className="text-xs text-neutral-600 flex-1">
-              Initial risk
-              <select
-                value={initialRisk}
-                onChange={(e) => setInitialRisk(e.target.value)}
-                className="w-full rounded-lg border border-neutral-300 px-2 py-1.5 mt-0.5 bg-white text-sm capitalize"
-              >
-                {RISK_RATINGS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs text-neutral-600 flex-1">
-              Residual risk
-              <select
-                value={residualRisk}
-                onChange={(e) => setResidualRisk(e.target.value)}
-                className="w-full rounded-lg border border-neutral-300 px-2 py-1.5 mt-0.5 bg-white text-sm capitalize"
-              >
-                {RISK_RATINGS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </label>
+      {mode === "edit" ? (
+        <div className="mt-2 space-y-2">
+          <label className="block text-xs font-semibold text-neutral-600">
+            Hazard
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm font-normal bg-white"
+            />
+          </label>
+          <label className="block text-xs font-semibold text-neutral-600">
+            Controls
+            <textarea
+              value={controls}
+              onChange={(e) => setControls(e.target.value)}
+              rows={2}
+              className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm font-normal bg-white"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ["Initial risk", initialRisk, setInitialRisk],
+                ["Residual risk", residualRisk, setResidualRisk],
+              ] as const
+            ).map(([label, value, set]) => (
+              <label key={label} className="block text-xs font-semibold text-neutral-600">
+                {label}
+                <select
+                  value={value}
+                  onChange={(e) => set(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-neutral-300 px-2 py-2 bg-white text-sm font-normal capitalize"
+                >
+                  {RISK_RATINGS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
           </div>
         </div>
       ) : (
         <>
-          <p className="text-sm font-medium text-neutral-900">{template.description}</p>
-          <p className="text-sm text-neutral-600 mt-1">Controls: {template.controls}</p>
-          <p className="text-xs text-neutral-500 mt-1 capitalize">
-            Initial risk: {template.initialRisk} → Residual risk: {template.residualRisk}
+          <p className="mt-1 text-sm font-semibold text-neutral-900 break-words">
+            <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Hazard </span>
+            {template.description}
           </p>
+          {template.controls && (
+            <p className="mt-1 text-sm text-neutral-700 break-words whitespace-pre-line">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Controls </span>
+              {template.controls}
+            </p>
+          )}
+          <div className="mt-2 flex items-center gap-1.5 text-xs">
+            <span className="text-neutral-500">Initial</span>
+            <RiskPill risk={template.initialRisk} />
+            <span className="text-neutral-400">→</span>
+            <span className="text-neutral-500">Residual</span>
+            <RiskPill risk={template.residualRisk} />
+          </div>
         </>
       )}
 
-      <p className="text-xs text-neutral-400 mt-2">
+      <p className="mt-2 text-xs text-neutral-400">
         {template.createdByWorker?.name ? `Saved by ${template.createdByWorker.name}` : "Saved"} ·{" "}
         {new Date(template.createdAt).toLocaleDateString("en-AU")}
       </p>
 
-      <div className="flex gap-2 mt-3">
-        {editing ? (
+      <div className="mt-3 pt-3 border-t border-neutral-200/70 flex flex-wrap items-center gap-2">
+        {mode === "edit" ? (
           <>
             <button
               type="button"
-              onClick={saveEdits}
-              className="text-xs px-3 py-1.5 rounded-full bg-emerald-700 text-white font-medium"
+              onClick={save}
+              disabled={!description.trim()}
+              className="text-xs px-3 py-1.5 rounded-full bg-emerald-700 text-white font-semibold disabled:opacity-50"
             >
               Save changes
             </button>
             <button
               type="button"
-              onClick={cancelEdits}
-              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
+              onClick={() => setMode("view")}
+              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 bg-white text-neutral-700"
             >
               Cancel
             </button>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700"
-          >
-            Edit
-          </button>
+          <>
+            {pending && (
+              <button
+                type="button"
+                onClick={() => onUpdate(template.id, { needsReview: false })}
+                className="text-xs px-3 py-1.5 rounded-full bg-emerald-700 text-white font-semibold hover:bg-emerald-800"
+              >
+                Approve
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={startEdit}
+              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 bg-white text-neutral-700 font-semibold hover:bg-neutral-50"
+            >
+              Edit
+            </button>
+          </>
         )}
-        {template.needsReview && (
-          <button
-            type="button"
-            onClick={() => onUpdate(template.id, { needsReview: false })}
-            className="text-xs px-3 py-1.5 rounded-full border border-emerald-600 text-emerald-700 font-medium"
-          >
-            Approve
-          </button>
+        {mode === "remove" ? (
+          <span className="ml-auto flex gap-2">
+            <button
+              type="button"
+              onClick={() => onUpdate(template.id, { active: false })}
+              className="text-xs px-3 py-1.5 rounded-full bg-red-600 text-white font-semibold"
+            >
+              Yes, remove
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("view")}
+              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 bg-white text-neutral-700"
+            >
+              Keep
+            </button>
+          </span>
+        ) : (
+          mode === "view" && (
+            <button
+              type="button"
+              onClick={() => setMode("remove")}
+              className="ml-auto text-xs px-3 py-1.5 rounded-full border border-red-200 bg-white text-red-700 font-semibold hover:bg-red-50"
+            >
+              Remove
+            </button>
+          )
         )}
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm("Remove this saved answer? It will no longer be suggested to workers."))
-              onUpdate(template.id, { active: false });
-          }}
-          className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 text-neutral-700 ml-auto"
-        >
-          Remove
-        </button>
       </div>
     </div>
   );
