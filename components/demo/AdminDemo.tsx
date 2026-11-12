@@ -24,10 +24,11 @@ import {
 const SHORTCUTS: [string, string, string][] = [
   ["people", "people", "People"],
   ["saved", "saved", "Saved answers"],
+  ["lists", "list", "Site lists"],
   ["export", "export", "Export"],
   ["stats", "stats", "Statistics"],
   ["supervisor", "check", "Supervisor"],
-  ["worker", "list", "Worker page"],
+  ["worker", "phone", "Worker page"],
 ];
 
 function Dashboard({ showCard = true }: { showCard?: boolean }) {
@@ -36,7 +37,7 @@ function Dashboard({ showCard = true }: { showCard?: boolean }) {
       <DashHeader role="Admin dashboard" greeting="Good morning" />
       <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
         <NeedsReview n={3} id="needs" />
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-4 gap-1.5">
           {SHORTCUTS.map(([id, icon, label]) => (
             <div
               key={id}
@@ -44,7 +45,7 @@ function Dashboard({ showCard = true }: { showCard?: boolean }) {
               className="flex flex-col items-center gap-1 rounded-xl bg-white border border-neutral-200 py-1.5 shadow-sm cursor-pointer"
             >
               <span className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                <I name={icon} className="w-3.5 h-3.5" />
+                {icon === "phone" ? <Phone className="w-3.5 h-3.5" /> : <I name={icon} className="w-3.5 h-3.5" />}
               </span>
               <span className="text-[8.5px] font-medium text-neutral-700">{label}</span>
             </div>
@@ -232,6 +233,126 @@ function SupervisorTeams() {
               <span className="text-[9.5px] px-2.5 py-1.5 rounded-lg border border-neutral-300 bg-white text-neutral-700">Cancel</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Phone({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="7" y="2" width="10" height="20" rx="2" />
+      <path d="M11 18h2" />
+    </svg>
+  );
+}
+
+// The Site lists page: Teams, SWMS, PPE and Permits.
+function SiteLists({
+  tab = "Teams",
+  typing = false,
+  added = false,
+  removing = false,
+}: {
+  tab?: "Teams" | "PPE";
+  typing?: boolean;
+  added?: boolean;
+  removing?: boolean;
+}) {
+  const teams = [
+    { label: "Other", note: "Always available — lets workers type their own", fixed: true },
+    { label: "Piling", note: "Used 14 times" },
+    ...(added ? [{ label: "Rails installation", note: "Not used yet" }] : []),
+    { label: "Surveying", note: "Not used yet" },
+  ];
+  const ppe = [
+    { label: "Hard hat", note: "Used 20 times", ticked: true },
+    { label: "Gloves", note: "Not used yet", ticked: false },
+    { label: "Other", note: "Always available — lets workers type their own", fixed: true },
+  ];
+  const rows: { label: string; note: string; fixed?: boolean; ticked?: boolean }[] = tab === "Teams" ? teams : ppe;
+  return (
+    <div className="h-full flex flex-col">
+      <PageHeader title="Site lists" sub="Teams, SWMS, PPE and permits" />
+      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
+        <div className="flex gap-0.5 p-0.5 rounded-xl bg-white border border-neutral-200">
+          {[
+            ["Teams", added ? 4 : 3],
+            ["SWMS", 1],
+            ["PPE", 3],
+            ["Permits", 1],
+          ].map(([t, n]) => (
+            <span
+              key={t}
+              data-demo={t === "PPE" ? "ppe-tab" : undefined}
+              className={`flex-1 text-center text-[9px] font-semibold py-1 rounded-lg cursor-pointer ${
+                tab === t ? "bg-emerald-700 text-white" : "text-neutral-600"
+              }`}
+            >
+              {t} <span className="opacity-70">{n}</span>
+            </span>
+          ))}
+        </div>
+        <Card>
+          <p className="text-[10px] font-semibold">{tab === "Teams" ? "Add a team" : "Add a PPE item"}</p>
+          <div className="mt-1 flex gap-1.5">
+            <div className="flex-1">
+              <Input muted={!typing}>{typing ? <Typing text="Rails installation" /> : tab === "Teams" ? "e.g. Piling" : "e.g. Hard hat"}</Input>
+            </div>
+            <span data-demo="add" className="text-[9.5px] px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">
+              + Add
+            </span>
+          </div>
+        </Card>
+        <div className="bg-white rounded-xl border border-neutral-200 divide-y divide-neutral-100">
+          {rows.map((r) => (
+            <div key={r.label} className="px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-medium">{r.label}</p>
+                  <p className="text-[8px] text-neutral-500">{r.note}</p>
+                </div>
+                {r.fixed ? (
+                  <span className="text-[7.5px] font-semibold px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-500">Fixed</span>
+                ) : (
+                  <span className="flex gap-1">
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full border border-neutral-300 font-semibold">Rename</span>
+                    <span
+                      data-demo={r.label === "Piling" ? "remove" : undefined}
+                      className="text-[8px] px-1.5 py-0.5 rounded-full border border-red-200 text-red-700 font-semibold cursor-pointer"
+                    >
+                      Remove
+                    </span>
+                  </span>
+                )}
+              </div>
+              {tab === "PPE" && !r.fixed && (
+                <p className="mt-1 flex items-center gap-1 text-[8.5px] text-neutral-700">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-sm border flex items-center justify-center text-[7px] text-white ${
+                      r.ticked ? "bg-emerald-700 border-emerald-700" : "border-neutral-400"
+                    }`}
+                  >
+                    {r.ticked ? "✓" : ""}
+                  </span>
+                  Ticked by default
+                </p>
+              )}
+              {removing && r.label === "Piling" && (
+                <div className="mt-1 rounded-lg border-2 border-red-200 bg-red-50 p-1.5">
+                  <p className="text-[9px] font-semibold text-red-900">Remove &quot;Piling&quot;?</p>
+                  <p className="text-[8px] text-red-800">
+                    It won&apos;t be offered on new Take 5s. The Take 5s that used it keep it, and you can restore it later.
+                  </p>
+                  <div className="mt-1 flex gap-1">
+                    <span className="text-[8.5px] px-2 py-0.5 rounded-md bg-red-600 text-white font-semibold">Yes, remove</span>
+                    <span className="text-[8.5px] px-2 py-0.5 rounded-md border border-neutral-300 bg-white">Keep</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -564,7 +685,7 @@ function RecordView() {
 const DASH_SCENES: DemoScene[] = [
   {
     title: "Your admin dashboard",
-    text: "Everything for the site in one place. The shortcut buttons take you to People, Saved answers, Export, Statistics, the supervisor login and the worker page.",
+    text: "Everything for the site in one place. The shortcut buttons take you to People, Saved answers, Site lists, Export, Statistics, the supervisor login and the worker page.",
     wait: 4000,
     render: () => <Dashboard />,
   },
@@ -597,7 +718,7 @@ const DASH_SCENES: DemoScene[] = [
   },
   {
     title: "That's the dashboard",
-    text: "Pull down from the top on your phone to refresh. The other demos show People, Saved answers and Export.",
+    text: "Pull down from the top on your phone to refresh. The other demos show People, Site lists, Saved answers and Export.",
     render: () => <Dashboard />,
   },
 ];
@@ -716,6 +837,42 @@ const TEAMS_SCENES: DemoScene[] = [
   },
 ];
 
+const LISTS_SCENES: DemoScene[] = [
+  {
+    title: "Site lists",
+    text: "Tap Site lists to choose the Teams, SWMS, PPE and Permits workers pick from in a Take 5.",
+    target: "lists",
+    wait: 2400,
+    render: () => <Dashboard showCard={false} />,
+  },
+  {
+    title: "Add one",
+    text: "Pick a tab, type the name and tap Add. It shows up on new Take 5s straight away.",
+    target: "add",
+    wait: 3200,
+    render: () => <SiteLists typing />,
+  },
+  {
+    title: "Rename or remove",
+    text: "Rename fixes the wording. “Other” always stays, so workers can type their own.",
+    target: "remove",
+    wait: 2800,
+    render: () => <SiteLists added />,
+  },
+  {
+    title: "Removing",
+    text: "If it's been used, it's only hidden from new Take 5s — old records and PDFs keep it, and you can restore it. Unused ones are deleted.",
+    target: "ppe-tab",
+    wait: 3800,
+    render: () => <SiteLists added removing />,
+  },
+  {
+    title: "PPE: ticked by default",
+    text: "On the PPE tab, items “Ticked by default” are already selected when a worker starts a Take 5.",
+    render: () => <SiteLists tab="PPE" />,
+  },
+];
+
 const SAVED_SCENES: DemoScene[] = [
   {
     title: "Saved answers",
@@ -829,6 +986,13 @@ const CHAPTERS: DemoChapter[] = [
     text: "Add workers, confirm new ones, supervisors' teams and PINs, duplicates",
     icon: <I name="people" className="w-5 h-5" />,
     scenes: PEOPLE_SCENES,
+  },
+  {
+    id: "lists",
+    title: "Site lists",
+    text: "Add, rename or remove Teams, SWMS, PPE and Permits",
+    icon: <I name="list" className="w-5 h-5" />,
+    scenes: LISTS_SCENES,
   },
   {
     id: "saved",
