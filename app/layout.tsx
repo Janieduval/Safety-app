@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "JSAFE App – Daily Task Safety Awareness",
   description: "Pre-task risk assessment for site workers",
   applicationName: "JSAFE App",
-  manifest: "/manifest.json",
+  manifest: "/api/manifest",
   appleWebApp: {
     capable: true,
     title: "JSAFE App",
