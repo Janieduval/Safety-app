@@ -28,7 +28,7 @@ const TABS: { key: ListKey; label: string; noun: string; hint: string; example: 
     key: "ppe",
     label: "PPE",
     noun: "PPE item",
-    hint: "The PPE workers confirm they're wearing. Items ticked by default are already selected on a new Take 5.",
+    hint: "The PPE workers confirm they're wearing for their task.",
     example: "e.g. Hard hat",
   },
   {
@@ -120,16 +120,14 @@ export default function SiteListsPage() {
 
       {lists && (
         <>
-          <AddBox key={tab} noun={info.noun} example={info.example} ppe={tab === "ppe"} onAdd={(label, preselected) => send("POST", { label, preselected })} />
+          <AddBox key={tab} noun={info.noun} example={info.example} onAdd={(label) => send("POST", { label })} />
 
           <ul className="mt-4 bg-white rounded-2xl border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden">
             {shown.map((item) => (
               <Row
                 key={item.id}
                 item={item}
-                ppe={tab === "ppe"}
                 onRename={(label) => send("PATCH", { id: item.id, label })}
-                onTicked={(preselected) => send("PATCH", { id: item.id, preselected })}
                 onRemove={() => send("DELETE", { id: item.id })}
               />
             ))}
@@ -171,29 +169,23 @@ export default function SiteListsPage() {
 function AddBox({
   noun,
   example,
-  ppe,
   onAdd,
 }: {
   noun: string;
   example: string;
-  ppe: boolean;
-  onAdd: (label: string, preselected: boolean) => Promise<string | null>;
+  onAdd: (label: string) => Promise<string | null>;
 }) {
   const [label, setLabel] = useState("");
-  const [ticked, setTicked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const add = async () => {
     if (!label.trim() || busy) return;
     setBusy(true);
-    const err = await onAdd(label, ticked);
+    const err = await onAdd(label);
     setBusy(false);
     setMsg(err);
-    if (!err) {
-      setLabel("");
-      setTicked(false);
-    }
+    if (!err) setLabel("");
   };
 
   return (
@@ -219,12 +211,6 @@ function AddBox({
           {busy ? "Adding…" : "+ Add"}
         </button>
       </div>
-      {ppe && (
-        <label className="mt-2 flex items-center gap-2 text-sm text-neutral-700">
-          <input type="checkbox" checked={ticked} onChange={(e) => setTicked(e.target.checked)} className="w-4 h-4 accent-emerald-700" />
-          Ticked by default
-        </label>
-      )}
       {msg && <p className="mt-2 text-sm text-red-700">{msg}</p>}
     </div>
   );
@@ -232,15 +218,11 @@ function AddBox({
 
 function Row({
   item,
-  ppe,
   onRename,
-  onTicked,
   onRemove,
 }: {
   item: Item;
-  ppe: boolean;
   onRename: (label: string) => Promise<string | null>;
-  onTicked: (preselected: boolean) => Promise<string | null>;
   onRemove: () => Promise<string | null>;
 }) {
   const [mode, setMode] = useState<"view" | "edit" | "remove">("view");
@@ -339,19 +321,6 @@ function Row({
           <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500">Fixed</span>
         )}
       </div>
-
-      {ppe && !isOther && (
-        <label className="mt-2 inline-flex items-center gap-2 text-xs text-neutral-700">
-          <input
-            type="checkbox"
-            checked={!!item.preselected}
-            disabled={busy}
-            onChange={(e) => run(() => onTicked(e.target.checked))}
-            className="w-4 h-4 accent-emerald-700"
-          />
-          Ticked by default
-        </label>
-      )}
 
       {mode === "remove" && (
         <div className="mt-2 rounded-xl border-2 border-red-200 bg-red-50 p-3">
