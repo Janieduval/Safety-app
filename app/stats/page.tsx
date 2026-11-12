@@ -235,15 +235,21 @@ export default function StatsPage() {
         { href: "/admin/hazard-templates", label: "Saved answers", icon: "saved" },
         { href: "/admin/export", label: "Export", icon: "export" },
         { href: "/stats", label: "Statistics", icon: "stats" },
-        { href: "/supervisor/login", label: "Supervisor", icon: "supervisor" },
-        ...(viewer?.workerPageSlug
-          ? [{ href: `/${viewer.workerPageSlug}`, label: "Worker page", icon: "phone" }]
-          : []),
       ]
     : [
         { href: "/supervisor", label: "Dashboard", icon: "home" },
         { href: "/stats", label: "Statistics", icon: "stats" },
       ];
+
+  // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
+  const linkItems = isAdmin
+    ? [
+        { href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" },
+        ...(viewer?.workerPageSlug
+          ? [{ href: `/${viewer.workerPageSlug}`, label: "Worker page", icon: "phone" }]
+          : []),
+      ]
+    : [];
 
   const labels = stats ? stats.buckets.map((b) => bucketLabel(b, period)) : [];
   const longLabels = stats ? stats.buckets.map((b) => bucketLongLabel(b, period)) : [];
@@ -291,6 +297,22 @@ export default function StatsPage() {
               );
             })}
         </nav>
+
+        {linkItems.length > 0 && (
+          <nav className="mt-6 pt-4 border-t border-white/15 space-y-1">
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-50/60">Links</p>
+            {linkItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
+              >
+                <Icon name={item.icon} className="w-[18px] h-[18px]" />
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         <div className="mt-auto pt-6">
           {viewer?.role === "supervisor" && (
