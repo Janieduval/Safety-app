@@ -87,12 +87,14 @@ export default function SupervisorMyTeams({
   showingMine,
   allHref,
   mineHref,
+  canEdit = true,
 }: {
   teams: TeamItem[];
   initialTeamIds: string[];
   showingMine: boolean;
   allHref: string;
   mineHref: string;
+  canEdit?: boolean; // false when only the admin sets supervisors' teams
 }) {
   const router = useRouter();
   const [teamIds, setTeamIds] = useState<string[]>(initialTeamIds);
@@ -195,7 +197,7 @@ export default function SupervisorMyTeams({
             Get a notification when one of your teams submits a JSAFE for review.
           </p>
         </div>
-        {!editing && (
+        {canEdit && !editing && (
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -221,7 +223,12 @@ export default function SupervisorMyTeams({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">No teams chosen yet.</p>
+          <p className="text-sm text-neutral-500">
+            {canEdit ? "No teams chosen yet." : "No teams yet. Ask the admin to set your teams."}
+          </p>
+        )}
+        {!canEdit && myTeams.length > 0 && (
+          <p className="mt-2 text-xs text-neutral-500">Your teams are set by the admin.</p>
         )}
       </div>
 
