@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
+import SuggestionBox from "@/components/SuggestionBox";
 
 // The shared JSAFE frame for admin and supervisor pages:
 // green sidebar on a computer, green header with a back button on a phone.
@@ -60,6 +61,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M8 12l3 3 5-6" />
     </>
   ),
+  idea: (
+    <>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z" />
+    </>
+  ),
   copy: (
     <>
       <rect x="8" y="8" width="12" height="12" rx="2" />
@@ -111,6 +118,7 @@ export default function StaffShell({
 }) {
   const [workerPageSlug, setWorkerPageSlug] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false); // the site owner also sees Suggestions
   const isAdmin = role === "admin";
   const home = isAdmin ? "/admin/dashboard" : "/supervisor";
 
@@ -136,6 +144,10 @@ export default function StaffShell({
         setProjectName(projects.length === 1 ? projects[0].name : null);
       })
       .catch(() => {});
+    fetch("/api/admin/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me) => setIsOwner(!!me?.isOwner))
+      .catch(() => {});
   }, [isAdmin]);
 
   const navItems = isAdmin
@@ -146,6 +158,9 @@ export default function StaffShell({
         { href: "/admin/lists", label: "Site lists", icon: "list" },
         { href: "/admin/export", label: "Export", icon: "export" },
         { href: "/stats", label: "Statistics", icon: "stats" },
+        ...(isOwner || active === "/admin/suggestions"
+          ? [{ href: "/admin/suggestions", label: "Suggestions", icon: "idea" }]
+          : []),
       ]
     : [
         { href: "/supervisor", label: "Dashboard", icon: "home" },
@@ -153,12 +168,13 @@ export default function StaffShell({
       ];
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
   // They open in a new tab, so the page you're on stays open.
+  // Supervisors only get the Worker page (no Admin login).
   const workerLink = workerPageSlug
     ? [{ href: `/${workerPageSlug}`, label: "Worker page", icon: "phone" }]
     : [];
   const linkItems = isAdmin
     ? [{ href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" }, ...workerLink]
-    : [...workerLink, { href: "/admin/login", label: "Admin login", icon: "lock" }];
+    : workerLink;
   const activeHref = active ?? home;
 
   return (
@@ -224,6 +240,12 @@ export default function StaffShell({
               </Link>
             ))}
           </nav>
+        )}
+
+        {!isAdmin && (
+          <div className="mt-1">
+            <SuggestionBox variant="sidebar" />
+          </div>
         )}
 
         <div className="mt-auto pt-6">
