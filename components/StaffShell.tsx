@@ -36,6 +36,12 @@ const ICONS: Record<string, React.ReactNode> = {
     </>
   ),
   back: <path d="M15 5l-7 7 7 7" />,
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
   list: (
     <>
       <path d="M9 6h11M9 12h11M9 18h11" />
@@ -109,7 +115,18 @@ export default function StaffShell({
   const home = isAdmin ? "/admin/dashboard" : "/supervisor";
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin) {
+      // Supervisors: the worker page address comes from the app's home-screen
+      // settings, which always point at this site's worker page.
+      fetch("/api/manifest")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((m) => {
+          const slug = typeof m?.start_url === "string" ? m.start_url.replace(/^\//, "") : "";
+          if (slug) setWorkerPageSlug(slug);
+        })
+        .catch(() => {});
+      return;
+    }
     // For the "Worker page" link and the project name shown at the top.
     fetch("/api/admin/projects")
       .then((res) => (res.ok ? res.json() : null))
@@ -135,14 +152,13 @@ export default function StaffShell({
         { href: "/stats", label: "Statistics", icon: "stats" },
       ];
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
-  const linkItems = isAdmin
-    ? [
-        { href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" },
-        ...(workerPageSlug
-          ? [{ href: `/${workerPageSlug}`, label: "Worker page", icon: "phone" }]
-          : []),
-      ]
+  // They open in a new tab, so the page you're on stays open.
+  const workerLink = workerPageSlug
+    ? [{ href: `/${workerPageSlug}`, label: "Worker page", icon: "phone" }]
     : [];
+  const linkItems = isAdmin
+    ? [{ href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" }, ...workerLink]
+    : [...workerLink, { href: "/admin/login", label: "Admin login", icon: "lock" }];
   const activeHref = active ?? home;
 
   return (
@@ -200,6 +216,7 @@ export default function StaffShell({
               <Link
                 key={item.href}
                 href={item.href}
+                target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
               >
                 <StaffIcon name={item.icon} className="w-[18px] h-[18px]" />
