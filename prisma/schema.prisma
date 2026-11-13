@@ -468,3 +468,20 @@ model AdminUser {
   passwordHash String
   createdAt    DateTime @default(now())
 }
+
+// ---------- Suggestion box ----------
+
+// Ideas to change or add something in JSAFE, sent by workers, supervisors or
+// admins. Admins read them on the Suggestions page and mark each one.
+model Suggestion {
+  id        String   @id @default(uuid())
+  text      String
+  name      String?  // who sent it, if they said
+  role      String   // "worker" | "supervisor" | "admin"
+  status    String   @default("new") // "new" | "planned" | "done" | "not_doing"
+  adminNote String?  // a short reply or note from the admin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
