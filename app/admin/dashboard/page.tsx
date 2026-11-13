@@ -4,6 +4,9 @@ import AdminDemo from "@/components/demo/AdminDemo";
 import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
 import ArchiveButton from "@/components/ArchiveButton";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
+import { cookies } from "next/headers";
+import { verifyAdminSessionToken } from "@/lib/adminSession";
+import { isSiteOwner, supervisorsCanChooseTeams } from "@/lib/siteSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +86,12 @@ const ICONS: Record<string, React.ReactNode> = {
     <>
       <rect x="7" y="2" width="10" height="20" rx="2" />
       <path d="M11 18h2" />
+    </>
+  ),
+  idea: (
+    <>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z" />
     </>
   ),
   list: (
@@ -201,6 +210,10 @@ export default async function AdminDashboard({
   );
   const totalCount = counts.reduce((sum, c) => sum + c._count, 0);
   const toReview = countMap["awaiting_supervisor_review"] ?? 0;
+  // Suggestions are only for the site owner (OWNER_ADMIN_EMAIL).
+  const isOwner = isSiteOwner(await verifyAdminSessionToken(cookies().get("admin_session")?.value));
+  // Ideas from the "Suggest an idea" button that haven't been looked at yet.
+  const newSuggestions = isOwner ? await prisma.suggestion.count({ where: { status: "new" } }) : 0;
 
   // Builds a dashboard link for a status, keeping the chosen project.
   const statusHref = (status?: string) => {
@@ -233,6 +246,7 @@ export default async function AdminDashboard({
     { href: "/admin/lists", label: "Site lists", icon: "list" },
     { href: "/admin/export", label: "Export", icon: "export" },
     { href: "/stats", label: "Statistics", icon: "stats" },
+    ...(isOwner ? [{ href: "/admin/suggestions", label: "Suggestions", icon: "idea" }] : []),
   ];
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
   // They open in a new tab, so the dashboard stays open.
@@ -272,7 +286,7 @@ export default async function AdminDashboard({
           </div>
         )}
         <div className="mt-4 px-2">
-          <AdminDemo autoShow={false} />
+          <AdminDemo autoShow={false} owner={isOwner} adminSetsTeams={!supervisorsCanChooseTeams()} />
         </div>
 
         <nav className="mt-8 space-y-1">
@@ -291,6 +305,11 @@ export default async function AdminDashboard({
             >
               <Icon name={s.icon} className="w-[18px] h-[18px]" />
               {s.label}
+              {s.href === "/admin/suggestions" && newSuggestions > 0 && (
+                <span className="ml-auto text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950">
+                  {newSuggestions} new
+                </span>
+              )}
             </Link>
           ))}
         </nav>
@@ -355,7 +374,7 @@ export default async function AdminDashboard({
             )}
             {/* "New here? Watch the demo" — only on the dashboard */}
             <div className="mt-3">
-              <AdminDemo />
+              <AdminDemo owner={isOwner} adminSetsTeams={!supervisorsCanChooseTeams()} />
             </div>
           </header>
 
@@ -405,8 +424,13 @@ export default async function AdminDashboard({
               <Link
                 key={s.href}
                 href={s.href}
-                className="flex flex-col items-center gap-1.5 rounded-2xl bg-white border border-neutral-200 py-3 px-1 shadow-sm active:bg-neutral-50"
+                className="relative flex flex-col items-center gap-1.5 rounded-2xl bg-white border border-neutral-200 py-3 px-1 shadow-sm active:bg-neutral-50"
               >
+                {s.href === "/admin/suggestions" && newSuggestions > 0 && (
+                  <span className="absolute top-1.5 right-1.5 min-w-[20px] text-center text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950">
+                    {newSuggestions}
+                  </span>
+                )}
                 <span className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
                   <Icon name={s.icon} />
                 </span>
