@@ -64,6 +64,18 @@ const STATUS_OPTIONS: { key: string; label: string }[] = [
 const ICONS: Record<string, React.ReactNode> = {
   home: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
   stats: <path d="M4 20V11M10 20V5M16 20v-6M2 20h20" />,
+  phone: (
+    <>
+      <rect x="7" y="2" width="10" height="20" rx="2" />
+      <path d="M11 18h2" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
 };
 
 function Icon({ name, className = "w-5 h-5" }: { name: string; className?: string }) {
@@ -146,6 +158,12 @@ export default async function SupervisorDashboard({
   const projects = await prisma.project.findMany({ orderBy: { name: "asc" } });
   // The project this site is for, e.g. "Yanco BESS" — shown at the top.
   const projectName = projects.length === 1 ? projects[0].name : null;
+  // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
+  // They open in a new tab, so the dashboard stays open.
+  const links = [
+    ...(projects[0] ? [{ href: `/${projects[0].qrSlug}`, label: "Worker page", icon: "phone" }] : []),
+    { href: "/admin/login", label: "Admin login", icon: "lock" },
+  ];
 
   // The teams this supervisor looks after ("My teams").
   const { teams, teamIds: myTeamIds } = await getSupervisorTeams(supervisorId);
@@ -283,6 +301,21 @@ export default async function SupervisorDashboard({
           </Link>
         </nav>
 
+        <nav className="mt-6 pt-4 border-t border-white/15 space-y-1">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-50/60">Links</p>
+          {links.map((s) => (
+            <Link
+              key={s.href}
+              href={s.href}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
+            >
+              <Icon name={s.icon} className="w-[18px] h-[18px]" />
+              {s.label}
+            </Link>
+          ))}
+        </nav>
+
         <div className="mt-auto pt-6">
           <p className="px-3 mb-2 text-xs text-emerald-50/70">
             Logged in as
@@ -395,7 +428,7 @@ export default async function SupervisorDashboard({
           {/* ---------- Phone: statistics shortcut ---------- */}
           <Link
             href="/stats"
-            className="md:hidden flex items-center gap-3 mb-6 rounded-2xl bg-white border border-neutral-200 px-4 py-3 shadow-sm active:bg-neutral-50"
+            className="md:hidden flex items-center gap-3 mb-4 rounded-2xl bg-white border border-neutral-200 px-4 py-3 shadow-sm active:bg-neutral-50"
           >
             <span className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
               <Icon name="stats" />
@@ -403,6 +436,26 @@ export default async function SupervisorDashboard({
             <span className="flex-1 text-sm font-semibold text-neutral-800">View statistics</span>
             <span className="text-neutral-400">→</span>
           </Link>
+
+          {/* ---------- Phone: links to the other JSAFE pages ---------- */}
+          <div className="md:hidden mb-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-2">Links</p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {links.map((s) => (
+                <Link
+                  key={s.href}
+                  href={s.href}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 rounded-2xl bg-white border border-neutral-200 px-3 py-2.5 shadow-sm active:bg-neutral-50"
+                >
+                  <span className="w-8 h-8 shrink-0 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                    <Icon name={s.icon} className="w-4 h-4" />
+                  </span>
+                  <span className="text-sm font-medium text-neutral-800 leading-tight">{s.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
 
           {/* ---------- My teams + notifications ---------- */}
           <SupervisorMyTeams
