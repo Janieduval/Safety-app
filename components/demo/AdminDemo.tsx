@@ -1,5 +1,6 @@
 "use client";
 
+import { createContext, useContext, useMemo } from "react";
 import DemoPlayer, { DemoChapter, DemoScene } from "./DemoPlayer";
 import {
   AssessmentCard,
@@ -27,7 +28,11 @@ const SHORTCUTS: [string, string, string][] = [
   ["lists", "list", "Site lists"],
   ["export", "export", "Export"],
   ["stats", "stats", "Statistics"],
+  ["suggestions", "idea", "Suggestions"],
 ];
+
+// What this site shows: Suggestions only for the site owner.
+const Site = createContext({ owner: true });
 // Shown under their own "Links" heading, like the real dashboard.
 const LINKS: [string, string, string][] = [
   ["supervisor", "check", "Supervisor login"],
@@ -35,18 +40,23 @@ const LINKS: [string, string, string][] = [
 ];
 
 function Dashboard({ showCard = true }: { showCard?: boolean }) {
+  const { owner } = useContext(Site);
+  const shortcuts = owner ? SHORTCUTS : SHORTCUTS.filter(([id]) => id !== "suggestions");
   return (
     <div className="h-full flex flex-col">
       <DashHeader role="Admin dashboard" greeting="Good morning" />
       <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
         <NeedsReview n={3} id="needs" />
         <div className="grid grid-cols-3 gap-1.5">
-          {SHORTCUTS.map(([id, icon, label]) => (
+          {shortcuts.map(([id, icon, label]) => (
             <div
               key={id}
               data-demo={id}
-              className="flex flex-col items-center gap-1 rounded-xl bg-white border border-neutral-200 py-1.5 shadow-sm cursor-pointer"
+              className="relative flex flex-col items-center gap-1 rounded-xl bg-white border border-neutral-200 py-1.5 shadow-sm cursor-pointer"
             >
+              {id === "suggestions" && (
+                <span className="absolute top-0.5 right-0.5 text-[7px] font-bold px-1 rounded-full bg-amber-400 text-amber-950">2</span>
+              )}
               <span className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
                 {icon === "phone" ? <Phone className="w-3.5 h-3.5" /> : <I name={icon} className="w-3.5 h-3.5" />}
               </span>
@@ -688,12 +698,94 @@ function RecordView() {
   );
 }
 
+function Suggestions({ planned = false, noting = false }: { planned?: boolean; noting?: boolean }) {
+  const tab = (label: string, n: number, on = false) => (
+    <span
+      className={`shrink-0 text-[8.5px] px-2 py-0.5 rounded-full border ${
+        on ? "bg-emerald-700 border-emerald-700 text-white font-semibold" : "bg-white border-neutral-300 text-neutral-700"
+      }`}
+    >
+      {label} <span className="font-bold">{n}</span>
+    </span>
+  );
+  const btn = (label: string, on: boolean, id?: string) => (
+    <span
+      data-demo={id}
+      className={`text-[8px] px-1.5 py-0.5 rounded-full font-semibold cursor-pointer ${
+        on ? "bg-emerald-700 text-white" : "border border-neutral-300 bg-white text-neutral-700"
+      }`}
+    >
+      {label}
+    </span>
+  );
+  return (
+    <div className="h-full flex flex-col">
+      <PageHeader title="Suggestions" sub="Ideas from workers and supervisors" />
+      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
+        <div className="flex gap-1">
+          {tab("New", planned ? 1 : 2, true)}
+          {tab("Planned", planned ? 1 : 0)}
+          {tab("Done", 0)}
+          {tab("All", 2)}
+        </div>
+        {!planned && (
+          <div className="rounded-xl bg-white border border-blue-200 p-2">
+            <div className="flex items-start justify-between gap-1">
+              <p className="text-[8px] text-neutral-500">
+                <span className="font-semibold text-neutral-800">Alex Nguyen</span> · Worker · 29 Oct
+              </p>
+              <Pill tone="blue">New</Pill>
+            </div>
+            <p className="mt-1 text-[9.5px]">Add Crane lift to the permits list, we need it most mornings.</p>
+            {noting && (
+              <div className="mt-1">
+                <Input>
+                  <Typing text="Added to Site lists → Permits" delay={300} speed={55} />
+                </Input>
+                <span data-demo="save-note" className="mt-1 inline-block text-[8.5px] px-2 py-0.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">
+                  Save note
+                </span>
+              </div>
+            )}
+            <div className="mt-1.5 pt-1.5 border-t border-neutral-100 flex flex-wrap gap-1">
+              {btn("New", true)}
+              {btn("Planned", false, "planned")}
+              {btn("Done", false, "done")}
+              {btn("Not doing", false)}
+              {!noting && (
+                <span data-demo="note" className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full border border-neutral-300 bg-white font-semibold cursor-pointer">
+                  Add note
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="rounded-xl bg-white border border-blue-200 p-2">
+          <div className="flex items-start justify-between gap-1">
+            <p className="text-[8px] text-neutral-500">
+              <span className="font-semibold text-neutral-800">Jordan Micallef</span> · Supervisor · 28 Oct
+            </p>
+            <Pill tone="blue">New</Pill>
+          </div>
+          <p className="mt-1 text-[9.5px]">Show how many of my crew have signed on today.</p>
+          <div className="mt-1.5 pt-1.5 border-t border-neutral-100 flex flex-wrap gap-1">
+            {btn("New", true)}
+            {btn("Planned", false)}
+            {btn("Done", false)}
+            {btn("Not doing", false)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------- Demos ----------
 
 const DASH_SCENES: DemoScene[] = [
   {
     title: "Your admin dashboard",
-    text: "Everything for the site in one place. The shortcut buttons take you to People, Saved answers, Site lists, Export and Statistics. Under Links: Supervisor login and the Worker page.",
+    text: "Everything for the site in one place. The shortcut buttons take you to People, Saved answers, Site lists, Export and Statistics. Under Links: Supervisor login and the Worker page — they open in a new tab.",
     wait: 4000,
     render: () => <Dashboard />,
   },
@@ -966,7 +1058,43 @@ const EXPORT_SCENES: DemoScene[] = [
   },
 ];
 
-const CHAPTERS: DemoChapter[] = [
+const SUGGEST_SCENES: DemoScene[] = [
+  {
+    title: "Suggestions",
+    text: "Workers and supervisors can send ideas with the Suggest an idea button. The number shows how many are new. Tap Suggestions.",
+    target: "suggestions",
+    wait: 3000,
+    render: () => <Dashboard showCard={false} />,
+  },
+  {
+    title: "Read the ideas",
+    text: "Each idea shows who sent it and when. Only the site owner's admin login sees this page.",
+    target: "note",
+    wait: 3400,
+    render: () => <Suggestions />,
+  },
+  {
+    title: "Add a note",
+    text: "Add a note for yourself, like what you changed.",
+    target: "save-note",
+    wait: 3400,
+    render: () => <Suggestions noting />,
+  },
+  {
+    title: "Mark it",
+    text: "Tap Planned, Done or Not doing. It moves to that tab, so New only holds what you haven't looked at yet.",
+    target: "planned",
+    wait: 3000,
+    render: () => <Suggestions />,
+  },
+  {
+    title: "One less to go",
+    text: "Done ones stay under Done and All. Delete removes one for good (it asks first).",
+    render: () => <Suggestions planned />,
+  },
+];
+
+const ALL_CHAPTERS: DemoChapter[] = [
   {
     id: "teams",
     title: "Supervisors' teams",
@@ -1009,8 +1137,41 @@ const CHAPTERS: DemoChapter[] = [
     icon: <I name="export" className="w-5 h-5" />,
     scenes: EXPORT_SCENES,
   },
+  {
+    id: "suggestions",
+    title: "Suggestions",
+    text: "Read the ideas people send, and mark them as you go",
+    icon: <I name="idea" className="w-5 h-5" />,
+    scenes: SUGGEST_SCENES,
+  },
 ];
 
-export default function AdminDemo(props: { variant?: "light" | "plain"; className?: string; autoShow?: boolean }) {
-  return <DemoPlayer label="Admin" chapters={CHAPTERS} storageKey="jsafe-demo-admin" {...props} />;
+// On sites where only admins set supervisors' teams, the demo says so.
+const ADMIN_ONLY_TEAMS = "Tap teams on or off, then Save teams. They'll get a notification when those teams submit a JSAFE. On this site, only admins set supervisors' teams.";
+
+export default function AdminDemo({
+  owner = false,
+  adminSetsTeams = false,
+  ...props
+}: {
+  owner?: boolean; // the site owner also sees Suggestions
+  adminSetsTeams?: boolean; // only admins set supervisors' teams on this site
+  variant?: "light" | "plain";
+  className?: string;
+  autoShow?: boolean;
+}) {
+  const chapters = useMemo(
+    () =>
+      ALL_CHAPTERS.filter((c) => owner || c.id !== "suggestions").map((c) =>
+        adminSetsTeams
+          ? { ...c, scenes: c.scenes.map((s) => (s.title === "Save teams" ? { ...s, text: ADMIN_ONLY_TEAMS } : s)) }
+          : c
+      ),
+    [owner, adminSetsTeams]
+  );
+  return (
+    <Site.Provider value={{ owner }}>
+      <DemoPlayer label="Admin" chapters={chapters} storageKey="jsafe-demo-admin" {...props} />
+    </Site.Provider>
+  );
 }
