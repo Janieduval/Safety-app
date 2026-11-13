@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import SupervisorDemo from "@/components/demo/SupervisorDemo";
 import SupervisorMyTeams from "@/components/SupervisorMyTeams";
+import SuggestionBox from "@/components/SuggestionBox";
 import { verifySupervisorSessionToken } from "@/lib/supervisorSession";
 import { getSupervisorTeams } from "@/lib/supervisorTeams";
+import { supervisorsCanChooseTeams } from "@/lib/siteSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -160,10 +162,7 @@ export default async function SupervisorDashboard({
   const projectName = projects.length === 1 ? projects[0].name : null;
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
   // They open in a new tab, so the dashboard stays open.
-  const links = [
-    ...(projects[0] ? [{ href: `/${projects[0].qrSlug}`, label: "Worker page", icon: "phone" }] : []),
-    { href: "/admin/login", label: "Admin login", icon: "lock" },
-  ];
+  const links = projects[0] ? [{ href: `/${projects[0].qrSlug}`, label: "Worker page", icon: "phone" }] : [];
 
   // The teams this supervisor looks after ("My teams").
   const { teams, teamIds: myTeamIds } = await getSupervisorTeams(supervisorId);
@@ -281,7 +280,7 @@ export default async function SupervisorDashboard({
           </div>
         )}
         <div className="mt-4 px-2">
-          <SupervisorDemo autoShow={false} />
+          <SupervisorDemo autoShow={false} adminSetsTeams={!supervisorsCanChooseTeams()} />
         </div>
 
         <nav className="mt-8 space-y-1">
@@ -314,6 +313,7 @@ export default async function SupervisorDashboard({
               {s.label}
             </Link>
           ))}
+          <SuggestionBox variant="sidebar" />
         </nav>
 
         <div className="mt-auto pt-6">
@@ -381,7 +381,7 @@ export default async function SupervisorDashboard({
             )}
             {/* "New here? Watch the demo" — only on the dashboard */}
             <div className="mt-3">
-              <SupervisorDemo />
+              <SupervisorDemo adminSetsTeams={!supervisorsCanChooseTeams()} />
             </div>
           </header>
 
@@ -454,6 +454,7 @@ export default async function SupervisorDashboard({
                   <span className="text-sm font-medium text-neutral-800 leading-tight">{s.label}</span>
                 </Link>
               ))}
+              <SuggestionBox variant="tile" />
             </div>
           </div>
 
@@ -464,6 +465,7 @@ export default async function SupervisorDashboard({
             showingMine={showingMine}
             allHref={teamsHref(false)}
             mineHref={teamsHref(true)}
+            canEdit={supervisorsCanChooseTeams()}
           />
 
           {/* ---------- Status filters: pills on a phone ---------- */}
