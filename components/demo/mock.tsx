@@ -47,6 +47,12 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M20 20l-3.5-3.5" />
     </>
   ),
+  idea: (
+    <>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z" />
+    </>
+  ),
 };
 
 export function I({ name, className = "w-4 h-4" }: { name: string; className?: string }) {
@@ -518,6 +524,8 @@ export function PdfDoc({
   signOns = [{ name: "Alex Nguyen", primary: true, when: "29/10/2026, 6:58 am" }],
   reviews = [],
   scrollFrom = 1200,
+  inApp = false,
+  pages = 2,
 }: {
   file?: string;
   status?: string;
@@ -525,6 +533,8 @@ export function PdfDoc({
   signOns?: PdfSignOn[];
   reviews?: PdfReview[];
   scrollFrom?: number;
+  inApp?: boolean; // workers: the PDF opens inside JSAFE, with Back and Download
+  pages?: number;
 }) {
   const h2 = "mt-2 text-[9px] font-bold text-neutral-900 border-b border-neutral-300 pb-0.5";
   const t = "text-[7.5px] text-neutral-800 leading-snug";
@@ -536,10 +546,25 @@ export function PdfDoc({
   );
   return (
     <div className="h-full flex flex-col bg-neutral-300">
-      <div className="px-3 py-2 bg-neutral-800 text-white text-[9px] flex items-center justify-between gap-2">
-        <span className="truncate">{file}</span>
-        <span className="text-neutral-300 shrink-0">Share ↑</span>
-      </div>
+      {inApp ? (
+        <div className="px-2.5 pt-2.5 pb-2 text-white flex items-center justify-between gap-2 shadow" style={{ background: GRADIENT }}>
+          <span data-demo="pdf-back" className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white/15 ring-1 ring-white/30 cursor-pointer">
+            ‹ Back
+          </span>
+          <span className="text-center leading-tight">
+            <span className="block text-[10px] font-bold">Take 5 PDF</span>
+            <span className="block text-[7.5px] text-emerald-50/90">{pages} pages</span>
+          </span>
+          <span data-demo="pdf-download" className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white text-emerald-800 cursor-pointer">
+            ↓ Download
+          </span>
+        </div>
+      ) : (
+        <div className="px-3 py-2 bg-neutral-800 text-white text-[9px] flex items-center justify-between gap-2">
+          <span className="truncate">{file}</span>
+          <span className="text-neutral-300 shrink-0">Share ↑</span>
+        </div>
+      )}
       <div className="flex-1 min-h-0 p-2.5">
         <AutoScroll stops={[{ at: scrollFrom, to: "hazards" }, { at: scrollFrom + 2600, to: "end" }]}>
           <div className="bg-white shadow rounded-sm px-3 py-3 space-y-0.5">
