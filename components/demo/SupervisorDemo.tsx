@@ -1,7 +1,7 @@
 "use client";
 
 import DemoPlayer, { DemoChapter, DemoScene } from "./DemoPlayer";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AssessmentCard,
   AutoChecks,
@@ -51,7 +51,7 @@ function Dashboard({
   filter?: string;
   approvedAlex?: boolean;
   amended?: boolean;
-  target?: "needs" | "review" | "stats" | "view";
+  target?: "needs" | "review" | "stats" | "view" | "suggest";
 }) {
   return (
     <div className="h-full flex flex-col">
@@ -68,6 +68,28 @@ function Dashboard({
             </span>
             <span className="flex-1 text-[10px] font-semibold">View statistics</span>
             <span className="text-neutral-400 text-xs">→</span>
+          </div>
+        )}
+        {filter === "All" && (
+          <div>
+            <p className="text-[7.5px] font-semibold uppercase tracking-wide text-neutral-500 mb-1">Links</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="flex items-center gap-1.5 rounded-xl bg-white border border-neutral-200 px-2 py-1.5 shadow-sm">
+                <span className="w-5 h-5 shrink-0 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <PhoneIcon className="w-3 h-3" />
+                </span>
+                <span className="text-[8.5px] font-medium text-neutral-800">Worker page</span>
+              </div>
+              <div
+                data-demo="suggest"
+                className="flex items-center gap-1.5 rounded-xl bg-white border border-neutral-200 px-2 py-1.5 shadow-sm cursor-pointer"
+              >
+                <span className="w-5 h-5 shrink-0 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <I name="idea" className="w-3 h-3" />
+                </span>
+                <span className="text-[8.5px] font-medium text-neutral-800">Suggest an idea</span>
+              </div>
+            </div>
           </div>
         )}
         <StatusPills active={filter} />
@@ -829,7 +851,13 @@ const TEAM_CHIPS = [
 ];
 const MY_TEAMS = ["Piling", "Rails installation"];
 
-function MyTeamsCard({ stage }: { stage: "none" | "picking" | "saved" | "ask" | "on" | "mine" }) {
+function MyTeamsCard({
+  stage,
+  locked = false,
+}: {
+  stage: "none" | "picking" | "saved" | "ask" | "on" | "mine";
+  locked?: boolean; // the admin sets the teams on this site
+}) {
   const chosen = stage !== "none" && stage !== "picking";
   return (
     <div className="rounded-xl bg-white border border-neutral-200 shadow-sm p-2.5">
@@ -840,7 +868,7 @@ function MyTeamsCard({ stage }: { stage: "none" | "picking" | "saved" | "ask" | 
             Get a notification when one of your teams submits a JSAFE for review.
           </p>
         </div>
-        {stage !== "picking" && (
+        {stage !== "picking" && !locked && (
           <span
             data-demo="choose"
             className="shrink-0 text-[9.5px] px-2 py-1 rounded-full border border-emerald-700 text-emerald-700 font-semibold cursor-pointer"
@@ -896,6 +924,7 @@ function MyTeamsCard({ stage }: { stage: "none" | "picking" | "saved" | "ask" | 
         ) : (
           <p className="text-[9.5px] text-neutral-500">No teams chosen yet.</p>
         )}
+        {locked && chosen && <p className="mt-1 text-[8px] text-neutral-500">Your teams are set by the admin.</p>}
       </div>
 
       {stage !== "picking" && (
@@ -939,13 +968,19 @@ function MyTeamsCard({ stage }: { stage: "none" | "picking" | "saved" | "ask" | 
   );
 }
 
-function TeamsDash({ stage }: { stage: "none" | "picking" | "saved" | "ask" | "on" | "mine" }) {
+function TeamsDash({
+  stage,
+  locked = false,
+}: {
+  stage: "none" | "picking" | "saved" | "ask" | "on" | "mine";
+  locked?: boolean;
+}) {
   const mine = stage === "mine";
   return (
     <div className="h-full flex flex-col relative">
       <DashHeader role="Supervisor" greeting="Good morning, Jordan" />
       <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
-        <MyTeamsCard stage={stage} />
+        <MyTeamsCard stage={stage} locked={locked} />
         {stage !== "picking" && (
           <>
             <StatusPills
@@ -1009,6 +1044,56 @@ function Bell({ className = "w-4 h-4" }: { className?: string }) {
       <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
       <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
     </svg>
+  );
+}
+
+function PhoneIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="7" y="2" width="10" height="20" rx="2" />
+      <path d="M11 18h2" />
+    </svg>
+  );
+}
+
+// The "Suggest an idea" form, as it slides up over the dashboard.
+function IdeaSheet({ sent = false }: { sent?: boolean }) {
+  return (
+    <div className="h-full relative">
+      <Dashboard />
+      <div className="absolute inset-0 bg-black/40 flex items-end">
+        <div className="w-full bg-white rounded-t-2xl p-3 pb-4">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 shrink-0 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+              <I name="idea" className="w-4 h-4" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-[13px] font-bold leading-tight">Suggest an idea</span>
+              <span className="block text-[8.5px] text-neutral-500">It goes to the JSAFE admin team.</span>
+            </span>
+            <span className="text-neutral-400 text-[12px]">✕</span>
+          </div>
+          {sent ? (
+            <div className="mt-3 text-center">
+              <span className="mx-auto w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center text-[14px] font-bold">✓</span>
+              <p className="mt-1.5 text-[11px] font-semibold">Thanks — your idea has been sent.</p>
+              <p className="text-[9px] text-neutral-600">The admin team reads every one.</p>
+              <div className="mt-2.5 text-center text-[11px] font-semibold py-2 rounded-lg bg-emerald-700 text-white">Done</div>
+            </div>
+          ) : (
+            <div className="mt-2.5 space-y-1.5">
+              <p className="text-[10px] font-semibold text-neutral-800">What would you like changed or added?</p>
+              <div className="h-16 rounded-lg border border-neutral-300 px-2 py-1.5 text-[10.5px]">
+                <Typing text="Show how many of my crew have signed on today" delay={400} speed={55} />
+              </div>
+              <div data-demo="send-idea" className="text-center text-[11px] font-semibold py-2 rounded-lg bg-emerald-700 text-white cursor-pointer">
+                Send idea
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1199,41 +1284,54 @@ const STATS_SCENES: DemoScene[] = [
   },
 ];
 
-// 1. My teams & notifications.
-const TEAMS_SCENES: DemoScene[] = [
-  {
-    title: "My teams",
-    text: "On your dashboard, the My teams card lets you choose the teams you're responsible for. Tap Choose teams.",
-    target: "choose",
-    wait: 3000,
-    render: () => <TeamsDash stage="none" />,
-  },
-  {
-    title: "Choose your teams",
-    text: "Tap the teams you're responsible for — they turn green with a tick. Then tap Save teams.",
-    target: "save-teams",
-    wait: 3200,
-    render: () => <TeamsDash stage="picking" />,
-  },
-  {
-    title: "Turn on notifications",
-    text: "Your teams now show on the card. Tap Turn on notifications.",
-    target: "notify-on",
-    wait: 2600,
-    render: () => <TeamsDash stage="saved" />,
-  },
+// 1. My teams & notifications. On sites where the admin sets supervisors'
+// teams (`locked`), the card just shows them — there's no Choose teams.
+const teamsScenes = (locked: boolean): DemoScene[] => [
+  ...(locked
+    ? [
+        {
+          title: "My teams",
+          text: "The My teams card on your dashboard shows the teams you're responsible for. Your admin sets them. Tap Turn on notifications.",
+          target: "notify-on",
+          wait: 3600,
+          render: () => <TeamsDash stage="saved" locked />,
+        },
+      ]
+    : [
+        {
+          title: "My teams",
+          text: "On your dashboard, the My teams card lets you choose the teams you're responsible for. Tap Choose teams.",
+          target: "choose",
+          wait: 3000,
+          render: () => <TeamsDash stage="none" />,
+        },
+        {
+          title: "Choose your teams",
+          text: "Tap the teams you're responsible for — they turn green with a tick. Then tap Save teams.",
+          target: "save-teams",
+          wait: 3200,
+          render: () => <TeamsDash stage="picking" />,
+        },
+        {
+          title: "Turn on notifications",
+          text: "Your teams now show on the card. Tap Turn on notifications.",
+          target: "notify-on",
+          wait: 2600,
+          render: () => <TeamsDash stage="saved" />,
+        },
+      ]),
   {
     title: "Allow",
     text: "Your phone or browser asks if JSAFE can send notifications. Tap Allow.",
     target: "allow",
     wait: 2400,
-    render: () => <TeamsDash stage="ask" />,
+    render: () => <TeamsDash stage="ask" locked={locked} />,
   },
   {
     title: "Notifications are on",
     text: "Do this on each phone or computer you use. On an iPhone, open JSAFE from your home screen icon first.",
     wait: 3400,
-    render: () => <TeamsDash stage="on" />,
+    render: () => <TeamsDash stage="on" locked={locked} />,
   },
   {
     title: "JSAFE to review",
@@ -1253,22 +1351,47 @@ const TEAMS_SCENES: DemoScene[] = [
     text: "Back on the dashboard, tap My teams to see only your teams' JSAFEs.",
     target: "mine",
     wait: 2600,
-    render: () => <TeamsDash stage="on" />,
+    render: () => <TeamsDash stage="on" locked={locked} />,
   },
   {
     title: "My teams' assessments",
     text: "Only your teams are listed, and the numbers change to match. Tap All teams to see everything again.",
-    render: () => <TeamsDash stage="mine" />,
+    render: () => <TeamsDash stage="mine" locked={locked} />,
   },
 ];
 
-const CHAPTERS: DemoChapter[] = [
+// 5. Suggest an idea.
+const IDEA_SCENES: DemoScene[] = [
+  {
+    title: "Got an idea?",
+    text: "Something in JSAFE you'd change, or something missing? On your dashboard, under Links, tap Suggest an idea.",
+    target: "suggest",
+    wait: 3000,
+    render: () => <Dashboard />,
+  },
+  {
+    title: "Tell us",
+    text: "Write what you'd like changed or added, then tap Send idea. Your name is added for you.",
+    target: "send-idea",
+    wait: 4200,
+    render: () => <IdeaSheet />,
+  },
+  {
+    title: "Sent",
+    text: "It goes straight to the JSAFE admin team. On a computer, Suggest an idea is in the green menu on the left.",
+    render: () => <IdeaSheet sent />,
+  },
+];
+
+const chapters = (adminSetsTeams: boolean): DemoChapter[] => [
   {
     id: "teams",
     title: "My teams",
-    text: "Choose your teams and get a notification when they submit a Take 5",
+    text: adminSetsTeams
+      ? "See your teams and get a notification when they submit a Take 5"
+      : "Choose your teams and get a notification when they submit a Take 5",
     icon: <Bell className="w-5 h-5" />,
-    scenes: TEAMS_SCENES,
+    scenes: teamsScenes(adminSetsTeams),
   },
   {
     id: "dash",
@@ -1291,8 +1414,24 @@ const CHAPTERS: DemoChapter[] = [
     icon: <I name="stats" className="w-5 h-5" />,
     scenes: STATS_SCENES,
   },
+  {
+    id: "idea",
+    title: "Suggest an idea",
+    text: "Tell the admin team what to change or add",
+    icon: <I name="idea" className="w-5 h-5" />,
+    scenes: IDEA_SCENES,
+  },
 ];
 
-export default function SupervisorDemo(props: { variant?: "light" | "plain"; className?: string; autoShow?: boolean }) {
-  return <DemoPlayer label="Supervisor" chapters={CHAPTERS} storageKey="jsafe-demo-supervisor" {...props} />;
+export default function SupervisorDemo({
+  adminSetsTeams = false,
+  ...props
+}: {
+  adminSetsTeams?: boolean; // this site's admin sets supervisors' teams
+  variant?: "light" | "plain";
+  className?: string;
+  autoShow?: boolean;
+}) {
+  const list = useMemo(() => chapters(adminSetsTeams), [adminSetsTeams]);
+  return <DemoPlayer label="Supervisor" chapters={list} storageKey="jsafe-demo-supervisor" {...props} />;
 }
