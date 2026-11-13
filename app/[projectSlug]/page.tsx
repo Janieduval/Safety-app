@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import StartAssessmentForm from "./StartAssessmentForm";
 import WorkerDemo from "@/components/demo/WorkerDemo";
+import SuggestionBox from "@/components/SuggestionBox";
+import AddToHomeScreenButton from "@/components/AddToHomeScreenButton";
 
 // Always build this page fresh, so the greeting and date are never stale.
 export const dynamic = "force-dynamic";
@@ -91,9 +93,10 @@ export default async function ProjectLandingPage({
             <p className="text-sm text-emerald-50/90">{todayLabel}</p>
           </div>
 
-          {/* "New here? Watch the demo" — only on this home page */}
-          <div className="mt-4">
+          {/* "New here? Watch the demo" and "Add to home screen" — only on this home page */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <WorkerDemo />
+            <AddToHomeScreenButton />
           </div>
         </div>
       </header>
@@ -102,6 +105,11 @@ export default async function ProjectLandingPage({
       <div className="px-4 pt-6 pb-10">
         <div className="max-w-md mx-auto">
           <StartAssessmentForm projectId={project.id} qrSlug={params.projectSlug} workers={project.workers} />
+        </div>
+
+        {/* Ideas for JSAFE go to the admin Suggestions page. */}
+        <div className="max-w-md mx-auto mt-8">
+          <SuggestionBox variant="card" askName />
         </div>
 
         <p className="max-w-md mx-auto mt-10 text-center text-xs font-medium text-neutral-400">
