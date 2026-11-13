@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
+import SuggestionBox from "@/components/SuggestionBox";
 
 type Period = "day" | "week" | "month";
 
@@ -135,6 +136,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M4 6h.01M4 12h.01M4 18h.01" />
     </>
   ),
+  idea: (
+    <>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z" />
+    </>
+  ),
   lock: (
     <>
       <rect x="5" y="11" width="14" height="10" rx="2" />
@@ -181,6 +188,8 @@ export default function StatsPage() {
   const [unauthorized, setUnauthorized] = useState(false);
   // This site's worker page, for the "Worker page" link (from the home-screen settings).
   const [workerSlug, setWorkerSlug] = useState<string | null>(null);
+  // The site owner also sees Suggestions in the admin menu.
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     fetch("/api/manifest")
@@ -191,6 +200,14 @@ export default function StatsPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (viewer?.role !== "admin") return;
+    fetch("/api/admin/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((me) => setIsOwner(!!me?.isOwner))
+      .catch(() => {});
+  }, [viewer?.role]);
 
   useEffect(() => {
     setStats(null);
@@ -260,6 +277,7 @@ export default function StatsPage() {
         { href: "/admin/lists", label: "Site lists", icon: "list" },
         { href: "/admin/export", label: "Export", icon: "export" },
         { href: "/stats", label: "Statistics", icon: "stats" },
+        ...(isOwner ? [{ href: "/admin/suggestions", label: "Suggestions", icon: "idea" }] : []),
       ]
     : [
         { href: "/supervisor", label: "Dashboard", icon: "home" },
@@ -276,7 +294,7 @@ export default function StatsPage() {
     ? []
     : isAdmin
     ? [{ href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" }, ...workerLink]
-    : [...workerLink, { href: "/admin/login", label: "Admin login", icon: "lock" }];
+    : workerLink;
 
   const labels = stats ? stats.buckets.map((b) => bucketLabel(b, period)) : [];
   const longLabels = stats ? stats.buckets.map((b) => bucketLongLabel(b, period)) : [];
@@ -340,6 +358,12 @@ export default function StatsPage() {
               </Link>
             ))}
           </nav>
+        )}
+
+        {viewer?.role === "supervisor" && (
+          <div className="mt-1">
+            <SuggestionBox variant="sidebar" />
+          </div>
         )}
 
         <div className="mt-auto pt-6">
