@@ -53,4 +53,32 @@ export const WHATS_NEW: WhatsNew[] = [
     text: "New Site lists page: add, rename or remove the Teams, SWMS, PPE and Permits workers pick from.",
     until: "2027-01-31",
   },
+  {
+    demo: "jsafe-demo-worker",
+    chapter: "idea",
+    id: "2026-11-worker-suggest-idea",
+    text: "Got an idea for JSAFE? Tap Suggest at the bottom of the home page to tell the admin team what to change or add.",
+    until: "2027-01-31",
+  },
+  {
+    demo: "jsafe-demo-worker",
+    chapter: "mine",
+    id: "2026-11-worker-pdf-page",
+    text: "PDFs now open inside JSAFE, with a Back button to return and a Download button to save it to your phone.",
+    until: "2027-01-31",
+  },
+  {
+    demo: "jsafe-demo-supervisor",
+    chapter: "idea",
+    id: "2026-11-supervisor-suggest-idea",
+    text: "New Suggest an idea button: tell the admin team what you'd like changed or added in JSAFE.",
+    until: "2027-01-31",
+  },
+  {
+    demo: "jsafe-demo-admin",
+    chapter: "suggestions",
+    id: "2026-11-admin-suggestions",
+    text: "New Suggestions page: read the ideas workers and supervisors send from the Suggest an idea button, and mark each one Planned, Done or Not doing.",
+    until: "2027-01-31",
+  },
 ];
