@@ -68,6 +68,20 @@ function Home() {
         {tile("signon", "pen", "Sign on to a crew", "Join today's assessment")}
         {tile("mine", "list", "My assessments", "Drafts & past records", false, true)}
       </div>
+      <div className="px-3 pt-3">
+        <div className="flex items-center gap-2 rounded-2xl bg-white border border-neutral-200 shadow-sm p-2.5">
+          <span className="w-8 h-8 shrink-0 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+            <I name="idea" className="w-4 h-4" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[11px] font-semibold leading-tight">Got an idea for JSAFE?</span>
+            <span className="block text-[9px] text-neutral-500">Tell us what to change or add.</span>
+          </span>
+          <span data-demo="suggest" className="shrink-0 text-[9.5px] px-2 py-1 rounded-lg border border-emerald-700 text-emerald-700 font-semibold cursor-pointer">
+            Suggest
+          </span>
+        </div>
+      </div>
       <p className="mt-auto pb-3 text-center text-[9px] text-neutral-400">Daily Task Safety Awareness</p>
     </div>
   );
@@ -820,9 +834,17 @@ function OtherView() {
 function PdfView() {
   return (
     <div className="h-full flex flex-col bg-neutral-200">
-      <div className="px-3 py-2 bg-neutral-800 text-white text-[9.5px] flex items-center justify-between">
-        <span>JSAFE_Alex-Nguyen_2026-10-28.pdf</span>
-        <span className="text-neutral-300">Share ↑</span>
+      <div className="px-2.5 pt-2.5 pb-2 text-white flex items-center justify-between gap-2 shadow" style={{ background: GRADIENT }}>
+        <span data-demo="pdf-back" className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white/15 ring-1 ring-white/30 cursor-pointer">
+          ‹ Back
+        </span>
+        <span className="text-center leading-tight">
+          <span className="block text-[10px] font-bold">Take 5 PDF</span>
+          <span className="block text-[7.5px] text-emerald-50/90">2 pages</span>
+        </span>
+        <span data-demo="pdf-download" className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white text-emerald-800 cursor-pointer">
+          ↓ Download
+        </span>
       </div>
       <div className="m-3 flex-1 rounded bg-white shadow p-3 space-y-1.5">
         <p className="text-[11px] font-bold">Daily Task Safety Awareness</p>
@@ -831,6 +853,49 @@ function PdfView() {
           <div key={n} className="h-1.5 rounded bg-neutral-200" style={{ width: `${w}%` }} />
         ))}
         <p className="pt-1 text-[8.5px] font-semibold text-emerald-700">Approved by Jordan Micallef</p>
+      </div>
+    </div>
+  );
+}
+
+// The "Suggest an idea" form, as it slides up over the home page.
+function IdeaForm({ sent = false }: { sent?: boolean }) {
+  return (
+    <div className="h-full relative">
+      <Home />
+      <div className="absolute inset-0 bg-black/40 flex items-end">
+        <div className="w-full bg-white rounded-t-2xl p-3 pb-4">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 shrink-0 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+              <I name="idea" className="w-4 h-4" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-[13px] font-bold leading-tight">Suggest an idea</span>
+              <span className="block text-[8.5px] text-neutral-500">It goes to the JSAFE admin team.</span>
+            </span>
+            <span className="text-neutral-400 text-[12px]">✕</span>
+          </div>
+          {sent ? (
+            <div className="mt-3 text-center">
+              <span className="mx-auto w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center text-[14px] font-bold">✓</span>
+              <p className="mt-1.5 text-[11px] font-semibold">Thanks — your idea has been sent.</p>
+              <p className="text-[9px] text-neutral-600">The admin team reads every one.</p>
+              <Btn className="mt-2.5">Done</Btn>
+            </div>
+          ) : (
+            <div className="mt-2.5 space-y-1.5">
+              <p className="text-[10px] font-semibold text-neutral-800">What would you like changed or added?</p>
+              <div className="h-14 rounded-lg border border-neutral-300 px-2 py-1.5 text-[10.5px]">
+                <Typing text="Add Crane lift to the permits list" delay={400} speed={60} />
+              </div>
+              <p className="text-[10px] font-semibold text-neutral-800">
+                Your name <span className="font-normal text-neutral-500">(optional)</span>
+              </p>
+              <div className="rounded-lg border border-neutral-300 px-2 py-1.5 text-[10.5px]">{WHO}</div>
+              <Btn id="send-idea">Send idea</Btn>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -968,9 +1033,16 @@ const START_SCENES: DemoScene[] = [
   },
   {
     title: "The PDF",
-    text: "Everything you filled in — every answer, hazard, photo, control and signature — on one PDF you can save or send.",
+    text: "It opens inside JSAFE. Everything you filled in — every answer, hazard, photo, control and signature — on one PDF.",
     wait: 5600,
-    render: () => <PdfDoc status="DRAFT" />,
+    render: () => <PdfDoc status="DRAFT" inApp />,
+  },
+  {
+    title: "Download or go back",
+    text: "Tap Download to save it to your phone, or Back to return to your Take 5.",
+    target: "pdf-back",
+    wait: 2600,
+    render: () => <PdfDoc status="DRAFT" inApp scrollFrom={99999} />,
   },
   {
     title: "Submit",
@@ -1024,9 +1096,10 @@ const SIGNON_SCENES: DemoScene[] = [
   },
   {
     title: "Your signature on the PDF",
-    text: "The whole Take 5 with your signature under Team sign-on. If it's changed later, you'll be asked to sign the new version.",
+    text: "The whole Take 5 with your signature under Team sign-on. Download saves it to your phone; Back takes you back.",
     render: () => (
       <PdfDoc
+        inApp
         signOns={[
           { name: "Alex Nguyen", primary: true, when: "29/10/2026, 6:58 am" },
           { name: "Brianna Fields", when: "29/10/2026, 7:04 am" },
@@ -1124,15 +1197,38 @@ const MINE_SCENES: DemoScene[] = [
     render: () => <Mine only={["approved", "other", "old"]} />,
   },
   {
-    title: "Save the PDF",
-    text: "The PDF saves to your phone so you can keep it or send it on.",
-    wait: 2400,
+    title: "Download or go back",
+    text: "The PDF opens inside JSAFE. Tap Download to save it to your phone, or Back to return to your list.",
+    target: "pdf-download",
+    wait: 2600,
     render: () => <PdfView />,
   },
   {
     title: "Who can change what",
     text: "Your own draft today: edit freely. Sent back: fix and resubmit. In review: locked. Approved: reassess. Someone else's or a past day: read only.",
     render: () => <Rules />,
+  },
+];
+
+const IDEA_SCENES: DemoScene[] = [
+  {
+    title: "Got an idea?",
+    text: "Something in JSAFE you'd change, or something missing? At the bottom of the home page, tap Suggest.",
+    target: "suggest",
+    wait: 2600,
+    render: () => <Home />,
+  },
+  {
+    title: "Tell us",
+    text: "Write what you'd like changed or added. Your name is optional.",
+    target: "send-idea",
+    wait: 4200,
+    render: () => <IdeaForm />,
+  },
+  {
+    title: "Sent",
+    text: "It goes straight to the JSAFE admin team, who read every one.",
+    render: () => <IdeaForm sent />,
   },
 ];
 
@@ -1157,6 +1253,13 @@ const CHAPTERS: DemoChapter[] = [
     text: "Your past Take 5s, and who can change what",
     icon: <I name="list" className="w-5 h-5" />,
     scenes: MINE_SCENES,
+  },
+  {
+    id: "idea",
+    title: "Suggest an idea",
+    text: "Tell the admin team what to change or add",
+    icon: <I name="idea" className="w-5 h-5" />,
+    scenes: IDEA_SCENES,
   },
 ];
 
