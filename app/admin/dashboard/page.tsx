@@ -235,6 +235,7 @@ export default async function AdminDashboard({
     { href: "/stats", label: "Statistics", icon: "stats" },
   ];
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
+  // They open in a new tab, so the dashboard stays open.
   const links = [
     { href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" },
     ...(projects[0] ? [{ href: `/${projects[0].qrSlug}`, label: "Worker page", icon: "phone" }] : []),
@@ -300,6 +301,7 @@ export default async function AdminDashboard({
             <Link
               key={s.href}
               href={s.href}
+              target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
             >
               <Icon name={s.icon} className="w-[18px] h-[18px]" />
@@ -423,6 +425,7 @@ export default async function AdminDashboard({
                 <Link
                   key={s.href}
                   href={s.href}
+                  target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2.5 rounded-2xl bg-white border border-neutral-200 px-3 py-2.5 shadow-sm active:bg-neutral-50"
                 >
                   <span className="w-8 h-8 shrink-0 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
