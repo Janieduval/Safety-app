@@ -129,6 +129,18 @@ const ICONS: Record<string, React.ReactNode> = {
     </>
   ),
   back: <path d="M15 5l-7 7 7 7" />,
+  list: (
+    <>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M4 6h.01M4 12h.01M4 18h.01" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
 };
 
 function Icon({ name, className = "w-5 h-5" }: { name: string; className?: string }) {
@@ -167,6 +179,18 @@ export default function StatsPage() {
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
+  // This site's worker page, for the "Worker page" link (from the home-screen settings).
+  const [workerSlug, setWorkerSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/manifest")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((m) => {
+        const slug = typeof m?.start_url === "string" ? m.start_url.replace(/^\//, "") : "";
+        if (slug) setWorkerSlug(slug);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setStats(null);
@@ -233,6 +257,7 @@ export default function StatsPage() {
         { href: "/admin/dashboard", label: "Dashboard", icon: "home" },
         { href: "/admin/people", label: "People", icon: "people" },
         { href: "/admin/hazard-templates", label: "Saved answers", icon: "saved" },
+        { href: "/admin/lists", label: "Site lists", icon: "list" },
         { href: "/admin/export", label: "Export", icon: "export" },
         { href: "/stats", label: "Statistics", icon: "stats" },
       ]
@@ -242,14 +267,16 @@ export default function StatsPage() {
       ];
 
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
-  const linkItems = isAdmin
-    ? [
-        { href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" },
-        ...(viewer?.workerPageSlug
-          ? [{ href: `/${viewer.workerPageSlug}`, label: "Worker page", icon: "phone" }]
-          : []),
-      ]
+  // They open in a new tab, so this page stays open.
+  const workerSlugToUse = viewer?.workerPageSlug ?? workerSlug;
+  const workerLink = workerSlugToUse
+    ? [{ href: `/${workerSlugToUse}`, label: "Worker page", icon: "phone" }]
     : [];
+  const linkItems = !viewer
+    ? []
+    : isAdmin
+    ? [{ href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" }, ...workerLink]
+    : [...workerLink, { href: "/admin/login", label: "Admin login", icon: "lock" }];
 
   const labels = stats ? stats.buckets.map((b) => bucketLabel(b, period)) : [];
   const longLabels = stats ? stats.buckets.map((b) => bucketLongLabel(b, period)) : [];
@@ -305,6 +332,7 @@ export default function StatsPage() {
               <Link
                 key={item.href}
                 href={item.href}
+                target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
               >
                 <Icon name={item.icon} className="w-[18px] h-[18px]" />
