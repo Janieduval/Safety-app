@@ -45,6 +45,24 @@ function pdfFileName(assessment: any): string {
 }
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  // Admins and supervisors: the PDF just opens. Workers: it saves as a file.
+  // (?view=1 always opens, ?download=1 always saves.)
+  const isStaff =
+    !!(await verifyAdminSessionToken(cookies().get("admin_session")?.value)) ||
+    !!(await verifySupervisorSessionToken(cookies().get("supervisor_session")?.value));
+  const mode = req.nextUrl.searchParams;
+
+  // A worker tapping a PDF link on their phone goes to the PDF page instead,
+  // which has a Back button and a Download button. (On a phone, a PDF opened
+  // straight from the home-screen app has no way back.) Only for page visits:
+  // the export ZIP fetches PDFs in the background and still gets the file.
+  const isPageVisit =
+    req.headers.get("sec-fetch-dest") === "document" ||
+    (req.headers.get("accept") ?? "").includes("text/html");
+  if (!isStaff && isPageVisit && !mode.get("view") && !mode.get("download")) {
+    return NextResponse.redirect(new URL(`/assess/${params.id}/pdf`, req.url));
+  }
+
   const assessment = await prisma.assessment.findUnique({
     where: { id: params.id },
     include: {
@@ -94,12 +112,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     React.createElement(AssessmentPdfDocument, { assessment: pdfAssessment }) as any
   );
 
-  // Admins and supervisors: the PDF just opens. Workers: it saves as a file.
-  // (?view=1 always opens, ?download=1 always saves.)
-  const isStaff =
-    !!(await verifyAdminSessionToken(cookies().get("admin_session")?.value)) ||
-    !!(await verifySupervisorSessionToken(cookies().get("supervisor_session")?.value));
-  const mode = req.nextUrl.searchParams;
   const view = mode.get("download") === "1" ? false : mode.get("view") === "1" || isStaff;
 
   return new NextResponse(new Uint8Array(buffer), {
