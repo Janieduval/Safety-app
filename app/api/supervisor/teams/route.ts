@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifySupervisorSessionToken } from "@/lib/supervisorSession";
 import { getSupervisorTeams, setSupervisorTeams } from "@/lib/supervisorTeams";
+import { supervisorsCanChooseTeams } from "@/lib/siteSettings";
 
 // The logged-in supervisor's own teams.
 async function currentSupervisor() {
@@ -17,6 +18,10 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const supervisorId = await currentSupervisor();
   if (!supervisorId) return NextResponse.json({ error: "Please log in again." }, { status: 401 });
+  // On some sites only the admin sets supervisors' teams.
+  if (!supervisorsCanChooseTeams()) {
+    return NextResponse.json({ error: "Your teams are set by the admin." }, { status: 403 });
+  }
   try {
     const { teamIds } = await req.json();
     const saved = await setSupervisorTeams(supervisorId, teamIds);
