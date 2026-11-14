@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { seedDatabase } from "@/prisma/seedData";
+import { connectToControlCentre } from "@/lib/control/connect";
 
 // Visit this URL once in a browser after deploying, with ?secret=<BOOTSTRAP_SECRET>
 // appended, e.g.:
@@ -37,9 +38,13 @@ export async function GET(req: NextRequest) {
     adminPassword,
   });
 
+  // Introduce the new site to the control centre straight away.
+  const controlCentre = await connectToControlCentre(req.nextUrl.origin, true).catch(() => null);
+
   return NextResponse.json({
     ok: true,
     log,
+    controlCentre: controlCentre?.message ?? "Not set up",
     nextStep: adminEmail
       ? "Go to /admin/login and sign in with ADMIN_BOOTSTRAP_EMAIL / ADMIN_BOOTSTRAP_PASSWORD, then remove BOOTSTRAP_SECRET from your environment variables."
       : "No ADMIN_BOOTSTRAP_EMAIL/ADMIN_BOOTSTRAP_PASSWORD were set, so no admin account was created. Add them and revisit this URL to create one.",
