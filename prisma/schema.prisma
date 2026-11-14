@@ -485,3 +485,45 @@ model Suggestion {
 
   @@index([status])
 }
+
+// ---------- Site health ----------
+
+// Things that went wrong (or worked) on this site, so the control centre can
+// show whether everything is working: PDFs, photo uploads, notifications.
+model AppEvent {
+  id        String   @id @default(uuid())
+  kind      String   // "pdf" | "photo" | "push"
+  ok        Boolean
+  count     Int      @default(1)
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ---------- Control centre ----------
+// Only used on the control centre site (SITE_MODE=control-centre). On the
+// JSAFE project sites these tables stay empty.
+
+model CcCompany {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("#047857")
+  createdAt DateTime @default(now())
+
+  sites CcSite[]
+}
+
+model CcSite {
+  id          String     @id @default(uuid())
+  companyId   String?
+  company     CcCompany? @relation(fields: [companyId], references: [id])
+  name        String
+  address     String?
+  contractor  String?
+  url         String     @unique // e.g. https://jsafeyancobess.vercel.app
+  slug        String?    // worker page, e.g. yancobess
+  archived    Boolean    @default(false)
+  firstSeenAt DateTime   @default(now())
+  lastSeenAt  DateTime   @default(now())
+}
