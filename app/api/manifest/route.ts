@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { connectToControlCentre } from "@/lib/control/connect";
 
 // The workers' home-screen app ("JSAFE App"). It opens this site's own worker
 // page, so each copy of JSAFE (Blind Creek, or another project) opens the
 // right project instead of a fixed address.
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  // Every page asks for this, so it's also when the site checks in with the
+  // control centre (at most every 30 minutes; skipped if not set up).
+  await connectToControlCentre(new URL(req.url).origin).catch(() => {});
+
   let slug = "blind-creek-solar-farm";
   try {
     const project = await prisma.project.findFirst({
