@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
+import { errorText, recordEvent } from "@/lib/appEvents";
 
 export const runtime = "nodejs";
 
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ photo });
   } catch (e) {
     console.error("Hazard photo upload failed", e);
+    await recordEvent("photo", false, `Photo couldn't be saved: ${errorText(e)}`);
     return NextResponse.json(
       { error: "Couldn't save the photo right now. Try again." },
       { status: 500 }
