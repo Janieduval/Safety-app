@@ -108,7 +108,8 @@ export async function GET(req: NextRequest) {
     },
     health: {
       database: true,
-      photoStorage: !!process.env.BLOB_READ_WRITE_TOKEN,
+      // Vercel links a Blob store with either setting, depending on when it was made.
+      photoStorage: !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID),
       notificationsSetUp: !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT),
       dailyTidyUp: !!process.env.CRON_SECRET,
       ownerSet: !!process.env.OWNER_ADMIN_EMAIL,
