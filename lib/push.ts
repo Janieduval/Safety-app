@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
+import { recordEvent } from "@/lib/appEvents";
 
 let configured = false;
 function configure(): boolean {
@@ -40,6 +41,9 @@ export async function notifyAssessmentReviewed(
       tag: `jsafe-${assessmentId}`,
     });
 
+    let sent = 0;
+    let failed = 0;
+    let lastError = "";
     await Promise.all(
       subs.map(async (s) => {
         try {
@@ -47,14 +51,21 @@ export async function notifyAssessmentReviewed(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
             payload
           );
+          sent++;
         } catch (e: any) {
           // Device unsubscribed or the subscription expired: clean it up.
           if (e?.statusCode === 404 || e?.statusCode === 410) {
             await prisma.pushSubscription.deleteMany({ where: { endpoint: s.endpoint } });
+          } else {
+            failed++;
+            lastError = `Worker notification failed (${e?.statusCode ?? "no answer"})`;
           }
         }
       })
     );
+    // Noted for the control centre's "Is it working?" check.
+    if (sent) await recordEvent("push", true, undefined, sent);
+    if (failed) await recordEvent("push", false, lastError, failed);
   } catch {
     // swallow: notifications are best-effort
   }
@@ -109,6 +120,9 @@ export async function notifySupervisorsToReview(
 
     // The same phone can be linked to more than one supervisor: send once.
     const seen = new Set<string>();
+    let sent = 0;
+    let failed = 0;
+    let lastError = "";
     await Promise.all(
       subs
         .filter((s) => (seen.has(s.endpoint) ? false : (seen.add(s.endpoint), true)))
@@ -118,13 +132,19 @@ export async function notifySupervisorsToReview(
               { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
               payload
             );
+            sent++;
           } catch (e: any) {
             if (e?.statusCode === 404 || e?.statusCode === 410) {
               await prisma.supervisorPushSubscription.deleteMany({ where: { endpoint: s.endpoint } });
+            } else {
+              failed++;
+              lastError = `Supervisor notification failed (${e?.statusCode ?? "no answer"})`;
             }
           }
         })
     );
+    if (sent) await recordEvent("push", true, undefined, sent);
+    if (failed) await recordEvent("push", false, lastError, failed);
   } catch {
     // swallow: notifications are best-effort
   }
