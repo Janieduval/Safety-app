@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { connectToControlCentre } from "@/lib/control/connect";
 
 function sydneyDateString(d: Date | string): string {
   const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney" });
@@ -16,6 +17,9 @@ export async function GET(req: NextRequest) {
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Daily check-in with the control centre (skipped if not set up).
+  await connectToControlCentre(req.nextUrl.origin, true).catch(() => {});
 
   const todayStr = sydneyDateString(new Date());
 
