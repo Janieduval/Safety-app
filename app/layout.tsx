@@ -29,13 +29,20 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // The control centre site (SITE_MODE=control-centre) doesn't need the
+  // worker app's extras: offline sync, pull to refresh, the home screen guide.
+  const controlCentre = (process.env.SITE_MODE ?? "").trim().toLowerCase() === "control-centre";
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col font-sans">
-        <OfflineSyncManager />
-        <DebugToolsLoader />
-        <PullToRefresh />
-        <InstallGuide />
+        {!controlCentre && (
+          <>
+            <OfflineSyncManager />
+            <DebugToolsLoader />
+            <PullToRefresh />
+            <InstallGuide />
+          </>
+        )}
         {children}
       </body>
     </html>
