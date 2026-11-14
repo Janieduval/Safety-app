@@ -6,6 +6,7 @@ import { verifySupervisorSessionToken } from "@/lib/supervisorSession";
 import { renderToBuffer } from "@react-pdf/renderer";
 import AssessmentPdfDocument from "@/lib/pdf/AssessmentPdfDocument";
 import React from "react";
+import { errorText, recordEvent } from "@/lib/appEvents";
 
 export const runtime = "nodejs";
 
@@ -108,9 +109,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const pdfAssessment = { ...assessment, hazardResponses };
 
-  const buffer = await renderToBuffer(
-    React.createElement(AssessmentPdfDocument, { assessment: pdfAssessment }) as any
-  );
+  let buffer: Buffer;
+  try {
+    buffer = await renderToBuffer(
+      React.createElement(AssessmentPdfDocument, { assessment: pdfAssessment }) as any
+    );
+  } catch (e) {
+    // Noted for the control centre's "Is it working?" check.
+    await recordEvent("pdf", false, `Couldn't make the PDF: ${errorText(e)}`);
+    return NextResponse.json({ error: "Couldn't make the PDF right now. Try again." }, { status: 500 });
+  }
 
   const view = mode.get("download") === "1" ? false : mode.get("view") === "1" || isStaff;
 
