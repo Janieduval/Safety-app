@@ -1176,11 +1176,49 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, o
     await save("hazardResponse", { questionKey: key, present });
   };
 
+  // Which hazard is open in the pop-up form (one at a time).
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  // Questions the worker tapped to change their answer.
+  const [changing, setChanging] = useState<string | null>(null);
+
+  // Adds a new hazard to a question and opens it straight away.
+  const addCard = async (key: string) => {
+    const r = responses[key];
+    if (!r?.id) return;
+    const { result } = await save("hazardCard", { hazardResponseId: r.id });
+    if (result) {
+      setResponses((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          cards: [...(prev[key]?.cards ?? []), result],
+        },
+      }));
+      setOpenCardId(result.id);
+    }
+  };
+
+  const answerYes = async (key: string) => {
+    setChanging(null);
+    await setPresent(key, true);
+    // First Yes: open a new hazard form right away.
+    if (!readOnly && (responses[key]?.cards ?? []).length === 0) await addCard(key);
+  };
+
+  const answerNo = async (key: string) => {
+    setChanging(null);
+    await setPresent(key, false);
+  };
+
+  const answeredCount = HAZARD_QUESTIONS.filter((hq) => {
+    const v = responses[hq.key]?.present;
+    return v === true || v === false;
+  }).length;
+
   // A plain-English list of exactly what's still missing — with 11
-  // separate questions to scroll through, it's easy to miss answering
-  // just one, and "Complete this step before continuing" alone gives no
-  // clue which one. This spells it out. Only shown once the worker has
-  // tried to continue (showMissing), not the moment the step opens.
+  // separate questions, it's easy to miss answering just one, and
+  // "Complete this step before continuing" alone gives no clue which one.
+  // Only shown once the worker has tried to continue (showMissing).
   const missingItems = useMemo(() => {
     const items: string[] = [];
     for (const hq of HAZARD_QUESTIONS) {
@@ -1192,11 +1230,11 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, o
       if (r.present) {
         const cards = r.cards ?? [];
         if (cards.length === 0) {
-          items.push(`"${hq.label}" — answered Yes but has no hazard detail card yet`);
+          items.push(`"${hq.label}" — answered Yes but no hazard added yet`);
           continue;
         }
         cards.forEach((c: any, idx: number) => {
-          const cardLabel = cards.length > 1 ? ` (card ${idx + 1})` : "";
+          const cardLabel = cards.length > 1 ? ` (hazard ${idx + 1})` : "";
           if (!c.description?.trim()) {
             items.push(`"${hq.label}"${cardLabel} — hazard description is empty`);
           }
@@ -1213,12 +1251,28 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, o
   }, [responses]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <SectionTitle>Step 2.1 — Identify hazards</SectionTitle>
-      <p className="text-sm text-neutral-600 -mt-3">
+      <p className="text-sm text-neutral-600 -mt-1">
         Look around your work area and think through every step of the task. "Yes" means the
         hazard is present or could occur. "No" means it isn't relevant to today's work.
       </p>
+
+      {/* How far through the 11 questions */}
+      <div>
+        <div className="flex justify-between text-xs font-semibold text-neutral-600 mb-1">
+          <span>
+            {answeredCount} of {HAZARD_QUESTIONS.length} answered
+          </span>
+          {answeredCount === HAZARD_QUESTIONS.length && <span className="text-emerald-700">All answered ✓</span>}
+        </div>
+        <div className="h-2 rounded-full bg-neutral-200 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-emerald-600 transition-all"
+            style={{ width: `${(answeredCount / HAZARD_QUESTIONS.length) * 100}%` }}
+          />
+        </div>
+      </div>
 
       {showMissing && !readOnly && missingItems.length > 0 && (
         <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-4">
@@ -1231,27 +1285,124 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, o
         </div>
       )}
 
-      {HAZARD_QUESTIONS.map((hq) => {
-        const r = responses[hq.key];
-        return (
-          <div key={hq.key} className="border border-neutral-200 rounded-lg p-4 bg-white">
-            <p className="font-medium text-neutral-900">{hq.label}</p>
-            {hq.examples.length > 0 && (
-              <p className="text-xs text-neutral-500 mt-1">e.g. {hq.examples.join(", ")}</p>
-            )}
-            <div className="mt-3">
-              <YesNoButtons
-                value={r?.present ?? null}
-                disabled={readOnly}
-                onChange={(v) => setPresent(hq.key, v)}
-              />
-            </div>
-            {r?.present && (
-              <div className="mt-3 space-y-3">
-                {(r.cards ?? []).map((card: any) => (
+      <div className="space-y-2.5">
+        {HAZARD_QUESTIONS.map((hq) => {
+          const r = responses[hq.key];
+          const present = r?.present;
+          const answered = present === true || present === false;
+          const cards = r?.cards ?? [];
+          const allDone = cards.length > 0 && cards.every(hazardComplete);
+          const showButtons = !answered || changing === hq.key;
+
+          return (
+            <div
+              key={hq.key}
+              className={`rounded-xl border bg-white p-3.5 ${
+                present === true ? (allDone ? "border-emerald-300" : "border-amber-300") : "border-neutral-200"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <p className="flex-1 text-[15px] font-medium text-neutral-900 leading-snug">{hq.label}</p>
+                {answered && !showButtons && (
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => setChanging(hq.key)}
+                    className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${
+                      present === false
+                        ? "bg-neutral-100 text-neutral-600"
+                        : allDone
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {present === false ? "No" : allDone ? "Yes ✓" : "Yes · to finish"}
+                  </button>
+                )}
+              </div>
+
+              {showButtons && (
+                <>
+                  {!answered && hq.examples.length > 0 && (
+                    <p className="text-xs text-neutral-500 mt-1">e.g. {hq.examples.join(", ")}</p>
+                  )}
+                  <div className="mt-2.5 flex gap-2.5">
+                    {([true, false] as const).map((v) => (
+                      <button
+                        key={String(v)}
+                        type="button"
+                        disabled={readOnly}
+                        onClick={() => (v ? answerYes(hq.key) : answerNo(hq.key))}
+                        className={`flex-1 py-2.5 rounded-lg text-base font-semibold border-2 ${
+                          present === v
+                            ? "bg-emerald-700 border-emerald-700 text-white"
+                            : "bg-white border-neutral-300 text-neutral-800 active:bg-neutral-100"
+                        }`}
+                      >
+                        {v ? "Yes" : "No"}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {present === true && (
+                <div className="mt-2.5 space-y-2">
+                  {cards.map((card: any, idx: number) => {
+                    const done = hazardComplete(card);
+                    return (
+                      <button
+                        key={card.id}
+                        type="button"
+                        onClick={() => setOpenCardId(card.id)}
+                        className={`w-full text-left rounded-lg border px-3 py-2.5 ${
+                          done ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
+                        }`}
+                      >
+                        <span className="flex items-start gap-2">
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-sm font-semibold text-neutral-900 break-words">
+                              {card.description?.trim() || (cards.length > 1 ? `Hazard ${idx + 1}` : "New hazard")}
+                            </span>
+                            <span className={`block text-xs mt-0.5 ${done ? "text-emerald-800" : "text-amber-800"}`}>
+                              {done
+                                ? `${capital(card.initialRisk)} → ${capital(card.residualRisk)} · ${card.responsiblePerson}`
+                                : "Not finished — tap to finish"}
+                            </span>
+                          </span>
+                          <span
+                            className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                              done ? "bg-emerald-600 text-white" : "bg-amber-400 text-amber-950"
+                            }`}
+                          >
+                            {done ? "Done ✓" : "To finish"}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => addCard(hq.key)}
+                      className="text-sm font-semibold text-emerald-700 py-1"
+                    >
+                      + {cards.length ? "Add another hazard" : "Add hazard"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* The pop-up forms for this question's hazards (kept loaded so
+                  nothing typed is lost when one is closed and reopened). */}
+              {present === true &&
+                cards.map((card: any) => (
                   <HazardCard
                     key={card.id}
                     card={card}
+                    open={openCardId === card.id}
+                    onClose={() => setOpenCardId(null)}
+                    questionLabel={hq.label}
                     save={save}
                     reload={reload}
                     readOnly={readOnly}
@@ -1272,57 +1423,44 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, o
                       }));
                     }}
                     onRemoved={() => {
-                      // Local removal only — kept instant for a responsive
-                      // feel. The parent refresh happens separately, only
-                      // once the deletion has actually been saved (see the
-                      // Remove button below), so a too-early refresh can't
-                      // pull the card back in.
+                      // Local removal only — kept instant for a responsive feel.
+                      setOpenCardId(null);
                       setResponses((prev) => ({
                         ...prev,
                         [hq.key]: {
                           ...prev[hq.key],
-                          cards: (prev[hq.key]?.cards ?? []).filter(
-                            (c: any) => c.id !== card.id
-                          ),
+                          cards: (prev[hq.key]?.cards ?? []).filter((c: any) => c.id !== card.id),
                         },
                       }));
                     }}
                   />
                 ))}
-                {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const { result } = await save("hazardCard", { hazardResponseId: r.id });
-                      if (result) {
-                        setResponses((prev) => ({
-                          ...prev,
-                          [hq.key]: {
-                            ...prev[hq.key],
-                            cards: [...(prev[hq.key]?.cards ?? []), result],
-                          },
-                        }));
-                      }
-                      // No reload needed — the server already handed back
-                      // the real card, and Continue's validity check reads
-                      // this component's own state directly.
-                    }}
-                    className="w-full py-2.5 rounded-lg border-2 border-dashed border-neutral-400 text-neutral-700 font-medium"
-                  >
-                    + Add hazard detail card
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
+// A hazard is finished once it has a description, controls and a person
+// responsible (the same rule that decides whether Continue works).
+function hazardComplete(c: any): boolean {
+  return !!c?.description?.trim() && !!c?.controls?.trim() && !!c?.responsiblePerson?.trim();
+}
+
+function capital(s: string | null | undefined): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+}
+
+// One hazard, as a pop-up form over the hazard list. It slides up from the
+// bottom on a phone (a centred box on a computer). Everything saves as you
+// type; "Save hazard" turns green and closes it once the hazard is complete.
 function HazardCard({
   card,
+  open,
+  onClose,
+  questionLabel,
   save,
   reload,
   onRemoved,
@@ -1446,154 +1584,293 @@ function HazardCard({
   };
 
   const highRisk = local.residualRisk === "high" || local.residualRisk === "extreme";
+  const complete = hazardComplete(local);
+  const stillNeeded = [
+    !local.description.trim() && "the hazard",
+    !local.controls.trim() && "the controls",
+    !local.responsiblePerson.trim() && "who's responsible",
+  ].filter(Boolean) as string[];
+
+  // Photos and comments stay tucked away until asked for (or already there).
+  const hasPhoto = (kind: string) => (card.photos ?? []).some((p: any) => p.kind === kind);
+  const [showHazardPhoto, setShowHazardPhoto] = useState(() => hasPhoto("hazard"));
+  const [showControlPhoto, setShowControlPhoto] = useState(() => hasPhoto("control"));
+  const [showComments, setShowComments] = useState(() => !!card.comments);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  // Stop the page behind from scrolling while the form is open.
+  useEffect(() => {
+    if (!open) return;
+    const before = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = before;
+    };
+  }, [open]);
+
+  const addLink = "text-sm font-semibold text-emerald-700";
 
   return (
-    <div className="bg-neutral-50 border border-neutral-300 rounded-lg p-3 space-y-3">
-      <Field label="Hazard description">
-        <div className="relative">
-          <textarea
-            value={local.description}
-            disabled={readOnly}
-            onChange={(e) => commit({ description: e.target.value })}
-            onFocus={() => setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-            rows={2}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
-          />
-          {showSuggestions && matchingSuggestions.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full border border-neutral-200 rounded-lg divide-y bg-white max-h-56 overflow-y-auto shadow-lg">
-              {matchingSuggestions.map((t: any) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onMouseDown={() => applySuggestion(t)}
-                  className="w-full text-left px-3 py-2 active:bg-neutral-100"
-                >
-                  <p className="text-sm font-medium text-neutral-900">{t.description}</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">Controls: {t.controls}</p>
-                  {t.needsReview && (
-                    <span className="text-xs text-amber-700 font-semibold">Pending review</span>
-                  )}
-                </button>
-              ))}
+    <div className={open ? "fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-6" : "hidden"}>
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative w-full md:max-w-lg bg-white rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col max-h-[92dvh]"
+      >
+        {/* Top: the question, and a close button */}
+        <div className="px-4 pt-2.5 pb-3 border-b border-neutral-100">
+          <div className="mx-auto w-10 h-1.5 rounded-full bg-neutral-300 md:hidden" />
+          <div className="mt-2 flex items-start gap-3">
+            <p className="flex-1 font-semibold text-neutral-900 leading-snug">{questionLabel}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="shrink-0 w-8 h-8 rounded-full bg-neutral-100 text-neutral-600 text-lg leading-none flex items-center justify-center"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* The form */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4">
+          <Field label="Hazard description">
+            <div className="relative">
+              <textarea
+                value={local.description}
+                disabled={readOnly}
+                onChange={(e) => commit({ description: e.target.value })}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                rows={2}
+                placeholder="What's the hazard?"
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white text-base"
+              />
+              {showSuggestions && matchingSuggestions.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full border border-neutral-200 rounded-lg divide-y bg-white max-h-56 overflow-y-auto shadow-lg">
+                  {matchingSuggestions.map((t: any) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onMouseDown={() => applySuggestion(t)}
+                      className="w-full text-left px-3 py-2 active:bg-neutral-100"
+                    >
+                      <p className="text-sm font-medium text-neutral-900">{t.description}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">Controls: {t.controls}</p>
+                      {t.needsReview && (
+                        <span className="text-xs text-amber-700 font-semibold">Pending review</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Field>
+
+          {showHazardPhoto ? (
+            <HazardPhotos
+              hazardCardId={card.id}
+              assessmentId={assessmentId}
+              kind="hazard"
+              label="Photo of the hazard (optional)"
+              initialPhotos={card.photos}
+              readOnly={readOnly}
+            />
+          ) : (
+            !readOnly && (
+              <button type="button" onClick={() => setShowHazardPhoto(true)} className={addLink}>
+                + Add photo of the hazard
+              </button>
+            )
+          )}
+
+          <Field label="Initial risk rating">
+            <RiskSelect value={local.initialRisk} onChange={(v) => commit({ initialRisk: v })} disabled={readOnly} />
+          </Field>
+
+          <Field label="Controls to be implemented">
+            <textarea
+              value={local.controls}
+              disabled={readOnly}
+              onChange={(e) => commit({ controls: e.target.value })}
+              rows={2}
+              placeholder="How are you controlling it?"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white text-base"
+            />
+          </Field>
+          {canOfferSave && saveState === "idle" && !selectedTemplate && !exactMatch && (
+            <button
+              type="button"
+              onClick={saveForNextTime}
+              className="text-sm text-emerald-700 font-medium underline decoration-dotted"
+            >
+              + Save this as a reusable answer{team?.label ? ` for ${team.label}` : ""}
+            </button>
+          )}
+          {canOfferSave && saveState === "idle" && !selectedTemplate && exactMatch && (
+            <p className="text-sm text-neutral-500">
+              ✓ Already saved for this team — selecting it from the dropdown keeps it fresh.
+            </p>
+          )}
+          {canOfferSave && saveState === "idle" && selectedTemplate && hasChangedFromSelected && (
+            <button
+              type="button"
+              onClick={saveForNextTime}
+              className="text-sm text-emerald-700 font-medium underline decoration-dotted"
+            >
+              Update saved answer{team?.label ? ` for ${team.label}` : ""}
+            </button>
+          )}
+          {canOfferSave && saveState === "idle" && selectedTemplate && !hasChangedFromSelected && (
+            <p className="text-sm text-neutral-500">Using a saved answer for this team.</p>
+          )}
+          {saveState === "saving" && <p className="text-sm text-neutral-500">Saving...</p>}
+          {saveState === "saved" && (
+            <p className="text-sm text-emerald-700 font-medium">
+              ✓ Saved — visible to your team now, pending admin review
+            </p>
+          )}
+          {saveState === "error" && (
+            <p className="text-sm text-red-700 font-medium">
+              Couldn't save this right now. Check your connection and try again.
+            </p>
+          )}
+
+          <Field label="Person responsible for the control">
+            <input
+              type="text"
+              value={local.responsiblePerson}
+              disabled={readOnly}
+              onChange={(e) => commit({ responsiblePerson: e.target.value })}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white text-base"
+            />
+          </Field>
+
+          <label className="flex items-center gap-2.5 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={local.controlConfirmed}
+              disabled={readOnly}
+              onChange={(e) => commit({ controlConfirmed: e.target.checked })}
+              className="w-5 h-5"
+            />
+            Control has been implemented
+          </label>
+
+          {showControlPhoto ? (
+            <HazardPhotos
+              hazardCardId={card.id}
+              assessmentId={assessmentId}
+              kind="control"
+              label="Photo of the control in place (optional)"
+              initialPhotos={card.photos}
+              readOnly={readOnly}
+            />
+          ) : (
+            !readOnly && (
+              <button type="button" onClick={() => setShowControlPhoto(true)} className={addLink}>
+                + Add photo of the control
+              </button>
+            )
+          )}
+
+          <Field label="Residual risk rating">
+            <RiskSelect value={local.residualRisk} onChange={(v) => commit({ residualRisk: v })} disabled={readOnly} />
+          </Field>
+          <RiskLegend />
+          {highRisk && (
+            <StopWorkWarning message="High or Extreme residual risk — this task cannot be submitted by the worker alone and requires supervisor intervention." />
+          )}
+
+          {showComments ? (
+            <Field label="Additional comments (optional)">
+              <textarea
+                value={local.comments}
+                disabled={readOnly}
+                onChange={(e) => commit({ comments: e.target.value })}
+                rows={2}
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white text-base"
+              />
+            </Field>
+          ) : (
+            !readOnly && (
+              <button type="button" onClick={() => setShowComments(true)} className={addLink}>
+                + Add a comment
+              </button>
+            )
+          )}
+
+          {!readOnly &&
+            (confirmRemove ? (
+              <div className="rounded-xl border-2 border-red-200 bg-red-50 p-3">
+                <p className="text-sm font-semibold text-red-900">Remove this hazard?</p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      onRemoved();
+                      await save("deleteHazardCard", { id: card.id });
+                    }}
+                    className="text-sm px-3 py-1.5 rounded-lg bg-red-600 text-white font-semibold"
+                  >
+                    Yes, remove
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRemove(false)}
+                    className="text-sm px-3 py-1.5 rounded-lg border border-neutral-300 bg-white"
+                  >
+                    Keep
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmRemove(true)}
+                className="text-sm text-red-700 font-medium"
+              >
+                Remove this hazard
+              </button>
+            ))}
+        </div>
+
+        {/* Bottom: Save hazard turns green once it's complete */}
+        <div className="border-t border-neutral-200 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white rounded-b-none md:rounded-b-3xl">
+          {!readOnly && !complete && (
+            <p className="text-xs text-amber-800 font-medium mb-2 text-center">
+              Still needed: {stillNeeded.join(", ")}
+            </p>
+          )}
+          {readOnly ? (
+            <button type="button" onClick={onClose} className="w-full py-3 rounded-xl border border-neutral-300 font-semibold">
+              Close
+            </button>
+          ) : (
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 rounded-xl border border-neutral-300 font-semibold text-neutral-700"
+              >
+                Finish later
+              </button>
+              <button
+                type="button"
+                disabled={!complete}
+                onClick={onClose}
+                className={`flex-[1.4] py-3 rounded-xl font-semibold ${
+                  complete ? "bg-emerald-700 text-white" : "bg-neutral-200 text-neutral-500"
+                }`}
+              >
+                {complete ? "Save hazard ✓" : "Save hazard"}
+              </button>
             </div>
           )}
         </div>
-      </Field>
-      <HazardPhotos
-        hazardCardId={card.id}
-        assessmentId={assessmentId}
-        kind="hazard"
-        label="Photo of the hazard (optional)"
-        initialPhotos={card.photos}
-        readOnly={readOnly}
-      />
-      <RiskLegend />
-      <Field label="Initial risk rating">
-        <RiskSelect value={local.initialRisk} onChange={(v) => commit({ initialRisk: v })} disabled={readOnly} />
-      </Field>
-      <Field label="Controls to be implemented">
-        <textarea
-          value={local.controls}
-          disabled={readOnly}
-          onChange={(e) => commit({ controls: e.target.value })}
-          rows={2}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
-        />
-      </Field>
-      {canOfferSave && saveState === "idle" && !selectedTemplate && !exactMatch && (
-        <button
-          type="button"
-          onClick={saveForNextTime}
-          className="text-sm text-emerald-700 font-medium underline decoration-dotted"
-        >
-          + Save this as a reusable answer{team?.label ? ` for ${team.label}` : ""}
-        </button>
-      )}
-      {canOfferSave && saveState === "idle" && !selectedTemplate && exactMatch && (
-        <p className="text-sm text-neutral-500">
-          ✓ Already saved for this team — selecting it from the dropdown keeps it fresh.
-        </p>
-      )}
-      {canOfferSave && saveState === "idle" && selectedTemplate && hasChangedFromSelected && (
-        <button
-          type="button"
-          onClick={saveForNextTime}
-          className="text-sm text-emerald-700 font-medium underline decoration-dotted"
-        >
-          Update saved answer{team?.label ? ` for ${team.label}` : ""}
-        </button>
-      )}
-      {canOfferSave && saveState === "idle" && selectedTemplate && !hasChangedFromSelected && (
-        <p className="text-sm text-neutral-500">Using a saved answer for this team.</p>
-      )}
-      {saveState === "saving" && (
-        <p className="text-sm text-neutral-500">Saving...</p>
-      )}
-      {saveState === "saved" && (
-        <p className="text-sm text-emerald-700 font-medium">
-          ✓ Saved — visible to your team now, pending admin review
-        </p>
-      )}
-      {saveState === "error" && (
-        <p className="text-sm text-red-700 font-medium">
-          Couldn't save this right now. Check your connection and try again.
-        </p>
-      )}
-      <Field label="Person responsible for the control">
-        <input
-          type="text"
-          value={local.responsiblePerson}
-          disabled={readOnly}
-          onChange={(e) => commit({ responsiblePerson: e.target.value })}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
-        />
-      </Field>
-      <label className="flex items-center gap-2 text-sm font-medium">
-        <input
-          type="checkbox"
-          checked={local.controlConfirmed}
-          disabled={readOnly}
-          onChange={(e) => commit({ controlConfirmed: e.target.checked })}
-          className="w-5 h-5"
-        />
-        Control has been implemented
-      </label>
-      <HazardPhotos
-        hazardCardId={card.id}
-        assessmentId={assessmentId}
-        kind="control"
-        label="Photo of the control in place (optional)"
-        initialPhotos={card.photos}
-        readOnly={readOnly}
-      />
-      <Field label="Residual risk rating">
-        <RiskSelect value={local.residualRisk} onChange={(v) => commit({ residualRisk: v })} disabled={readOnly} />
-      </Field>
-      {highRisk && (
-        <StopWorkWarning message="High or Extreme residual risk — this task cannot be submitted by the worker alone and requires supervisor intervention." />
-      )}
-      <Field label="Additional comments (optional)">
-        <textarea
-          value={local.comments}
-          disabled={readOnly}
-          onChange={(e) => commit({ comments: e.target.value })}
-          rows={2}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-white"
-        />
-      </Field>
-      {!readOnly && (
-        <button
-          type="button"
-          onClick={async () => {
-            onRemoved();
-            await save("deleteHazardCard", { id: card.id });
-          }}
-          className="text-sm text-red-700 font-medium"
-        >
-          Remove this card
-        </button>
-      )}
+      </div>
     </div>
   );
 }
