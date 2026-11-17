@@ -7,7 +7,8 @@ import SupervisorMyTeams from "@/components/SupervisorMyTeams";
 import SuggestionBox from "@/components/SuggestionBox";
 import { verifySupervisorSessionToken } from "@/lib/supervisorSession";
 import { getSupervisorTeams } from "@/lib/supervisorTeams";
-import { supervisorsCanChooseTeams } from "@/lib/siteSettings";
+import ProjectPill from "@/components/ProjectPill";
+import { siteCompany, supervisorsCanChooseTeams } from "@/lib/siteSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -160,6 +161,8 @@ export default async function SupervisorDashboard({
   const projects = await prisma.project.findMany({ orderBy: { name: "asc" } });
   // The project this site is for, e.g. "Yanco BESS" — shown at the top.
   const projectName = projects.length === 1 ? projects[0].name : null;
+  // The company it's for, e.g. "ACLE Services Pty Ltd" (the COMPANY setting).
+  const company = siteCompany();
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
   // They open in a new tab, so the dashboard stays open.
   const links = projects[0] ? [{ href: `/${projects[0].qrSlug}`, label: "Worker page", icon: "phone" }] : [];
@@ -271,14 +274,7 @@ export default async function SupervisorDashboard({
         <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
           Take 5. Work safe. Go home safe.
         </p>
-        {projectName && (
-          <div className="mt-3 px-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
-              {projectName}
-            </span>
-          </div>
-        )}
+        <ProjectPill name={projectName} company={company} className="mt-3 px-2" />
         <div className="mt-4 px-2">
           <SupervisorDemo autoShow={false} adminSetsTeams={!supervisorsCanChooseTeams()} />
         </div>
@@ -371,14 +367,7 @@ export default async function SupervisorDashboard({
               <p className="text-lg font-bold leading-tight">{greeting}</p>
               <p className="text-sm text-emerald-50/90">{todayLabel}</p>
             </div>
-            {projectName && (
-              <div className="mt-3">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
-                  {projectName}
-                </span>
-              </div>
-            )}
+            <ProjectPill name={projectName} company={company} className="mt-3" />
             {/* "New here? Watch the demo" — only on the dashboard */}
             <div className="mt-3">
               <SupervisorDemo adminSetsTeams={!supervisorsCanChooseTeams()} />
@@ -392,6 +381,7 @@ export default async function SupervisorDashboard({
               <p className="text-sm text-neutral-500">
                 {todayLabel} · Supervisor dashboard
                 {projectName && <span className="font-semibold text-emerald-800"> · {projectName}</span>}
+                {company && <span> · {company}</span>}
               </p>
             </div>
             {toReview > 0 && searchParams.status !== "awaiting_supervisor_review" && (
