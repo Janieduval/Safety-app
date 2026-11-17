@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DemoPlayer, { DemoChapter, DemoScene } from "./DemoPlayer";
-import { AutoScroll, Avatar, Btn, Card, GRADIENT, Header, I, Later, PdfDoc, Pill, SavedToast, Signing, SitePhoto, Typing } from "./mock";
+import { Avatar, Btn, Card, GRADIENT, Header, I, Later, PdfDoc, Pill, SavedToast, Signing, SitePhoto, Typing } from "./mock";
 
 // The worker demo follows the real app screen by screen, with a made-up
 // worker (Alex Nguyen) so nobody's real name appears.
@@ -410,94 +410,151 @@ function PhotoField({ label, kind, at }: { label: string; kind?: "trench" | "exc
   );
 }
 
-// Step 9 in one go: answer Yes, describe the hazard, add a photo, rate it,
-// then scroll down to the controls, photo of the control and residual risk.
-function HazardStep() {
+// Step 9: the short list of hazard questions. Tapping Yes opens a pop-up
+// form for that hazard; Save hazard turns green once it's complete, then the
+// question shows a short green summary.
+function HazardRow({ q, chip, tone }: { q: string; chip: string; tone: "grey" | "green" | "amber" }) {
+  const c = { grey: "bg-neutral-100 text-neutral-600", green: "bg-emerald-100 text-emerald-800", amber: "bg-amber-100 text-amber-800" }[tone];
   return (
-    <Step n={9} title="Identify hazards">
-      <AutoScroll
-        stops={[
-          { at: 3600, to: "controls" },
-          { at: 7000, to: "residual" },
-          { at: 8500, to: "struck" },
-          { at: 10200, to: "end" },
-        ]}
-      >
-        <div className="space-y-2 pb-2">
+    <div className="rounded-lg border border-neutral-200 bg-white px-2 py-1.5 flex items-start gap-1.5">
+      <p className="flex-1 text-[9.5px] font-medium leading-snug">{q}</p>
+      <span className={`shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${c}`}>{chip}</span>
+    </div>
+  );
+}
+
+function HazardSheet() {
+  return (
+    <div className="absolute inset-0 z-10 flex flex-col justify-end">
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="relative bg-white rounded-t-2xl shadow-2xl flex flex-col" style={{ height: "86%" }}>
+        <div className="px-3 pt-1.5 pb-2 border-b border-neutral-100">
+          <div className="mx-auto w-8 h-1 rounded-full bg-neutral-300" />
+          <div className="mt-1.5 flex items-start gap-2">
+            <p className="flex-1 text-[10.5px] font-semibold leading-snug">Could I slip, trip, fall or lose my footing?</p>
+            <span className="w-5 h-5 rounded-full bg-neutral-100 text-neutral-500 text-[11px] flex items-center justify-center">×</span>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden px-3 py-2 space-y-1.5">
+          <Field label="Hazard description">
+            <Typing text="Open trench beside the row 44 walkway" delay={600} speed={38} />
+          </Field>
+          <PhotoField label="Photo of the hazard (optional)" kind="trench" at={2200} />
+          <div>
+            <p className="text-[9.5px] font-semibold text-neutral-700 mb-0.5">Initial risk rating</p>
+            <Later at={2700} before={<RiskSelect />}>
+              <RiskSelect value="high" />
+            </Later>
+          </div>
+          <Field label="Controls to be implemented">
+            <Typing text="Walk the marked path only, barricade the trench edge" delay={3200} speed={30} />
+          </Field>
+          <Field label="Person responsible for the control">
+            <Later at={5000} before={<span className="text-neutral-300">&nbsp;</span>}>
+              {WHO}
+            </Later>
+          </Field>
+          <Later at={5500} before={<Tick label="Control has been implemented" on={false} />}>
+            <Tick label="Control has been implemented" />
+          </Later>
+          <div>
+            <p className="text-[9.5px] font-semibold text-neutral-700 mb-0.5">Residual risk rating</p>
+            <Later at={6000} before={<RiskSelect />}>
+              <RiskSelect value="low" />
+            </Later>
+          </div>
+          <p className="text-[9px] font-semibold text-emerald-700">+ Add photo of the control · + Add a comment</p>
+        </div>
+        <div className="border-t border-neutral-200 p-2.5">
+          <Later
+            at={5000}
+            before={<p className="text-[8.5px] text-amber-800 font-medium text-center mb-1.5">Still needed: who&apos;s responsible</p>}
+          >
+            <span />
+          </Later>
+          <div className="flex gap-1.5">
+            <span className="flex-1 text-center text-[10px] font-semibold py-1.5 rounded-lg border border-neutral-300 text-neutral-700">
+              Finish later
+            </span>
+            <Later
+              at={5000}
+              before={
+                <span className="flex-[1.4] text-center text-[10px] font-semibold py-1.5 rounded-lg bg-neutral-200 text-neutral-500">
+                  Save hazard
+                </span>
+              }
+            >
+              <span
+                data-demo="save-hazard"
+                className="flex-[1.4] text-center text-[10px] font-semibold py-1.5 rounded-lg bg-emerald-700 text-white cursor-pointer"
+              >
+                Save hazard ✓
+              </span>
+            </Later>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HazardStep({ sheet = true }: { sheet?: boolean }) {
+  return (
+    <div className="relative h-full">
+      <Step n={9} title="Identify hazards">
+        <div className="space-y-1.5">
           <H>Step 2.1 — Identify hazards</H>
-          <Note>&ldquo;Yes&rdquo; means the hazard is present or could occur. &ldquo;No&rdquo; means it isn&apos;t relevant today.</Note>
-          <div className="rounded-lg border border-neutral-200 bg-white p-2 space-y-1.5">
-            <p className="text-[10px] font-medium leading-snug">Could I slip, trip, fall or lose my footing?</p>
-            <p className="text-[8.5px] text-neutral-500">e.g. Uneven ground, Mud, Trenches, Holes, Steps, Trip hazards</p>
-            <Later at={500} before={<YesNo value="none" />}>
-              <YesNo value="yes" />
-            </Later>
-            <Later at={700}>
-              <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-2 space-y-1.5">
-                <Field label="Hazard description">
-                  <Typing text="Open trench beside the row 44 walkway" delay={500} speed={40} />
-                </Field>
-                <PhotoField label="Photo of the hazard (optional)" kind="trench" at={1700} />
-                <div>
-                  <p className="text-[9.5px] font-semibold text-neutral-700 mb-0.5">Initial risk rating</p>
-                  <Later at={2300} before={<RiskSelect />}>
-                    <RiskSelect value="high" />
-                  </Later>
-                </div>
-                <div data-scroll="controls">
-                  <Field label="Controls to be implemented">
-                    <Typing text="Walk the marked path only, barricade and flag the trench edge" delay={3300} speed={32} />
-                  </Field>
-                </div>
-                <p className="text-[9px] text-emerald-700 font-medium underline decoration-dotted">
-                  + Save this as a reusable answer for {TEAM}
-                </p>
-                <Field label="Person responsible for the control">{WHO}</Field>
-                <Later at={5500} before={<Tick label="Control has been implemented" on={false} />}>
-                  <Tick label="Control has been implemented" />
-                </Later>
-                <PhotoField label="Photo of the control in place (optional)" />
-                <div data-scroll="residual">
-                  <p className="text-[9.5px] font-semibold text-neutral-700 mb-0.5">Residual risk rating</p>
-                  <Later at={6500} before={<RiskSelect />}>
-                    <RiskSelect value="low" />
-                  </Later>
-                </div>
-                <Field label="Additional comments (optional)">
-                  <span className="text-neutral-400">&nbsp;</span>
-                </Field>
-              </div>
-              <div className="text-center text-[9.5px] font-medium py-1.5 rounded-lg border-2 border-dashed border-neutral-400 text-neutral-700">
-                + Add hazard detail card
-              </div>
-            </Later>
-          </div>
-          <div className="rounded-lg border border-neutral-200 bg-white p-2">
-            <p className="text-[10px] font-medium leading-snug">Could I strain or overexert myself?</p>
-            <YesNo value="no" />
-          </div>
-          <div data-scroll="struck" className="rounded-lg border border-neutral-200 bg-white p-2 space-y-1.5">
-            <p className="text-[10px] font-medium leading-snug">Could I be struck by moving plant, vehicles or falling objects?</p>
-            <YesNo value="yes" />
-            <div className="rounded-lg border border-neutral-300 bg-neutral-50 p-2 space-y-1.5">
-              <Field label="Hazard description">Excavator digging next to row 44</Field>
-              <div className="flex items-end gap-1.5">
-                <SitePhoto kind="excavator" className="w-14 h-14 rounded-lg border border-neutral-300" />
-                <span className="text-[8.5px] text-emerald-700 font-semibold pb-0.5">✓ Photo added</span>
-              </div>
-              <Field label="Controls to be implemented">Stay outside the swing radius, eye contact with the operator before approaching</Field>
-              <div className="flex items-center gap-1 text-[9px]">
-                <span className="font-semibold text-neutral-700">Risk</span>
-                <Pill tone="orange">High</Pill>
-                <span className="text-neutral-400">→</span>
-                <Pill tone="green">Low</Pill>
-              </div>
+          <div>
+            <div className="flex justify-between text-[8.5px] font-semibold text-neutral-600 mb-0.5">
+              <span>{sheet ? "1 of 11 answered" : "4 of 11 answered"}</span>
+            </div>
+            <div className="h-1 rounded-full bg-neutral-200 overflow-hidden">
+              <div className="h-full bg-emerald-600 rounded-full" style={{ width: sheet ? "9%" : "36%" }} />
             </div>
           </div>
-          <Note>…and the rest of the 11 hazard questions.</Note>
+          <HazardRow q="Could I be caught in, on or between anything?" chip="No" tone="grey" />
+          {sheet ? (
+            <div className="rounded-lg border border-neutral-200 bg-white p-2">
+              <p className="text-[9.5px] font-medium leading-snug">Could I slip, trip, fall or lose my footing?</p>
+              <p className="text-[8px] text-neutral-500">e.g. Uneven ground, Mud, Trenches, Holes, Steps, Trip hazards</p>
+              <Later at={400} before={<YesNo value="none" />}>
+                <YesNo value="yes" />
+              </Later>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-emerald-300 bg-white p-2">
+              <div className="flex items-start gap-1.5">
+                <p className="flex-1 text-[9.5px] font-medium leading-snug">Could I slip, trip, fall or lose my footing?</p>
+                <span className="shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Yes ✓</span>
+              </div>
+              <div className="mt-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-2 py-1.5 flex items-start gap-1.5">
+                <span className="flex-1">
+                  <span className="block text-[9.5px] font-semibold">Open trench beside the row 44 walkway</span>
+                  <span className="block text-[8.5px] text-emerald-800">High → Low · {WHO}</span>
+                </span>
+                <span className="text-[7.5px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white">Done ✓</span>
+              </div>
+              <p className="mt-1 text-[9px] font-semibold text-emerald-700">+ Add another hazard</p>
+            </div>
+          )}
+          {!sheet && (
+            <>
+              <HazardRow q="Could I strain or overexert myself?" chip="No" tone="grey" />
+              <HazardRow q="Could I be struck by moving plant, vehicles or falling objects?" chip="Yes · to finish" tone="amber" />
+              <div className="rounded-lg border border-neutral-200 bg-white p-2">
+                <p className="text-[9.5px] font-medium leading-snug">Could my work place me or other people at risk?</p>
+                <YesNo value="none" />
+              </div>
+            </>
+          )}
         </div>
-      </AutoScroll>
-    </Step>
+      </Step>
+      {sheet && (
+        <Later at={900}>
+          <HazardSheet />
+        </Later>
+      )}
+    </div>
   );
 }
 
@@ -1000,10 +1057,16 @@ const START_SCENES: DemoScene[] = [
   },
   {
     title: "Step 9 of 12 · Identify hazards",
-    text: "Go through each hazard question. For every Yes, describe the hazard, add a photo, rate the risk, then add the controls, who's responsible, a photo of the control in place, and rate the risk again.",
-    target: "continue",
-    wait: 11400,
+    text: "A short list of 11 questions. Tap Yes and a form pops up for that hazard: describe it, add a photo if you like, rate the risk, add the controls and who's responsible, then rate the risk again.",
+    target: "save-hazard",
+    wait: 7200,
     render: () => <HazardStep />,
+  },
+  {
+    title: "Green means finished",
+    text: "Save hazard only turns green once the hazard, controls and person responsible are filled in. Finished hazards show in green; ones still to finish show in amber. Tap one to open it again.",
+    target: "continue",
+    render: () => <HazardStep sheet={false} />,
   },
   {
     title: "Step 10 of 12 · New hazards",
