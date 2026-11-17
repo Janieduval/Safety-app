@@ -188,8 +188,6 @@ export default function StatsPage() {
   const [unauthorized, setUnauthorized] = useState(false);
   // This site's worker page, for the "Worker page" link (from the home-screen settings).
   const [workerSlug, setWorkerSlug] = useState<string | null>(null);
-  // The site owner also sees Suggestions in the admin menu.
-  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     fetch("/api/manifest")
@@ -200,14 +198,6 @@ export default function StatsPage() {
       })
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (viewer?.role !== "admin") return;
-    fetch("/api/admin/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((me) => setIsOwner(!!me?.isOwner))
-      .catch(() => {});
-  }, [viewer?.role]);
 
   useEffect(() => {
     setStats(null);
@@ -277,7 +267,7 @@ export default function StatsPage() {
         { href: "/admin/lists", label: "Site lists", icon: "list" },
         { href: "/admin/export", label: "Export", icon: "export" },
         { href: "/stats", label: "Statistics", icon: "stats" },
-        ...(isOwner ? [{ href: "/admin/suggestions", label: "Suggestions", icon: "idea" }] : []),
+        { href: "/admin/suggestions", label: "Suggestions", icon: "idea" },
       ]
     : [
         { href: "/supervisor", label: "Dashboard", icon: "home" },
