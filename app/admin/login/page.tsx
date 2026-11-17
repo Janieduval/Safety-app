@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import SiteNameBadge from "@/components/SiteNameBadge";
 
 function EyeIcon({ open }: { open: boolean }) {
   return (
@@ -65,6 +66,7 @@ function LoginForm() {
         <p className="mt-2 text-base font-semibold text-emerald-50">
           Take 5. Work safe. Go home safe.
         </p>
+        <SiteNameBadge />
       </div>
 
       {/* Login card */}
