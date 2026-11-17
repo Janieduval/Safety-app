@@ -4,9 +4,8 @@ import AdminDemo from "@/components/demo/AdminDemo";
 import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
 import ArchiveButton from "@/components/ArchiveButton";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
-import { cookies } from "next/headers";
-import { verifyAdminSessionToken } from "@/lib/adminSession";
-import { isSiteOwner, supervisorsCanChooseTeams } from "@/lib/siteSettings";
+import ProjectPill from "@/components/ProjectPill";
+import { siteCompany, supervisorsCanChooseTeams } from "@/lib/siteSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -210,10 +209,8 @@ export default async function AdminDashboard({
   );
   const totalCount = counts.reduce((sum, c) => sum + c._count, 0);
   const toReview = countMap["awaiting_supervisor_review"] ?? 0;
-  // Suggestions are only for the site owner (OWNER_ADMIN_EMAIL).
-  const isOwner = isSiteOwner(await verifyAdminSessionToken(cookies().get("admin_session")?.value));
   // Ideas from the "Suggest an idea" button that haven't been looked at yet.
-  const newSuggestions = isOwner ? await prisma.suggestion.count({ where: { status: "new" } }) : 0;
+  const newSuggestions = await prisma.suggestion.count({ where: { status: "new" } });
 
   // Builds a dashboard link for a status, keeping the chosen project.
   const statusHref = (status?: string) => {
@@ -239,6 +236,8 @@ export default async function AdminDashboard({
 
   // The project this site is for, e.g. "Yanco BESS" — shown at the top.
   const projectName = projects.length === 1 ? projects[0].name : null;
+  // The company it's for, e.g. "ACLE Services Pty Ltd" (the COMPANY setting).
+  const company = siteCompany();
 
   const shortcuts = [
     { href: "/admin/people", label: "People", icon: "people" },
@@ -246,7 +245,7 @@ export default async function AdminDashboard({
     { href: "/admin/lists", label: "Site lists", icon: "list" },
     { href: "/admin/export", label: "Export", icon: "export" },
     { href: "/stats", label: "Statistics", icon: "stats" },
-    ...(isOwner ? [{ href: "/admin/suggestions", label: "Suggestions", icon: "idea" }] : []),
+    { href: "/admin/suggestions", label: "Suggestions", icon: "idea" },
   ];
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
   // They open in a new tab, so the dashboard stays open.
@@ -277,16 +276,9 @@ export default async function AdminDashboard({
         <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
           Take 5. Work safe. Go home safe.
         </p>
-        {projectName && (
-          <div className="mt-3 px-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
-              {projectName}
-            </span>
-          </div>
-        )}
+        <ProjectPill name={projectName} company={company} className="mt-3 px-2" />
         <div className="mt-4 px-2">
-          <AdminDemo autoShow={false} owner={isOwner} adminSetsTeams={!supervisorsCanChooseTeams()} />
+          <AdminDemo autoShow={false} adminSetsTeams={!supervisorsCanChooseTeams()} />
         </div>
 
         <nav className="mt-8 space-y-1">
@@ -364,17 +356,10 @@ export default async function AdminDashboard({
               <p className="text-lg font-bold leading-tight">{greetingSydney()}</p>
               <p className="text-sm text-emerald-50/90">{todayLabel}</p>
             </div>
-            {projectName && (
-              <div className="mt-3">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
-                  {projectName}
-                </span>
-              </div>
-            )}
+            <ProjectPill name={projectName} company={company} className="mt-3" />
             {/* "New here? Watch the demo" — only on the dashboard */}
             <div className="mt-3">
-              <AdminDemo owner={isOwner} adminSetsTeams={!supervisorsCanChooseTeams()} />
+              <AdminDemo adminSetsTeams={!supervisorsCanChooseTeams()} />
             </div>
           </header>
 
@@ -385,6 +370,7 @@ export default async function AdminDashboard({
               <p className="text-sm text-neutral-500">
                 {todayLabel} · Admin dashboard
                 {projectName && <span className="font-semibold text-emerald-800"> · {projectName}</span>}
+                {company && <span> · {company}</span>}
               </p>
             </div>
             {toReview > 0 && searchParams.status !== "awaiting_supervisor_review" && (
