@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
+import ProjectPill from "@/components/ProjectPill";
 import SuggestionBox from "@/components/SuggestionBox";
 
 // The shared JSAFE frame for admin and supervisor pages:
@@ -117,12 +118,20 @@ export default function StaffShell({
   children: React.ReactNode;
 }) {
   const [workerPageSlug, setWorkerPageSlug] = useState<string | null>(null);
+  // The project and company shown at the top, e.g. "Yanco BESS" / "ACLE Services Pty Ltd".
   const [projectName, setProjectName] = useState<string | null>(null);
-  const [isOwner, setIsOwner] = useState(false); // the site owner also sees Suggestions
+  const [company, setCompany] = useState<string | null>(null);
   const isAdmin = role === "admin";
   const home = isAdmin ? "/admin/dashboard" : "/supervisor";
 
   useEffect(() => {
+    fetch("/api/site-info")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((info) => {
+        setProjectName(info?.project ?? null);
+        setCompany(info?.company ?? null);
+      })
+      .catch(() => {});
     if (!isAdmin) {
       // Supervisors: the worker page address comes from the app's home-screen
       // settings, which always point at this site's worker page.
@@ -135,18 +144,10 @@ export default function StaffShell({
         .catch(() => {});
       return;
     }
-    // For the "Worker page" link and the project name shown at the top.
+    // For the "Worker page" link.
     fetch("/api/admin/projects")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        const projects = data?.projects ?? [];
-        setWorkerPageSlug(projects[0]?.qrSlug ?? null);
-        setProjectName(projects.length === 1 ? projects[0].name : null);
-      })
-      .catch(() => {});
-    fetch("/api/admin/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((me) => setIsOwner(!!me?.isOwner))
+      .then((data) => setWorkerPageSlug(data?.projects?.[0]?.qrSlug ?? null))
       .catch(() => {});
   }, [isAdmin]);
 
@@ -158,9 +159,7 @@ export default function StaffShell({
         { href: "/admin/lists", label: "Site lists", icon: "list" },
         { href: "/admin/export", label: "Export", icon: "export" },
         { href: "/stats", label: "Statistics", icon: "stats" },
-        ...(isOwner || active === "/admin/suggestions"
-          ? [{ href: "/admin/suggestions", label: "Suggestions", icon: "idea" }]
-          : []),
+        { href: "/admin/suggestions", label: "Suggestions", icon: "idea" },
       ]
     : [
         { href: "/supervisor", label: "Dashboard", icon: "home" },
@@ -199,14 +198,7 @@ export default function StaffShell({
         <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
           Take 5. Work safe. Go home safe.
         </p>
-        {projectName && (
-          <div className="mt-3 px-2">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
-              {projectName}
-            </span>
-          </div>
-        )}
+        <ProjectPill name={projectName} company={company} className="mt-3 px-2" />
 
         <nav className="mt-8 space-y-1">
           {navItems.map((item) => (
@@ -306,14 +298,7 @@ export default function StaffShell({
                 {subtitle && <p className="text-sm text-emerald-50/90 mt-0.5">{subtitle}</p>}
               </div>
             </div>
-            {projectName && (
-              <div className="mt-3">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/15 ring-1 ring-white/25 text-white">
-                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
-                  {projectName}
-                </span>
-              </div>
-            )}
+            <ProjectPill name={projectName} company={company} className="mt-3" />
             {actions && <div className="mt-4 flex flex-wrap gap-2">{actions}</div>}
           </header>
 
