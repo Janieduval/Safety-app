@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, PageTop, Pill, btnGreen, btnPlain } from "@/components/control/ui";
 import SiteControls from "@/components/control/SiteControls";
@@ -205,7 +206,7 @@ export default async function SitePage({ params }: { params: { id: string } }) {
             <Card
               title={`Suggestions${newIdeas.length ? ` · ${newIdeas.length} new` : ""}`}
               right={
-                <a href={`/api/control/open?site=${s.site.id}&to=/admin/suggestions`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-emerald-700">Open ↗</a>
+                <Link href="/control/suggestions" className="text-sm font-semibold text-emerald-700">Mark them</Link>
               }
             >
               {d.suggestions.length === 0 ? (
