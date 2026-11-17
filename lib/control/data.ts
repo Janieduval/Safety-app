@@ -39,7 +39,7 @@ export type SiteSummary = {
     lastPushError: string | null;
   };
   errors: { at: string; kind: string; detail: string | null; count: number }[];
-  suggestions: { id: string; text: string; name: string | null; role: string; status: string; createdAt: string }[];
+  suggestions: { id: string; text: string; name: string | null; role: string; status: string; adminNote?: string | null; createdAt: string }[];
   settings: { supervisorsChooseTeams: boolean; samplePeople: boolean };
 };
 
