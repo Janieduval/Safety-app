@@ -102,4 +102,11 @@ export const WHATS_NEW: WhatsNew[] = [
     text: "The project and company now show on the login page and at the top of your dashboard, so it's clear which site you're on.",
     until: "2027-01-31",
   },
+  {
+    demo: "jsafe-demo-worker",
+    chapter: "start",
+    id: "2026-11-worker-hazard-popup",
+    text: "Identifying hazards is quicker now: tap Yes and the hazard form pops up on its own screen. Save hazard turns green once it's complete.",
+    until: "2027-01-31",
+  },
 ];
