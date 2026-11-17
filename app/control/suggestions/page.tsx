@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Card, PageTop, Pill } from "@/components/control/ui";
+import SuggestionActions from "@/components/control/SuggestionActions";
 import { readAllSites, whenText } from "@/lib/control/data";
 
-// Every site's suggestion box in one list. Marking them is done on each
-// site's own Suggestions page ("Open ↗").
+// Every site's suggestion box in one list. Marking them Planned, Done or
+// Not doing happens here; each site's admins can see the status, not change it.
 export const dynamic = "force-dynamic";
 
 const TABS = [
@@ -27,7 +28,7 @@ export default async function ControlSuggestions({ searchParams }: { searchParam
       <PageTop
         crumbs={[{ href: "/control", label: "Control centre" }, { label: "Suggestions" }]}
         title="Suggestions"
-        sub="Ideas from every project. To mark one Planned or Done, open it on its site."
+        sub="Ideas from every project. Mark each one as you go: the site's admins see the status and your note."
       />
       <div className="flex gap-2 overflow-x-auto pb-1 mb-4">
         {TABS.map((t) => {
@@ -61,8 +62,8 @@ export default async function ControlSuggestions({ searchParams }: { searchParam
                   <p className="text-xs text-neutral-500">
                     {x.site.name} · {x.name || "No name"} · {x.role} · {whenText(x.createdAt)}
                   </p>
+                  <SuggestionActions siteId={x.site.id} id={x.id} status={x.status} adminNote={x.adminNote ?? null} />
                 </div>
-                <a href={`/api/control/open?site=${x.site.id}&to=/admin/suggestions`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-emerald-700 shrink-0">Open ↗</a>
               </li>
             ))}
           </ul>
