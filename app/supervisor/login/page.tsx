@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import SiteNameBadge from "@/components/SiteNameBadge";
 
 function EyeIcon({ open }: { open: boolean }) {
   return (
@@ -68,6 +69,7 @@ export default function SupervisorLoginPage() {
           <p className="mt-2 text-base font-semibold text-emerald-50">
             Take 5. Work safe. Go home safe.
           </p>
+          <SiteNameBadge />
         </div>
 
         {/* Login card */}
