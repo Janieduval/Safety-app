@@ -133,6 +133,7 @@ export async function GET(req: NextRequest) {
       name: s.name,
       role: s.role,
       status: s.status,
+      adminNote: s.adminNote,
       createdAt: s.createdAt,
     })),
     settings: {
