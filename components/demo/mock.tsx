@@ -227,7 +227,17 @@ export function SavedToast({ text = "Saved", delay = 900 }: { text?: string; del
 // ---------- Staff (supervisor / admin) pieces ----------
 
 // The green header on the phone dashboards.
-export function DashHeader({ role, greeting }: { role: string; greeting: string }) {
+export function DashHeader({
+  role,
+  greeting,
+  project = "Blind Creek Solar Farm",
+  company = "ACLE Services Pty Ltd",
+}: {
+  role: string;
+  greeting: string;
+  project?: string;
+  company?: string;
+}) {
   return (
     <div className="px-3.5 pt-4 pb-3.5 text-white rounded-b-2xl" style={{ background: GRADIENT }}>
       <div className="flex items-center justify-between">
@@ -248,6 +258,14 @@ export function DashHeader({ role, greeting }: { role: string; greeting: string 
       <div className="mt-2 pt-1.5 border-t border-white/20">
         <p className="text-[12px] font-bold leading-tight">{greeting}</p>
         <p className="text-[9px] text-emerald-50/90">Wednesday 29 October</p>
+      </div>
+      {/* The project, with the company, like the real dashboards */}
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+        <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold px-1.5 py-0.5 rounded-full bg-white/15 ring-1 ring-white/25">
+          <svg viewBox="0 0 24 24" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+          {project}
+        </span>
+        <span className="text-[8px] text-emerald-50/85">{company}</span>
       </div>
     </div>
   );
