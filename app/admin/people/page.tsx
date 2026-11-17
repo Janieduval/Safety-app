@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
 import { AdminSupervisorTeams } from "@/components/TeamPicker";
+import ProjectPill from "@/components/ProjectPill";
 
 type Project = { id: string; name: string; qrSlug: string };
 type Person = {
@@ -32,6 +33,18 @@ const ICONS: Record<string, React.ReactNode> = {
   saved: <path d="M6 3h12v18l-6-4-6 4z" />,
   export: <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3" />,
   stats: <path d="M4 20V11M10 20V5M16 20v-6M2 20h20" />,
+  list: (
+    <>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <path d="M4 6h.01M4 12h.01M4 18h.01" />
+    </>
+  ),
+  idea: (
+    <>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z" />
+    </>
+  ),
   supervisor: (
     <>
       <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" />
@@ -100,6 +113,15 @@ export default function ManagePeoplePage() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  // The company shown under the project name in the sidebar.
+  const [company, setCompany] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/site-info")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((info) => setCompany(info?.company ?? null))
+      .catch(() => {});
+  }, []);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -268,13 +290,19 @@ export default function ManagePeoplePage() {
   const plural = tab === "workers" ? "workers" : "supervisors";
 
   const workerPageSlug = projects.find((p) => p.id === projectId)?.qrSlug ?? projects[0]?.qrSlug;
+  // Same menu as the other admin pages.
   const navItems = [
     { href: "/admin/dashboard", label: "Dashboard", icon: "home" },
     { href: "/admin/people", label: "People", icon: "people" },
     { href: "/admin/hazard-templates", label: "Saved answers", icon: "saved" },
+    { href: "/admin/lists", label: "Site lists", icon: "list" },
     { href: "/admin/export", label: "Export", icon: "export" },
     { href: "/stats", label: "Statistics", icon: "stats" },
-    { href: "/supervisor/login", label: "Supervisor", icon: "supervisor" },
+    { href: "/admin/suggestions", label: "Suggestions", icon: "idea" },
+  ];
+  // Shortcuts to the other JSAFE pages. They open in a new tab.
+  const linkItems = [
+    { href: "/supervisor/login", label: "Supervisor login", icon: "supervisor" },
     ...(workerPageSlug ? [{ href: `/${workerPageSlug}`, label: "Worker page", icon: "phone" }] : []),
   ];
 
@@ -303,6 +331,7 @@ export default function ManagePeoplePage() {
         <p className="mt-4 px-2 text-xs font-medium text-emerald-50/80 leading-snug">
           Take 5. Work safe. Go home safe.
         </p>
+        <ProjectPill name={projects.length === 1 ? projects[0].name : null} company={company} className="mt-3 px-2" />
 
         <nav className="mt-8 space-y-1">
           {navItems.map((item) => {
@@ -322,6 +351,21 @@ export default function ManagePeoplePage() {
               </Link>
             );
           })}
+        </nav>
+
+        <nav className="mt-6 pt-4 border-t border-white/15 space-y-1">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-50/60">Links</p>
+          {linkItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
+            >
+              <Icon name={item.icon} className="w-[18px] h-[18px]" />
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className="mt-auto pt-6">
