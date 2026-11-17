@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo } from "react";
+import { useMemo } from "react";
 import DemoPlayer, { DemoChapter, DemoScene } from "./DemoPlayer";
 import {
   AssessmentCard,
@@ -31,8 +31,6 @@ const SHORTCUTS: [string, string, string][] = [
   ["suggestions", "idea", "Suggestions"],
 ];
 
-// What this site shows: Suggestions only for the site owner.
-const Site = createContext({ owner: true });
 // Shown under their own "Links" heading, like the real dashboard.
 const LINKS: [string, string, string][] = [
   ["supervisor", "check", "Supervisor login"],
@@ -40,8 +38,7 @@ const LINKS: [string, string, string][] = [
 ];
 
 function Dashboard({ showCard = true }: { showCard?: boolean }) {
-  const { owner } = useContext(Site);
-  const shortcuts = owner ? SHORTCUTS : SHORTCUTS.filter(([id]) => id !== "suggestions");
+  const shortcuts = SHORTCUTS;
   return (
     <div className="h-full flex flex-col">
       <DashHeader role="Admin dashboard" greeting="Good morning" />
@@ -698,7 +695,7 @@ function RecordView() {
   );
 }
 
-function Suggestions({ planned = false, noting = false }: { planned?: boolean; noting?: boolean }) {
+function Suggestions() {
   const tab = (label: string, n: number, on = false) => (
     <span
       className={`shrink-0 text-[8.5px] px-2 py-0.5 rounded-full border ${
@@ -708,59 +705,20 @@ function Suggestions({ planned = false, noting = false }: { planned?: boolean; n
       {label} <span className="font-bold">{n}</span>
     </span>
   );
-  const btn = (label: string, on: boolean, id?: string) => (
-    <span
-      data-demo={id}
-      className={`text-[8px] px-1.5 py-0.5 rounded-full font-semibold cursor-pointer ${
-        on ? "bg-emerald-700 text-white" : "border border-neutral-300 bg-white text-neutral-700"
-      }`}
-    >
-      {label}
-    </span>
-  );
   return (
     <div className="h-full flex flex-col">
       <PageHeader title="Suggestions" sub="Ideas from workers and supervisors" />
       <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
+        <p className="text-[8.5px] text-neutral-600 leading-snug">
+          The JSAFE team reads every one and marks it Planned, Done or Not doing.
+        </p>
         <div className="flex gap-1">
-          {tab("New", planned ? 1 : 2, true)}
-          {tab("Planned", planned ? 1 : 0)}
+          {tab("New", 1, true)}
+          {tab("Planned", 1)}
           {tab("Done", 0)}
           {tab("All", 2)}
         </div>
-        {!planned && (
-          <div className="rounded-xl bg-white border border-blue-200 p-2">
-            <div className="flex items-start justify-between gap-1">
-              <p className="text-[8px] text-neutral-500">
-                <span className="font-semibold text-neutral-800">Alex Nguyen</span> · Worker · 29 Oct
-              </p>
-              <Pill tone="blue">New</Pill>
-            </div>
-            <p className="mt-1 text-[9.5px]">Add Crane lift to the permits list, we need it most mornings.</p>
-            {noting && (
-              <div className="mt-1">
-                <Input>
-                  <Typing text="Added to Site lists → Permits" delay={300} speed={55} />
-                </Input>
-                <span data-demo="save-note" className="mt-1 inline-block text-[8.5px] px-2 py-0.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">
-                  Save note
-                </span>
-              </div>
-            )}
-            <div className="mt-1.5 pt-1.5 border-t border-neutral-100 flex flex-wrap gap-1">
-              {btn("New", true)}
-              {btn("Planned", false, "planned")}
-              {btn("Done", false, "done")}
-              {btn("Not doing", false)}
-              {!noting && (
-                <span data-demo="note" className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full border border-neutral-300 bg-white font-semibold cursor-pointer">
-                  Add note
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        <div className="rounded-xl bg-white border border-blue-200 p-2">
+        <div data-demo="idea-new" className="rounded-xl bg-white border border-blue-200 p-2">
           <div className="flex items-start justify-between gap-1">
             <p className="text-[8px] text-neutral-500">
               <span className="font-semibold text-neutral-800">Jordan Micallef</span> · Supervisor · 28 Oct
@@ -768,12 +726,19 @@ function Suggestions({ planned = false, noting = false }: { planned?: boolean; n
             <Pill tone="blue">New</Pill>
           </div>
           <p className="mt-1 text-[9.5px]">Show how many of my crew have signed on today.</p>
-          <div className="mt-1.5 pt-1.5 border-t border-neutral-100 flex flex-wrap gap-1">
-            {btn("New", true)}
-            {btn("Planned", false)}
-            {btn("Done", false)}
-            {btn("Not doing", false)}
+        </div>
+        <div data-demo="idea-planned" className="rounded-xl bg-white border border-neutral-200 p-2">
+          <div className="flex items-start justify-between gap-1">
+            <p className="text-[8px] text-neutral-500">
+              <span className="font-semibold text-neutral-800">Alex Nguyen</span> · Worker · 29 Oct
+            </p>
+            <Pill tone="amber">Planned</Pill>
           </div>
+          <p className="mt-1 text-[9.5px]">Add Crane lift to the permits list, we need it most mornings.</p>
+          <p className="mt-1.5 rounded-lg bg-neutral-50 border border-neutral-200 px-1.5 py-1 text-[8.5px] text-neutral-700">
+            <span className="text-[7px] font-semibold uppercase tracking-wide text-neutral-500">Note </span>
+            Adding it to Site lists this week
+          </p>
         </div>
       </div>
     </div>
@@ -1068,29 +1033,16 @@ const SUGGEST_SCENES: DemoScene[] = [
   },
   {
     title: "Read the ideas",
-    text: "Each idea shows who sent it and when. Only the site owner's admin login sees this page.",
-    target: "note",
+    text: "Each idea shows who sent it and when. Every admin can read them here.",
+    target: "idea-new",
     wait: 3400,
     render: () => <Suggestions />,
   },
   {
-    title: "Add a note",
-    text: "Add a note for yourself, like what you changed.",
-    target: "save-note",
-    wait: 3400,
-    render: () => <Suggestions noting />,
-  },
-  {
-    title: "Mark it",
-    text: "Tap Planned, Done or Not doing. It moves to that tab, so New only holds what you haven't looked at yet.",
-    target: "planned",
-    wait: 3000,
+    title: "What's happening with it",
+    text: "The JSAFE team reads every idea and marks it Planned, Done or Not doing, sometimes with a short note. You see it here, under the matching tab.",
+    target: "idea-planned",
     render: () => <Suggestions />,
-  },
-  {
-    title: "One less to go",
-    text: "Done ones stay under Done and All. Delete removes one for good (it asks first).",
-    render: () => <Suggestions planned />,
   },
 ];
 
@@ -1140,7 +1092,7 @@ const ALL_CHAPTERS: DemoChapter[] = [
   {
     id: "suggestions",
     title: "Suggestions",
-    text: "Read the ideas people send, and mark them as you go",
+    text: "Read the ideas people send, and see what's planned or done",
     icon: <I name="idea" className="w-5 h-5" />,
     scenes: SUGGEST_SCENES,
   },
@@ -1150,11 +1102,9 @@ const ALL_CHAPTERS: DemoChapter[] = [
 const ADMIN_ONLY_TEAMS = "Tap teams on or off, then Save teams. They'll get a notification when those teams submit a JSAFE. On this site, only admins set supervisors' teams.";
 
 export default function AdminDemo({
-  owner = false,
   adminSetsTeams = false,
   ...props
 }: {
-  owner?: boolean; // the site owner also sees Suggestions
   adminSetsTeams?: boolean; // only admins set supervisors' teams on this site
   variant?: "light" | "plain";
   className?: string;
@@ -1162,16 +1112,14 @@ export default function AdminDemo({
 }) {
   const chapters = useMemo(
     () =>
-      ALL_CHAPTERS.filter((c) => owner || c.id !== "suggestions").map((c) =>
+      ALL_CHAPTERS.map((c) =>
         adminSetsTeams
           ? { ...c, scenes: c.scenes.map((s) => (s.title === "Save teams" ? { ...s, text: ADMIN_ONLY_TEAMS } : s)) }
           : c
       ),
-    [owner, adminSetsTeams]
+    [adminSetsTeams]
   );
   return (
-    <Site.Provider value={{ owner }}>
-      <DemoPlayer label="Admin" chapters={chapters} storageKey="jsafe-demo-admin" {...props} />
-    </Site.Provider>
+    <DemoPlayer label="Admin" chapters={chapters} storageKey="jsafe-demo-admin" {...props} />
   );
 }
