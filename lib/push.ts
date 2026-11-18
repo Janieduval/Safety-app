@@ -97,6 +97,7 @@ export async function notifySupervisorsToReview(
         supervisor: {
           active: true,
           archived: false,
+          notifyReviews: true,
           projectId: a.projectId,
           teams: { some: { teamId: a.teamId } },
         },
@@ -147,5 +148,46 @@ export async function notifySupervisorsToReview(
     if (failed) await recordEvent("push", false, lastError, failed);
   } catch {
     // swallow: notifications are best-effort
+  }
+}
+
+// The 9am morning reminder to one supervisor (all their devices). Returns
+// true if it reached at least one device. Never throws.
+export async function notifySupervisorReminder(supervisorId: string, title: string, body: string): Promise<boolean> {
+  try {
+    if (!configure()) return false;
+    const subs = await prisma.supervisorPushSubscription.findMany({ where: { supervisorId } });
+    if (subs.length === 0) return false;
+    const payload = JSON.stringify({ title, body, url: "/supervisor", tag: "jsafe-morning-reminder" });
+
+    const seen = new Set<string>();
+    let sent = 0;
+    let failed = 0;
+    let lastError = "";
+    await Promise.all(
+      subs
+        .filter((s) => (seen.has(s.endpoint) ? false : (seen.add(s.endpoint), true)))
+        .map(async (s) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              payload
+            );
+            sent++;
+          } catch (e: any) {
+            if (e?.statusCode === 404 || e?.statusCode === 410) {
+              await prisma.supervisorPushSubscription.deleteMany({ where: { endpoint: s.endpoint } });
+            } else {
+              failed++;
+              lastError = `Morning reminder failed (${e?.statusCode ?? "no answer"})`;
+            }
+          }
+        })
+    );
+    if (sent) await recordEvent("push", true, undefined, sent);
+    if (failed) await recordEvent("push", false, lastError, failed);
+    return sent > 0;
+  } catch {
+    return false;
   }
 }
