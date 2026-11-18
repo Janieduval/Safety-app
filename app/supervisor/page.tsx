@@ -4,11 +4,13 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import SupervisorDemo from "@/components/demo/SupervisorDemo";
 import SupervisorMyTeams from "@/components/SupervisorMyTeams";
+import SupervisorNotifications from "@/components/SupervisorNotifications";
 import SuggestionBox from "@/components/SuggestionBox";
 import { verifySupervisorSessionToken } from "@/lib/supervisorSession";
 import { getSupervisorTeams } from "@/lib/supervisorTeams";
 import ProjectPill from "@/components/ProjectPill";
 import { siteCompany, supervisorsCanChooseTeams } from "@/lib/siteSettings";
+import { parseDays } from "@/lib/morningReminder";
 
 export const dynamic = "force-dynamic";
 
@@ -145,7 +147,7 @@ function TodayBadge() {
 export default async function SupervisorDashboard({
   searchParams,
 }: {
-  searchParams: { status?: string; projectId?: string; worker?: string; mine?: string };
+  searchParams: { status?: string; projectId?: string; worker?: string };
 }) {
   const supervisorId = await verifySupervisorSessionToken(
     cookies().get("supervisor_session")?.value
@@ -169,7 +171,9 @@ export default async function SupervisorDashboard({
 
   // The teams this supervisor looks after ("My teams").
   const { teams, teamIds: myTeamIds } = await getSupervisorTeams(supervisorId);
-  const showingMine = searchParams.mine === "1" && myTeamIds.length > 0;
+  // Where the admin sets supervisors' teams (e.g. Yanco BESS), supervisors only
+  // see their own teams' Take 5s. Elsewhere they see every team.
+  const showingMine = !supervisorsCanChooseTeams() && myTeamIds.length > 0;
 
   const where: any = {};
   if (showingMine) where.teamId = { in: myTeamIds };
@@ -220,18 +224,6 @@ export default async function SupervisorDashboard({
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (searchParams.projectId) params.set("projectId", searchParams.projectId);
-    if (showingMine) params.set("mine", "1");
-    const q = params.toString();
-    return `/supervisor${q ? `?${q}` : ""}`;
-  };
-
-  // Links for the "All teams | My teams" switch, keeping everything else.
-  const teamsHref = (mine: boolean) => {
-    const params = new URLSearchParams();
-    if (searchParams.status) params.set("status", searchParams.status);
-    if (searchParams.projectId) params.set("projectId", searchParams.projectId);
-    if (searchParams.worker) params.set("worker", searchParams.worker);
-    if (mine) params.set("mine", "1");
     const q = params.toString();
     return `/supervisor${q ? `?${q}` : ""}`;
   };
@@ -448,15 +440,19 @@ export default async function SupervisorDashboard({
             </div>
           </div>
 
-          {/* ---------- My teams + notifications ---------- */}
-          <SupervisorMyTeams
-            teams={teams}
-            initialTeamIds={myTeamIds}
-            showingMine={showingMine}
-            allHref={teamsHref(false)}
-            mineHref={teamsHref(true)}
-            canEdit={supervisorsCanChooseTeams()}
-          />
+          {/* ---------- My teams, then Notifications underneath ---------- */}
+          <div className="mb-5 grid gap-5">
+            <SupervisorMyTeams teams={teams} initialTeamIds={myTeamIds} canEdit={supervisorsCanChooseTeams()} />
+            <SupervisorNotifications
+              teams={teams}
+              myTeamIds={myTeamIds}
+              canChooseTeams={supervisorsCanChooseTeams()}
+              initialReviews={currentSupervisor?.notifyReviews ?? true}
+              initialReminderOn={currentSupervisor?.reminderOn ?? true}
+              initialDays={parseDays(currentSupervisor?.reminderDays)}
+              initialWatch={currentSupervisor?.watchTeamIds ?? []}
+            />
+          </div>
 
           {/* ---------- Status filters: pills on a phone ---------- */}
           <div className="md:hidden flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 mb-3">
@@ -537,7 +533,6 @@ export default async function SupervisorDashboard({
               {searchParams.projectId && (
                 <input type="hidden" name="projectId" value={searchParams.projectId} />
               )}
-              {showingMine && <input type="hidden" name="mine" value="1" />}
               <input
                 type="text"
                 name="worker"
