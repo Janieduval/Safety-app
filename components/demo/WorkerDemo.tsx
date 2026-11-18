@@ -467,8 +467,21 @@ function HazardSheet() {
         </div>
         <div className="border-t border-neutral-200 p-2.5">
           <Later
-            at={5000}
-            before={<p className="text-[8.5px] text-amber-800 font-medium text-center mb-1.5">Still needed: who&apos;s responsible</p>}
+            at={5600}
+            before={
+              <Later
+                at={5000}
+                before={
+                  <p className="text-[8.5px] text-amber-800 font-medium text-center mb-1.5">
+                    Still needed: who&apos;s responsible, tick &ldquo;Control has been implemented&rdquo;
+                  </p>
+                }
+              >
+                <p className="text-[8.5px] text-amber-800 font-medium text-center mb-1.5">
+                  Still needed: tick &ldquo;Control has been implemented&rdquo;
+                </p>
+              </Later>
+            }
           >
             <span />
           </Later>
@@ -477,7 +490,7 @@ function HazardSheet() {
               Finish later
             </span>
             <Later
-              at={5000}
+              at={5600}
               before={
                 <span className="flex-[1.4] text-center text-[10px] font-semibold py-1.5 rounded-lg bg-neutral-200 text-neutral-500">
                   Save hazard
@@ -1064,7 +1077,7 @@ const START_SCENES: DemoScene[] = [
   },
   {
     title: "Green means finished",
-    text: "Save hazard only turns green once the hazard, controls and person responsible are filled in. Finished hazards show in green; ones still to finish show in amber. Tap one to open it again.",
+    text: "Save hazard only turns green once the hazard, controls and person responsible are filled in and “Control has been implemented” is ticked. Finished hazards show in green; ones still to finish show in amber. Tap one to open it again.",
     target: "continue",
     render: () => <HazardStep sheet={false} />,
   },
