@@ -58,6 +58,15 @@ model Supervisor {
   needsReview Boolean @default(false)
   createdAt DateTime @default(now())
 
+  // Notifications centre on the supervisor dashboard.
+  // notifyReviews: a notification when one of their teams submits a Take 5.
+  // reminderOn: the 9am morning reminder (Sydney time), on the days below,
+  // flagging the watched teams that haven't done a Take 5 yet that day.
+  notifyReviews Boolean  @default(true)
+  reminderOn    Boolean  @default(true)
+  reminderDays  String   @default("mon,tue,wed,thu,fri")
+  watchTeamIds  String[] @default([])
+
   supervisorReviews SupervisorReview[]
   teams             SupervisorTeam[]
   pushSubscriptions SupervisorPushSubscription[]
