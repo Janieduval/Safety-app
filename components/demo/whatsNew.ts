@@ -106,7 +106,14 @@ export const WHATS_NEW: WhatsNew[] = [
     demo: "jsafe-demo-worker",
     chapter: "start",
     id: "2026-11-worker-hazard-popup",
-    text: "Identifying hazards is quicker now: tap Yes and the hazard form pops up on its own screen. Save hazard turns green once it's complete.",
+    text: "Identifying hazards is quicker now: tap Yes and the hazard form pops up on its own screen. Save hazard turns green once it's complete, including the “Control has been implemented” tick.",
+    until: "2027-01-31",
+  },
+  {
+    demo: "jsafe-demo-supervisor",
+    chapter: "reminder",
+    id: "2026-11-supervisor-morning-reminder",
+    text: "New Notifications card next to My teams: choose to be notified when your teams finish a Take 5, and get a 9am reminder about Take 5s not reviewed yet and teams that haven't done one.",
     until: "2027-01-31",
   },
 ];
