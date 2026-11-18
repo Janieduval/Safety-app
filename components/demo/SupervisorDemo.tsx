@@ -851,168 +851,213 @@ const TEAM_CHIPS = [
 ];
 const MY_TEAMS = ["Piling", "Rails installation"];
 
-function MyTeamsCard({
-  stage,
-  locked = false,
-}: {
-  stage: "none" | "picking" | "saved" | "ask" | "on" | "mine";
-  locked?: boolean; // the admin sets the teams on this site
-}) {
-  const chosen = stage !== "none" && stage !== "picking";
+const miniChip = (on: boolean) =>
+  `text-[8.5px] px-1.5 py-0.5 rounded-full border font-semibold ${
+    on ? "bg-emerald-700 border-emerald-700 text-white" : "bg-white border-neutral-300 text-neutral-700"
+  }`;
+
+// A small on/off switch, like the real ones.
+function MiniSwitch({ on }: { on: boolean }) {
+  return (
+    <span className={`relative shrink-0 inline-block w-7 h-4 rounded-full ${on ? "bg-emerald-700" : "bg-neutral-300"}`}>
+      <span className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow ${on ? "translate-x-3" : ""}`} />
+    </span>
+  );
+}
+
+function MiniRow({ title, text, children }: { title: string; text: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p className="text-[9.5px] font-semibold leading-snug">{title}</p>
+        <p className="text-[8px] text-neutral-500 leading-snug mt-0.5">{text}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// The "My teams" card. Where supervisors choose their teams, every team is
+// listed and theirs are ticked. Where the admin sets them (`locked`), only
+// their own teams show.
+function MyTeamsCard({ stage, locked = false }: { stage: "none" | "picked" | "saved"; locked?: boolean }) {
+  const on = (t: string) => stage !== "none" && MY_TEAMS.includes(t);
   return (
     <div className="rounded-xl bg-white border border-neutral-200 shadow-sm p-2.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[11.5px] font-bold">My teams</p>
+      <p className="text-[11.5px] font-bold">My teams</p>
+      {locked ? (
+        <>
           <p className="text-[8.5px] text-neutral-500 leading-snug">
-            Get a notification when one of your teams submits a JSAFE for review.
+            The teams you&apos;re responsible for. They&apos;re set by the admin.
           </p>
-        </div>
-        {stage !== "picking" && !locked && (
-          <span
-            data-demo="choose"
-            className="shrink-0 text-[9.5px] px-2 py-1 rounded-full border border-emerald-700 text-emerald-700 font-semibold cursor-pointer"
-          >
-            {chosen ? "Edit" : "Choose teams"}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-2">
-        {stage === "picking" ? (
-          <div>
-            <p className="text-[8.5px] text-neutral-500 mb-1">Tap the teams you're responsible for.</p>
-            <div className="flex flex-wrap gap-1">
-              {TEAM_CHIPS.map((t) => {
-                const on = MY_TEAMS.includes(t);
-                return (
-                  <span
-                    key={t}
-                    className={`text-[9px] px-2 py-1 rounded-full border font-medium ${
-                      on ? "bg-emerald-700 border-emerald-700 text-white" : "bg-white border-neutral-300 text-neutral-700"
-                    }`}
-                  >
-                    {on ? "✓ " : ""}
-                    {t}
-                  </span>
-                );
-              })}
-            </div>
-            <div className="mt-2 flex gap-1.5">
-              <span
-                data-demo="save-teams"
-                className="text-[9.5px] px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer"
-              >
-                Save teams
-              </span>
-              <span className="text-[9.5px] px-2.5 py-1.5 rounded-lg border border-neutral-300 bg-white text-neutral-700">
-                Cancel
-              </span>
-            </div>
-          </div>
-        ) : chosen ? (
-          <div className="flex flex-wrap gap-1">
+          <div className="mt-1.5 flex flex-wrap gap-1">
             {MY_TEAMS.map((t) => (
-              <span
-                key={t}
-                className="text-[8.5px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
-              >
+              <span key={t} className={miniChip(true)}>
+                ✓ {t}
+              </span>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-[8.5px] text-neutral-500 leading-snug">Tap the teams you&apos;re responsible for.</p>
+          <div data-demo="team-chips" className="mt-1.5 flex flex-wrap gap-1">
+            {TEAM_CHIPS.map((t) => (
+              <span key={t} className={miniChip(on(t))}>
+                {on(t) ? "✓ " : ""}
                 {t}
               </span>
             ))}
           </div>
-        ) : (
-          <p className="text-[9.5px] text-neutral-500">No teams chosen yet.</p>
-        )}
-        {locked && chosen && <p className="mt-1 text-[8px] text-neutral-500">Your teams are set by the admin.</p>}
-      </div>
-
-      {stage !== "picking" && (
-        <div className="mt-2 pt-2 border-t border-neutral-100">
-          {stage === "on" || stage === "mine" ? (
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[9.5px] text-emerald-800 font-medium">✓ Notifications are on for this device</p>
-              <span className="text-[8.5px] font-semibold text-neutral-500 underline">Turn off</span>
+          {stage === "picked" && (
+            <div className="mt-1.5 flex gap-1.5">
+              <span data-demo="save-teams" className="text-[9.5px] px-2.5 py-1 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer">
+                Save teams
+              </span>
+              <span className="text-[9.5px] px-2.5 py-1 rounded-lg border border-neutral-300 text-neutral-700 font-semibold">
+                Cancel
+              </span>
             </div>
-          ) : (
-            <span
-              data-demo="notify-on"
-              className="inline-block text-[9.5px] px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer"
-            >
-              Turn on notifications
-            </span>
           )}
-        </div>
-      )}
-
-      {chosen && (
-        <div className="mt-2 flex p-0.5 rounded-full bg-neutral-100">
-          <span
-            className={`flex-1 text-center text-[9.5px] py-1 rounded-full font-semibold ${
-              stage !== "mine" ? "bg-emerald-700 text-white" : "text-neutral-600"
-            }`}
-          >
-            All teams
-          </span>
-          <span
-            data-demo="mine"
-            className={`flex-1 text-center text-[9.5px] py-1 rounded-full font-semibold cursor-pointer ${
-              stage === "mine" ? "bg-emerald-700 text-white" : "text-neutral-600"
-            }`}
-          >
-            My teams
-          </span>
-        </div>
+          {stage === "saved" && <p className="mt-1.5 text-[9px] text-emerald-800 font-semibold">✓ Saved</p>}
+        </>
       )}
     </div>
   );
 }
 
-function TeamsDash({
-  stage,
-  locked = false,
+// The "Notifications" card.
+function NotificationsCard({
+  device,
+  watched = [],
+  canSave = false,
+  saved = false,
 }: {
-  stage: "none" | "picking" | "saved" | "ask" | "on" | "mine";
-  locked?: boolean;
+  device: "idle" | "on";
+  watched?: string[];
+  canSave?: boolean;
+  saved?: boolean;
 }) {
-  const mine = stage === "mine";
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const daysOn = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  return (
+    <div className="rounded-xl bg-white border border-neutral-200 shadow-sm p-2.5">
+      <p className="text-[11.5px] font-bold">Notifications</p>
+
+      <div className="mt-2">
+        <MiniRow
+          title="Notify me when my teams' Take 5 has been completed"
+          text="A notification on this phone or computer when one of your teams finishes a Take 5."
+        >
+          <MiniSwitch on />
+        </MiniRow>
+        {device === "on" ? (
+          <p className="mt-1 text-[8px] text-emerald-800 font-medium">✓ Notifications are allowed on this device</p>
+        ) : (
+          <p className="mt-1 text-[8px] text-neutral-600">When you save, this device will ask to allow notifications. Tap Allow.</p>
+        )}
+        <p className="mt-0.5 text-[8px] font-semibold text-emerald-700 underline">How to add JSAFE to your home screen</p>
+      </div>
+
+      <div className="mt-2 pt-2 border-t border-neutral-100">
+        <MiniRow title="Get a reminder at 9am" text="If any of your teams' Take 5s haven't been reviewed yet, by you or another supervisor.">
+          <MiniSwitch on />
+        </MiniRow>
+        <p className="mt-1.5 text-[9px] font-semibold">Which days would you like to have the reminder?</p>
+        <div data-demo="days" className="mt-1 flex flex-wrap gap-1">
+          {days.map((d) => (
+            <span key={d} className={miniChip(daysOn.includes(d))}>
+              {d}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-2 pt-2 border-t border-neutral-100">
+        <p className="text-[9.5px] font-semibold">Tell me if these teams haven&apos;t done a Take 5</p>
+        <p className="text-[8px] text-neutral-500 leading-snug">At 9am, on the days above. Tick the teams working on site.</p>
+        <div data-demo="watch" className="mt-1 flex flex-wrap gap-1">
+          {MY_TEAMS.map((t) => (
+            <span key={t} className={miniChip(watched.includes(t))}>
+              {watched.includes(t) ? "✓ " : ""}
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex items-center gap-2">
+        <span
+          data-demo="save-notif"
+          className={`text-[9.5px] px-2.5 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold cursor-pointer ${
+            canSave ? "" : "opacity-40"
+          }`}
+        >
+          Save notification settings
+        </span>
+        {saved && <span className="text-[9px] text-emerald-800 font-semibold">✓ Saved</span>}
+      </div>
+    </div>
+  );
+}
+
+// The supervisor dashboard with both cards. `scroll` moves the pretend page
+// up, like scrolling down on the phone.
+function TeamsDash({
+  teams = "saved",
+  device = "idle",
+  watched = [],
+  canSave = false,
+  saved = false,
+  ask = false,
+  locked = false,
+  scroll = 0,
+}: {
+  teams?: "none" | "picked" | "saved";
+  device?: "idle" | "on";
+  watched?: string[];
+  canSave?: boolean;
+  saved?: boolean;
+  ask?: boolean;
+  locked?: boolean;
+  scroll?: number;
+}) {
   return (
     <div className="h-full flex flex-col relative">
       <DashHeader role="Supervisor" greeting="Good morning, Jordan" />
-      <div className="px-3 pt-2.5 space-y-2 overflow-hidden">
-        <MyTeamsCard stage={stage} locked={locked} />
-        {stage !== "picking" && (
-          <>
-            <StatusPills
-              counts={
-                mine ? { All: 12, "To review": 1, Completed: 0, Draft: 1, Changes: 0, Approved: 10, Archived: 0 } : undefined
-              }
-            />
-            <p className="text-[11px] font-bold text-neutral-900">{mine ? "My teams' assessments" : "Assessments"}</p>
+      <div className="px-3 pt-2.5 overflow-hidden">
+        <div className="space-y-2" style={{ marginTop: -scroll }}>
+          <MyTeamsCard stage={teams} locked={locked} />
+          <NotificationsCard device={device} watched={watched} canSave={canSave} saved={saved} />
+          <StatusPills
+            counts={
+              locked ? { All: 12, "To review": 1, Completed: 0, Draft: 1, Changes: 0, Approved: 10, Archived: 0 } : undefined
+            }
+          />
+          <p className="text-[11px] font-bold text-neutral-900">{locked ? "My teams' assessments" : "Assessments"}</p>
+          <AssessmentCard
+            name="Alex Nguyen"
+            team="Rails installation"
+            when="29 Oct, 6:58 am"
+            status="Awaiting Supervisor Review"
+            tone="amber"
+            flags={["High/Extreme risk"]}
+            review
+          />
+          {!locked && (
             <AssessmentCard
-              name="Alex Nguyen"
-              team="Rails installation"
-              when="29 Oct, 6:58 am"
+              name="Sam Taylor"
+              team="Surveying"
+              when="29 Oct, 6:45 am"
               status="Awaiting Supervisor Review"
               tone="amber"
-              flags={["High/Extreme risk"]}
               review
             />
-            {!mine && (
-              <AssessmentCard
-                name="Sam Taylor"
-                team="Surveying"
-                when="29 Oct, 6:45 am"
-                status="Awaiting Supervisor Review"
-                tone="amber"
-                review
-              />
-            )}
-          </>
-        )}
+          )}
+        </div>
       </div>
 
-      {stage === "ask" && (
+      {ask && (
         <div className="absolute inset-0 bg-black/30 flex items-start justify-center pt-24 px-4">
           <div className="w-full rounded-2xl bg-white shadow-2xl p-3">
             <p className="text-[11px] font-semibold text-neutral-900">safety-app01.vercel.app wants to</p>
@@ -1119,6 +1164,32 @@ function LockScreen() {
         </div>
         <p className="mt-1 text-[10.5px] font-semibold">JSAFE to review · Rails installation</p>
         <p className="text-[9.5px] text-neutral-700">Alex Nguyen submitted a JSAFE for review.</p>
+      </div>
+    </div>
+  );
+}
+
+// The 9am reminder on the lock screen.
+function MorningLockScreen() {
+  return (
+    <div
+      className="h-full flex flex-col items-center px-3 pt-10 text-white"
+      style={{ background: "linear-gradient(170deg,#1e293b 0%,#0f172a 60%,#064e3b 100%)" }}
+    >
+      <p className="text-[10px] text-white/70">Thursday 30 October</p>
+      <p className="text-[40px] font-semibold leading-none mt-1">9:00</p>
+      <div data-demo="morning" className="mt-8 w-full rounded-2xl bg-white/90 text-neutral-900 p-2.5 shadow-lg cursor-pointer">
+        <div className="flex items-center gap-1.5">
+          <span className="w-4 h-4 rounded-md flex items-center justify-center text-[7px] font-black text-white" style={{ background: GRADIENT }}>
+            J
+          </span>
+          <span className="text-[8.5px] font-semibold uppercase tracking-wide text-neutral-500 flex-1">JSAFE</span>
+          <span className="text-[8.5px] text-neutral-500">now</span>
+        </div>
+        <p className="mt-1 text-[10.5px] font-semibold">Good morning, Jordan</p>
+        <p className="text-[9.5px] text-neutral-700">
+          2 Take 5s haven&apos;t been reviewed yet. Rails installation hasn&apos;t done a Take 5 today.
+        </p>
       </div>
     </div>
   );
@@ -1285,57 +1356,59 @@ const STATS_SCENES: DemoScene[] = [
 ];
 
 // 1. My teams & notifications. On sites where the admin sets supervisors'
-// teams (`locked`), the card just shows them — there's no Choose teams.
+// teams (`locked`), the card just shows their own teams.
+const NOTIF_SCROLL = 120; // scrolled down to the Notifications card
+const NOTIF_SCROLL_LOCKED = 70;
+
 const teamsScenes = (locked: boolean): DemoScene[] => [
   ...(locked
     ? [
         {
           title: "My teams",
-          text: "The My teams card on your dashboard shows the teams you're responsible for. Your admin sets them. Tap Turn on notifications.",
-          target: "notify-on",
-          wait: 3600,
-          render: () => <TeamsDash stage="saved" locked />,
+          text: "The My teams card on your dashboard shows the teams you're responsible for. Your admin sets them, and you only see their Take 5s.",
+          wait: 4200,
+          render: () => <TeamsDash locked />,
         },
       ]
     : [
         {
           title: "My teams",
-          text: "On your dashboard, the My teams card lets you choose the teams you're responsible for. Tap Choose teams.",
-          target: "choose",
-          wait: 3000,
-          render: () => <TeamsDash stage="none" />,
+          text: "On your dashboard, the My teams card lists every team. Tap the ones you're responsible for. They turn green with a tick.",
+          target: "team-chips",
+          wait: 3400,
+          render: () => <TeamsDash teams="none" />,
         },
         {
-          title: "Choose your teams",
-          text: "Tap the teams you're responsible for — they turn green with a tick. Then tap Save teams.",
+          title: "Save teams",
+          text: "Then tap Save teams.",
           target: "save-teams",
-          wait: 3200,
-          render: () => <TeamsDash stage="picking" />,
-        },
-        {
-          title: "Turn on notifications",
-          text: "Your teams now show on the card. Tap Turn on notifications.",
-          target: "notify-on",
           wait: 2600,
-          render: () => <TeamsDash stage="saved" />,
+          render: () => <TeamsDash teams="picked" />,
         },
       ]),
+  {
+    title: "Notifications",
+    text: "Under My teams is the Notifications card. Notify me when my teams' Take 5 has been completed is on. Tap Save notification settings.",
+    target: "save-notif",
+    wait: 3800,
+    render: () => <TeamsDash locked={locked} canSave scroll={locked ? NOTIF_SCROLL_LOCKED + 150 : NOTIF_SCROLL + 150} />,
+  },
   {
     title: "Allow",
     text: "Your phone or browser asks if JSAFE can send notifications. Tap Allow.",
     target: "allow",
     wait: 2400,
-    render: () => <TeamsDash stage="ask" locked={locked} />,
+    render: () => <TeamsDash locked={locked} canSave ask scroll={locked ? NOTIF_SCROLL_LOCKED + 150 : NOTIF_SCROLL + 150} />,
   },
   {
     title: "Notifications are on",
-    text: "Do this on each phone or computer you use. On an iPhone, open JSAFE from your home screen icon first.",
-    wait: 3400,
-    render: () => <TeamsDash stage="on" locked={locked} />,
+    text: "Do this on each phone or computer you use. On an iPhone, add JSAFE to your home screen and open it from there first. The link in the card shows you how.",
+    wait: 4200,
+    render: () => <TeamsDash locked={locked} device="on" saved scroll={locked ? NOTIF_SCROLL_LOCKED : NOTIF_SCROLL} />,
   },
   {
-    title: "JSAFE to review",
-    text: "When one of your teams submits a JSAFE for review — or sends back an amended one — you get a notification, even with the app closed. Tap it.",
+    title: "Take 5 completed",
+    text: "When one of your teams finishes a Take 5 — or sends back an amended one — you get a notification, even with the app closed. Tap it.",
     target: "notif",
     wait: 3800,
     render: () => <LockScreen />,
@@ -1343,20 +1416,37 @@ const teamsScenes = (locked: boolean): DemoScene[] => [
   {
     title: "Supervisor review",
     text: "It opens the Supervisor review for that Take 5, ready for you to check and sign.",
-    wait: 6000,
     render: () => <ReviewPage />,
   },
+];
+
+// Morning reminder.
+const REMINDER_SCENES: DemoScene[] = [
   {
-    title: "All teams | My teams",
-    text: "Back on the dashboard, tap My teams to see only your teams' JSAFEs.",
-    target: "mine",
-    wait: 2600,
-    render: () => <TeamsDash stage="on" locked={locked} />,
+    title: "Get a reminder at 9am",
+    text: "In the Notifications card, Get a reminder at 9am tells you about Take 5s from your teams that haven't been reviewed yet. Tick the days you want it.",
+    target: "days",
+    wait: 3800,
+    render: () => <TeamsDash device="on" scroll={NOTIF_SCROLL + 70} />,
   },
   {
-    title: "My teams' assessments",
-    text: "Only your teams are listed, and the numbers change to match. Tap All teams to see everything again.",
-    render: () => <TeamsDash stage="mine" locked={locked} />,
+    title: "Teams with no Take 5",
+    text: "Under Tell me if these teams haven't done a Take 5, tick the teams working on site. If one hasn't done a Take 5 by 9am, the reminder tells you. Then tap Save notification settings.",
+    target: "save-notif",
+    wait: 4400,
+    render: () => <TeamsDash device="on" watched={MY_TEAMS} canSave scroll={NOTIF_SCROLL + 150} />,
+  },
+  {
+    title: "Saved",
+    text: "Don't want the 9am reminder? Switch it off, or untick the teams, and save.",
+    wait: 3200,
+    render: () => <TeamsDash device="on" watched={MY_TEAMS} saved scroll={NOTIF_SCROLL + 150} />,
+  },
+  {
+    title: "9am",
+    text: "At 9am you get one notification: how many Take 5s haven't been reviewed yet, and which ticked teams haven't done one. Nothing to report? No notification. Tap it to open your dashboard.",
+    target: "morning",
+    render: () => <MorningLockScreen />,
   },
 ];
 
@@ -1386,12 +1476,19 @@ const IDEA_SCENES: DemoScene[] = [
 const chapters = (adminSetsTeams: boolean): DemoChapter[] => [
   {
     id: "teams",
-    title: "My teams",
+    title: "My teams & notifications",
     text: adminSetsTeams
-      ? "See your teams and get a notification when they submit a Take 5"
-      : "Choose your teams and get a notification when they submit a Take 5",
+      ? "See your teams and get a notification when they finish a Take 5"
+      : "Choose your teams and get a notification when they finish a Take 5",
     icon: <Bell className="w-5 h-5" />,
     scenes: teamsScenes(adminSetsTeams),
+  },
+  {
+    id: "reminder",
+    title: "Morning reminder",
+    text: "A 9am notification about Take 5s not reviewed yet and teams with no Take 5",
+    icon: <Bell className="w-5 h-5" />,
+    scenes: REMINDER_SCENES,
   },
   {
     id: "dash",
