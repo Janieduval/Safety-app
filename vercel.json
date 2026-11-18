@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/reclassify-assessments",
       "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/cron/supervisor-reminders?slot=summer-time",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/supervisor-reminders?slot=winter-time",
+      "schedule": "0 23 * * *"
     }
   ]
 }
