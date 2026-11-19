@@ -49,10 +49,14 @@ function buildBuckets(period: Period, todayStr: string): string[] {
 
 export async function GET(req: NextRequest) {
   // Open to either an admin or a supervisor session — stats are read-only.
-  const adminEmail = await verifyAdminSessionToken(cookies().get("admin_session")?.value);
-  const supervisorId = adminEmail
-    ? null
-    : await verifySupervisorSessionToken(cookies().get("supervisor_session")?.value);
+  // Someone logged in as both on one browser gets the admin view, unless they
+  // came from the supervisor dashboard ("?as=supervisor").
+  const wantsSupervisor = req.nextUrl.searchParams.get("as") === "supervisor";
+  const supervisorSession = await verifySupervisorSessionToken(cookies().get("supervisor_session")?.value);
+  const adminSession = await verifyAdminSessionToken(cookies().get("admin_session")?.value);
+  const useSupervisor = !!supervisorSession && (wantsSupervisor || !adminSession);
+  const adminEmail = useSupervisor ? null : adminSession;
+  const supervisorId = useSupervisor ? supervisorSession : null;
   if (!adminEmail && !supervisorId) {
     return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   }
