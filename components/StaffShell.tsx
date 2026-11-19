@@ -163,7 +163,9 @@ export default function StaffShell({
       ]
     : [
         { href: "/supervisor", label: "Dashboard", icon: "home" },
-        { href: "/stats", label: "Statistics", icon: "stats" },
+        // "as=supervisor": show the supervisor view even if an admin is also
+        // logged in on this browser.
+        { href: "/stats?as=supervisor", label: "Statistics", icon: "stats" },
       ];
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
   // They open in a new tab, so the page you're on stays open.
