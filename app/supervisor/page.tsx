@@ -280,7 +280,7 @@ export default async function SupervisorDashboard({
             Dashboard
           </Link>
           <Link
-            href="/stats"
+            href="/stats?as=supervisor"
             className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-emerald-50/90 hover:bg-white/10 hover:text-white"
           >
             <Icon name="stats" className="w-[18px] h-[18px]" />
@@ -409,7 +409,7 @@ export default async function SupervisorDashboard({
 
           {/* ---------- Phone: statistics shortcut ---------- */}
           <Link
-            href="/stats"
+            href="/stats?as=supervisor"
             className="md:hidden flex items-center gap-3 mb-4 rounded-2xl bg-white border border-neutral-200 px-4 py-3 shadow-sm active:bg-neutral-50"
           >
             <span className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
