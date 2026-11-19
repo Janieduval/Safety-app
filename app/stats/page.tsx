@@ -202,7 +202,10 @@ export default function StatsPage() {
   useEffect(() => {
     setStats(null);
     setError(null);
-    fetch(`/api/stats?period=${period}`)
+    // Opened from the supervisor dashboard ("?as=supervisor"): ask for the
+    // supervisor view, even if an admin is also logged in on this browser.
+    const asSupervisor = new URLSearchParams(window.location.search).get("as") === "supervisor";
+    fetch(`/api/stats?period=${period}${asSupervisor ? "&as=supervisor" : ""}`)
       .then(async (res) => {
         if (res.status === 401) {
           setUnauthorized(true);
@@ -271,7 +274,7 @@ export default function StatsPage() {
       ]
     : [
         { href: "/supervisor", label: "Dashboard", icon: "home" },
-        { href: "/stats", label: "Statistics", icon: "stats" },
+        { href: "/stats?as=supervisor", label: "Statistics", icon: "stats" },
       ];
 
   // Shortcuts to the other JSAFE pages, shown under their own "Links" heading.
@@ -315,7 +318,7 @@ export default function StatsPage() {
         <nav className="mt-8 space-y-1">
           {viewer &&
             navItems.map((item) => {
-              const active = item.href === "/stats";
+              const active = item.href.startsWith("/stats");
               return (
                 <Link
                   key={item.href}
