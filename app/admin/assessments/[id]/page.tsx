@@ -23,6 +23,7 @@ export default async function AssessmentRecordPage({ params }: { params: { id: s
       declarations: true,
       newHazardFlag: true,
       signOns: { include: { worker: true }, orderBy: { signedAt: "asc" } },
+      changeAcknowledgments: { orderBy: { acknowledgedAt: "asc" } },
       supervisorReviews: { include: { supervisor: true }, orderBy: { version: "asc" } },
       reassessments: true,
       auditLogs: { orderBy: { timestamp: "asc" } },
