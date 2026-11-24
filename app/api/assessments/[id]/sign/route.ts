@@ -19,6 +19,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!assessment) {
     return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
   }
+  // While a supervisor's changes are being made, the version is about to go
+  // up, so nobody signs until it's sent back. (A sign-on always goes on the
+  // version the Take 5 is on now, never an older one.)
+  if (assessment.status === "changes_required") {
+    return NextResponse.json(
+      { error: "A supervisor has asked for changes. You can sign once the new version is sent back." },
+      { status: 409 }
+    );
+  }
   const existing = await prisma.signOn.findUnique({
     where: {
       assessmentId_workerId_version: {
