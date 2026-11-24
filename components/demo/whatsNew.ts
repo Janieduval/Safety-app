@@ -113,7 +113,14 @@ export const WHATS_NEW: WhatsNew[] = [
     demo: "jsafe-demo-supervisor",
     chapter: "reminder",
     id: "2026-11-supervisor-morning-reminder",
-    text: "New Notifications card next to My teams: choose to be notified when your teams finish a Take 5, and get a 9am reminder about Take 5s not reviewed yet and teams that haven't done one.",
+    text: "New Notifications card under My teams: choose to be notified when your teams finish a Take 5, and get a 9am reminder about Take 5s not reviewed yet and teams that haven't done one.",
+    until: "2027-01-31",
+  },
+  {
+    demo: "jsafe-demo-worker",
+    chapter: "signon",
+    id: "2026-11-worker-sign-new-version",
+    text: "Take 5 changed after you signed it? It now shows which version you're signing, and anyone who signed the old version can sign the new one with one tap.",
     until: "2027-01-31",
   },
 ];
