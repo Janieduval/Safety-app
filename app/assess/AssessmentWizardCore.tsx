@@ -11,6 +11,7 @@ import RiskLegend from "@/components/RiskLegend";
 import HazardPhotos from "@/components/HazardPhotos";
 import CopySignOnLinkButton from "@/components/CopySignOnLinkButton";
 import NotifyMe from "@/components/NotifyMe";
+import { signOnVersions } from "@/lib/signOnVersions";
 import { toSydneyInputValue, fromSydneyInputValue } from "@/lib/timezone";
 import { isLocalId, getLocalAssessment, saveLocalAssessment } from "@/lib/offlineStore";
 import { signLocalAssessment, validateLocalAssessmentForSubmit } from "@/lib/offlineAssessment";
@@ -1151,7 +1152,7 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, o
           break;
         }
         for (const c of cards) {
-          if (!c.description?.trim() || !c.controls?.trim() || !c.responsiblePerson?.trim()) {
+          if (!hazardComplete(c)) {
             valid = false;
             break;
           }
@@ -1243,6 +1244,9 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, o
           }
           if (!c.responsiblePerson?.trim()) {
             items.push(`"${hq.label}"${cardLabel} — person responsible is empty`);
+          }
+          if (!c.controlConfirmed) {
+            items.push(`"${hq.label}"${cardLabel} — "Control has been implemented" isn't ticked`);
           }
         });
       }
@@ -1443,10 +1447,13 @@ function HazardsStep({ assessment, teams, save, reload, readOnly, showMissing, o
   );
 }
 
-// A hazard is finished once it has a description, controls and a person
-// responsible (the same rule that decides whether Continue works).
+// A hazard is finished once it has a description, controls, a person
+// responsible and "Control has been implemented" ticked — the same rules the
+// final submit checks, and what decides whether Continue works.
 function hazardComplete(c: any): boolean {
-  return !!c?.description?.trim() && !!c?.controls?.trim() && !!c?.responsiblePerson?.trim();
+  return (
+    !!c?.description?.trim() && !!c?.controls?.trim() && !!c?.responsiblePerson?.trim() && !!c?.controlConfirmed
+  );
 }
 
 function capital(s: string | null | undefined): string {
@@ -1589,6 +1596,7 @@ function HazardCard({
     !local.description.trim() && "the hazard",
     !local.controls.trim() && "the controls",
     !local.responsiblePerson.trim() && "who's responsible",
+    !local.controlConfirmed && "tick \"Control has been implemented\"",
   ].filter(Boolean) as string[];
 
   // Photos and comments stay tucked away until asked for (or already there).
@@ -1608,7 +1616,7 @@ function HazardCard({
     };
   }, [open]);
 
-  const addLink = "text-sm font-semibold text-emerald-700";
+  const addLink = "block text-sm font-semibold text-emerald-700";
 
   return (
     <div className={open ? "fixed inset-0 z-[60] flex items-end md:items-center justify-center md:p-6" : "hidden"}>
@@ -1827,13 +1835,15 @@ function HazardCard({
                 </div>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmRemove(true)}
-                className="text-sm text-red-700 font-medium"
-              >
-                Remove this hazard
-              </button>
+              <div className="pt-3 border-t border-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setConfirmRemove(true)}
+                  className="text-sm text-red-700 font-medium"
+                >
+                  Remove this hazard
+                </button>
+              </div>
             ))}
         </div>
 
@@ -2087,7 +2097,10 @@ function PrimarySignStep({ assessment, reload, readOnly }: any) {
 
 // ---------------- Team sign-on (in-flow, before submission) ----------------
 
-function TeamSignStep({ assessment, project, reload, readOnly }: any) {
+function TeamSignStep({ assessment, project, reload, readOnly: readOnlyProp }: any) {
+  // No signing while changes are being made: the version is about to go up.
+  const changing = assessment.status === "changes_required";
+  const readOnly = readOnlyProp || changing;
   const [query, setQuery] = useState("");
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -2095,10 +2108,10 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
   const [signError, setSignError] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
 
-  const alreadySignedIds = useMemo(
-    () => new Set(assessment.signOns.map((s: any) => s.workerId)),
-    [assessment]
-  );
+  // Only people who've signed the version it's on now are "done". Anyone who
+  // signed an older version (before changes) can sign again.
+  const signed = useMemo(() => signOnVersions(assessment), [assessment]);
+  const alreadySignedIds = signed.currentIds;
 
   const availableWorkers = useMemo(() => {
     const list = project.workers.filter((w: any) => !alreadySignedIds.has(w.id));
@@ -2172,11 +2185,28 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
     }
   };
 
-  const otherSignOns = assessment.signOns.filter((s: any) => !s.isPrimary);
+  const otherSignOns = signed.current.filter((s: any) => !s.isPrimary);
+  const v = signed.version;
+
+  const pick = (workerId: string, name: string) => {
+    setSelectedWorkerId(workerId);
+    setQuery(name);
+    setConfirmed(false);
+    setSignError(null);
+  };
 
   return (
     <div className="space-y-4">
       <SectionTitle>Team sign-on</SectionTitle>
+      {v > 1 && (
+        <div className="rounded-lg bg-amber-50 border border-amber-300 p-3 text-sm text-amber-900 space-y-1">
+          <p className="font-semibold">This Take 5 is now version {v}.</p>
+          <p>
+            It was changed after people signed it. Everyone who signed version {v - 1} needs to read it again
+            and sign version {v}.
+          </p>
+        </div>
+      )}
       <p className="text-sm text-neutral-600 -mt-3">
         Anyone else on the crew who needs to sign onto this assessment can do that now, before
         it's submitted for supervisor review. There's no fixed number — add as many as needed,
@@ -2184,8 +2214,15 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
       </p>
 
       <p className="text-sm font-medium text-neutral-700">
-        {assessment.signOns.length} signed on so far
+        {signed.currentIds.size} signed version {v} so far
       </p>
+
+      {changing && (
+        <p className="text-sm text-amber-800 font-medium">
+          A supervisor has asked for changes. Once they&apos;re made and it&apos;s sent back, everyone signs the new
+          version.
+        </p>
+      )}
 
       <a href={`/api/assessments/${assessment.id}/pdf`} target="_blank" rel="noreferrer" className="inline-block text-sm text-emerald-700 font-medium underline decoration-dotted">
         Download a PDF record of this assessment so far
@@ -2202,6 +2239,32 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
               <span className="text-xs text-neutral-500">
                 {new Date(s.signedAt).toLocaleTimeString("en-AU")}
               </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {signed.needAgain.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-amber-800">Still need to sign version {v}</p>
+          {signed.needAgain.map((s: any) => (
+            <div
+              key={s.id}
+              className="flex items-center justify-between gap-3 border border-amber-200 rounded-lg p-3 bg-amber-50/50"
+            >
+              <span className="min-w-0">
+                <span className="block font-medium text-neutral-800 truncate">{s.worker?.name}</span>
+                <span className="block text-xs text-neutral-500">Signed version {s.version ?? 1}</span>
+              </span>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => pick(s.workerId, s.worker?.name ?? "")}
+                  className="shrink-0 text-sm px-3 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold"
+                >
+                  Sign version {v}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -2260,7 +2323,7 @@ function TeamSignStep({ assessment, project, reload, readOnly }: any) {
                   onChange={(e) => setConfirmed(e.target.checked)}
                   className="w-5 h-5"
                 />
-                I confirm I have reviewed and understood this assessment
+                I confirm I have reviewed and understood version {v} of this assessment
               </label>
               {confirmed && <SignaturePad onCapture={capture} disabled={saving} />}
               {signError && <p className="text-red-700 text-sm font-medium">{signError}</p>}
