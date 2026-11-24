@@ -80,6 +80,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       declarations: true,
       newHazardFlag: true,
       signOns: { include: { worker: true }, orderBy: { signedAt: "asc" } },
+      changeAcknowledgments: { orderBy: { acknowledgedAt: "asc" } },
       supervisorReviews: { include: { supervisor: true }, orderBy: { version: "asc" } },
       reassessments: true,
     },
