@@ -1,4 +1,5 @@
 import { STEP1_QUESTIONS, HAZARD_QUESTIONS, FINAL_DECLARATIONS } from "@/lib/constants";
+import { signOnVersions } from "@/lib/signOnVersions";
 
 // The full record of one assessment, used by both the admin and the
 // supervisor "View" pages. It only displays things — no buttons that change data.
@@ -453,31 +454,7 @@ export default function AssessmentRecord({ a }: { a: any }) {
           </ul>
         </Card>
 
-        <Card title="Team sign-ons" count={(a.signOns ?? []).length}>
-          {(a.signOns ?? []).length === 0 && <p className="text-sm text-neutral-500">No one has signed yet.</p>}
-          <ul className="space-y-2">
-            {(a.signOns ?? []).map((s: any) => (
-              <li key={s.id} className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
-                  {initials(s.worker.name)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-neutral-900 truncate">
-                    {s.worker.name}
-                    {s.isPrimary && (
-                      <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                        Primary
-                      </span>
-                    )}
-                  </span>
-                  <span className="block text-xs text-neutral-500">
-                    v{s.version} · {sydney(s.signedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <SignOnsCard a={a} />
       </div>
 
       {(a.auditLogs ?? []).length > 0 && (
@@ -501,5 +478,76 @@ export default function AssessmentRecord({ a }: { a: any }) {
         </section>
       )}
     </div>
+  );
+}
+
+
+// Team sign-ons, by version. After changes (version 2, 3...), people who
+// signed the old version show under "Still need to sign".
+function SignOnsCard({ a }: { a: any }) {
+  const signed = signOnVersions(a);
+  const v = signed.version;
+  const row = (s: any, faded = false) => (
+    <li key={s.id} className={`flex items-center gap-3 ${faded ? "opacity-60" : ""}`}>
+      <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
+        {initials(s.worker.name)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium text-neutral-900 truncate">
+          {s.worker.name}
+          {s.isPrimary && (
+            <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+              Primary
+            </span>
+          )}
+        </span>
+        <span className="block text-xs text-neutral-500">
+          v{s.version ?? 1} · {sydney(s.signedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+        </span>
+      </span>
+    </li>
+  );
+  return (
+    <Card title="Team sign-ons" count={signed.currentIds.size}>
+      {v > 1 && <p className="-mt-1 mb-3 text-xs font-semibold text-neutral-500">Signed version {v}</p>}
+      {signed.currentIds.size === 0 && (
+        <p className="text-sm text-neutral-500">{v > 1 ? `No one has signed version ${v} yet.` : "No one has signed yet."}</p>
+      )}
+      <ul className="space-y-2">
+        {signed.primaryAck && !signed.current.some((s: any) => s.workerId === signed.primaryAck!.workerId) && (
+          <li className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
+              {initials(a.completedByWorker?.name ?? "?")}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-neutral-900 truncate">
+                {a.completedByWorker?.name}
+                <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                  Made the changes
+                </span>
+              </span>
+              <span className="block text-xs text-neutral-500">
+                v{v} · {sydney(signed.primaryAck.acknowledgedAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+              </span>
+            </span>
+          </li>
+        )}
+        {signed.current.map((s: any) => row(s))}
+      </ul>
+      {signed.needAgain.length > 0 && (
+        <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-3">
+          <p className="text-sm font-semibold text-amber-900">Still need to sign version {v}</p>
+          <p className="mt-1 text-sm text-amber-900">{signed.needAgain.map((s: any) => s.worker?.name).join(", ")}</p>
+        </div>
+      )}
+      {signed.older.length > 0 && (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-xs font-semibold text-emerald-700">
+            Earlier versions ({signed.older.length} signature{signed.older.length === 1 ? "" : "s"}) ▾
+          </summary>
+          <ul className="mt-2 space-y-2">{signed.older.map((s: any) => row(s, true))}</ul>
+        </details>
+      )}
+    </Card>
   );
 }
