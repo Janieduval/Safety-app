@@ -707,7 +707,7 @@ function CrewSign() {
       <div className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-[10.5px]">
         <I name="search" className="w-3 h-3 text-neutral-400" /> Brianna Fields
       </div>
-      <Tick label="I confirm I have reviewed and understood this assessment" />
+      <Tick label="I confirm I have reviewed and understood version 1 of this assessment" />
       <Signing delay={200} />
       <div className="flex gap-1.5">
         <Btn tone="white" className="flex-1">Clear</Btn>
@@ -724,7 +724,7 @@ function CrewSigned() {
         ✓ Signed — you&apos;re on this Take 5
       </div>
       <H>Team sign-on</H>
-      <p className="text-[9.5px] font-medium text-neutral-700">2 signed on so far</p>
+      <p className="text-[9.5px] font-medium text-neutral-700">2 signed version 1 so far</p>
       <p data-demo="pdf" className="text-[9.5px] text-emerald-700 font-medium underline decoration-dotted cursor-pointer">
         Download a PDF record of this assessment so far
       </p>
@@ -737,6 +737,58 @@ function CrewSigned() {
           <span className="text-[9px] text-neutral-500">{t}</span>
         </div>
       ))}
+    </Step>
+  );
+}
+
+// After changes: the Take 5 is now version 2 and Brianna signs again.
+function CrewResign({ stage }: { stage: "list" | "signing" | "done" }) {
+  return (
+    <Step n={12} title="Sign & submit" viewing nextId="none">
+      {stage === "done" && (
+        <div className="rounded-lg bg-emerald-50 border border-emerald-300 px-2 py-1.5 text-[10px] font-medium text-emerald-800">
+          ✓ Signed version 2
+        </div>
+      )}
+      <H>Team sign-on</H>
+      <div className="rounded-lg bg-amber-50 border border-amber-300 p-2 text-[9.5px] text-amber-900">
+        <p className="font-semibold">This Take 5 is now version 2.</p>
+        <p>It was changed after people signed it. Everyone who signed version 1 needs to read it again and sign version 2.</p>
+      </div>
+      <p className="text-[9.5px] font-medium text-neutral-700">{stage === "done" ? 2 : 1} signed version 2 so far</p>
+      {stage === "done" && (
+        <div className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
+          <span className="text-[10.5px] font-medium">Brianna Fields</span>
+          <span className="text-[9px] text-neutral-500">9:41:05 am</span>
+        </div>
+      )}
+      {stage === "list" && (
+        <>
+          <p className="text-[10px] font-semibold text-amber-800">Still need to sign version 2</p>
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/50 px-2 py-1.5">
+            <span>
+              <span className="block text-[10.5px] font-medium">Brianna Fields</span>
+              <span className="block text-[8.5px] text-neutral-500">Signed version 1</span>
+            </span>
+            <span data-demo="resign" className="text-[9.5px] px-2 py-1 rounded-md bg-emerald-700 text-white font-semibold cursor-pointer">
+              Sign version 2
+            </span>
+          </div>
+        </>
+      )}
+      {stage === "signing" && (
+        <>
+          <div className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-[10.5px]">
+            <I name="search" className="w-3 h-3 text-neutral-400" /> Brianna Fields
+          </div>
+          <Tick label="I confirm I have reviewed and understood version 2 of this assessment" />
+          <Signing delay={200} />
+          <div className="flex gap-1.5">
+            <Btn tone="white" className="flex-1">Clear</Btn>
+            <Btn id="crew-signed2" className="flex-1">Confirm signature</Btn>
+          </div>
+        </>
+      )}
     </Step>
   );
 }
@@ -1182,6 +1234,25 @@ const SIGNON_SCENES: DemoScene[] = [
         ]}
       />
     ),
+  },
+  {
+    title: "Changed after you signed?",
+    text: "If the supervisor asks for changes, the Take 5 goes up to version 2. Open it again and read it through. On the last step, your name is under Still need to sign version 2. Tap Sign version 2.",
+    target: "resign",
+    wait: 4400,
+    render: () => <CrewResign stage="list" />,
+  },
+  {
+    title: "Sign version 2",
+    text: "Tick that you've understood version 2, sign with your finger, then tap Confirm signature.",
+    target: "crew-signed2",
+    wait: 3000,
+    render: () => <CrewResign stage="signing" />,
+  },
+  {
+    title: "Signed version 2",
+    text: "You're on the new version. The PDF shows who signed each version, and anyone who still needs to sign again.",
+    render: () => <CrewResign stage="done" />,
   },
 ];
 
