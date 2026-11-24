@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { signOnVersions } from "@/lib/signOnVersions";
 import {
   STEP1_QUESTIONS,
   HAZARD_QUESTIONS,
@@ -59,6 +60,8 @@ const DECLARATION_LABELS: Record<string, string> = Object.fromEntries(
 export default function AssessmentPdfDocument({ assessment }: { assessment: any }) {
   const a = assessment;
   const reviews = a.supervisorReviews ?? [];
+  // Sign-ons for the current version first, then older versions.
+  const signed = signOnVersions(a);
 
   return (
     <Document>
@@ -199,8 +202,15 @@ export default function AssessmentPdfDocument({ assessment }: { assessment: any 
           </Text>
         ))}
 
-        <Text style={styles.h2}>Team sign-on ({a.signOns.length})</Text>
-        {a.signOns.map((s: any) => (
+        <Text style={styles.h2}>
+          Team sign-on{(a.version ?? 1) > 1 ? ` — version ${a.version}` : ""} ({signed.currentIds.size})
+        </Text>
+        {signed.needAgain.length > 0 ? (
+          <Text style={{ marginBottom: 8 }}>
+            Still need to sign version {a.version}: {signed.needAgain.map((s: any) => s.worker?.name).join(", ")}
+          </Text>
+        ) : null}
+        {[...signed.current, ...signed.older].map((s: any) => (
           <View key={s.id} wrap={false} style={{ marginBottom: 8 }}>
             <Text>
               {s.worker.name} {s.isPrimary ? "(Primary)" : ""} · Version {s.version} —{" "}
