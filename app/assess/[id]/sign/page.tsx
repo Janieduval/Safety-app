@@ -7,6 +7,7 @@ import SignaturePad from "@/components/SignaturePad";
 import NotifyMe from "@/components/NotifyMe";
 import WorkerHeader from "@/components/WorkerHeader";
 import { SIGNON_CONFIRMATION_TEXT } from "@/lib/constants";
+import { signOnVersions } from "@/lib/signOnVersions";
 
 const STATUS_MESSAGES: Record<string, { text: string; tone: "info" | "success" | "warning" }> = {
   draft: {
@@ -18,7 +19,7 @@ const STATUS_MESSAGES: Record<string, { text: string; tone: "info" | "success" |
     tone: "info",
   },
   changes_required: {
-    text: "A supervisor has asked for changes to this assessment. The person who completed it will need to go back and update it before it can be resubmitted.",
+    text: "A supervisor has asked for changes to this assessment. The person who completed it will need to update it first. Once it's sent back, everyone signs the new version.",
     tone: "warning",
   },
   approved: {
@@ -55,10 +56,10 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
   const [signError, setSignError] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
 
-  const alreadySignedIds = useMemo(
-    () => new Set(assessment?.signOns?.map((s: any) => s.workerId) ?? []),
-    [assessment]
-  );
+  // Only people who've signed the version it's on now are "done". Anyone who
+  // signed an older version (before changes) can sign again.
+  const signed = useMemo(() => signOnVersions(assessment), [assessment]);
+  const alreadySignedIds = signed.currentIds;
 
   const availableWorkers = useMemo(() => {
     if (!project) return [];
@@ -145,7 +146,17 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
     }
   };
 
-  const signedCount = assessment.signOns.length;
+  const v = signed.version;
+  const signedCount = signed.currentIds.size;
+  // No signing while it's being changed: the version is about to go up.
+  const canSign = assessment.status !== "draft" && assessment.status !== "changes_required";
+
+  const pick = (workerId: string, name: string) => {
+    setSelectedWorkerId(workerId);
+    setQuery(name);
+    setConfirmed(false);
+    setSignError(null);
+  };
 
   return (
     <main className="min-h-dvh w-full min-w-0 bg-neutral-50 pb-10">
@@ -162,21 +173,56 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
       <div className="max-w-md mx-auto px-4 py-5 space-y-4">
         <StatusBanner status={assessment.status} />
 
+        {v > 1 && (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 space-y-1">
+            <p className="font-semibold">This Take 5 is now version {v}.</p>
+            <p>
+              It was changed after people signed it. Everyone who signed version {v - 1} needs to read it again and
+              sign version {v}.
+            </p>
+          </div>
+        )}
+
         {/* Who has signed */}
         <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4">
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="font-bold text-neutral-900">
-              Signed on <span className="text-neutral-400 font-semibold">{signedCount}</span>
+              Signed version {v}
+              <span className="ml-2 align-middle text-xs font-semibold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
+                {signedCount} {signedCount === 1 ? "person" : "people"}
+              </span>
             </h2>
             <a href={`/api/assessments/${assessment.id}/pdf`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-700">
               Save PDF
             </a>
           </div>
           {signedCount === 0 ? (
-            <p className="text-sm text-neutral-500">No one has signed yet.</p>
+            <p className="text-sm text-neutral-500">No one has signed version {v} yet.</p>
           ) : (
             <ul className="divide-y divide-neutral-100">
-              {assessment.signOns.map((s: any) => (
+              {signed.primaryAck && !signed.current.some((s: any) => s.workerId === signed.primaryAck!.workerId) && (
+                <li className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+                  <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
+                    {(assessment.completedByWorker?.name ?? "?")
+                      .trim()
+                      .split(/\s+/)
+                      .map((p: string) => p[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase()}
+                  </span>
+                  <span className="flex-1 min-w-0 font-medium text-neutral-800 truncate">
+                    {assessment.completedByWorker?.name}
+                    <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      Made the changes
+                    </span>
+                  </span>
+                  <span className="text-xs text-neutral-500 shrink-0">
+                    {new Date(signed.primaryAck.acknowledgedAt).toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit" })}
+                  </span>
+                </li>
+              )}
+              {signed.current.map((s: any) => (
                 <li key={s.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
                   <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
                     {s.worker.name
@@ -204,9 +250,40 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
           )}
         </section>
 
-        {assessment.status !== "draft" && (
+        {/* People who signed an older version and need to sign this one */}
+        {signed.needAgain.length > 0 && (
+          <section className="bg-white rounded-2xl border border-amber-300 shadow-sm p-4">
+            <h2 className="font-bold text-amber-900">
+              Still need to sign version {v}
+              <span className="ml-2 align-middle text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                {signed.needAgain.length} {signed.needAgain.length === 1 ? "person" : "people"}
+              </span>
+            </h2>
+            <ul className="mt-3 divide-y divide-neutral-100">
+              {signed.needAgain.map((s: any) => (
+                <li key={s.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-medium text-neutral-800 truncate">{s.worker?.name}</span>
+                    <span className="block text-xs text-neutral-500">Signed version {s.version ?? 1}</span>
+                  </span>
+                  {canSign && (
+                    <button
+                      type="button"
+                      onClick={() => pick(s.workerId, s.worker?.name ?? "")}
+                      className="shrink-0 text-sm px-3 py-1.5 rounded-xl bg-emerald-700 text-white font-semibold"
+                    >
+                      Sign version {v}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {canSign && (
           <section className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-4">
-            <h2 className="font-bold text-neutral-900 mb-3">Add your signature</h2>
+            <h2 className="font-bold text-neutral-900 mb-3">Add your signature · version {v}</h2>
             <input
               type="text"
               placeholder="Search your name..."
@@ -264,7 +341,7 @@ export default function TeamSignOnPage({ params }: { params: { id: string } }) {
                     onChange={(e) => setConfirmed(e.target.checked)}
                     className="w-5 h-5 shrink-0 accent-emerald-700"
                   />
-                  I confirm I have reviewed and understood this assessment
+                  I confirm I have reviewed and understood version {v} of this assessment
                 </label>
                 {confirmed && <SignaturePad onCapture={capture} disabled={saving} />}
                 {signError && (
