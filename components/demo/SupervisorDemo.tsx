@@ -328,18 +328,14 @@ function ReviewPanel({ mode, v = 1 }: { mode: "changes" | "approve"; v?: number 
             <div className="space-y-1.5" data-scroll="notes">
               <p className="text-[10px] font-semibold text-neutral-800">3. Notes</p>
               <div>
-                <p className="text-[9px] font-semibold text-neutral-600">Comments (optional)</p>
+                <p className="text-[9px] font-semibold text-neutral-600">Comments (required to request changes)</p>
                 <Input muted={!changes}>
                   {changes ? (
                     <Typing text="Add a spotter for the telehandler lifts near the trench." delay={6900} speed={38} />
                   ) : (
-                    "Any notes for the worker, especially if requesting changes..."
+                    "What needs to change, or any extra controls? The worker sees exactly what you write."
                   )}
                 </Input>
-              </div>
-              <div>
-                <p className="text-[9px] font-semibold text-neutral-600">Additional controls (optional)</p>
-                <Input muted>&nbsp;</Input>
               </div>
             </div>
             <div>
@@ -347,7 +343,9 @@ function ReviewPanel({ mode, v = 1 }: { mode: "changes" | "approve"; v?: number 
               <div className="flex gap-1.5">
                 <div
                   data-demo="changes"
-                  className="flex-1 text-center text-[10px] font-semibold py-2 rounded-lg border-2 border-amber-500 text-amber-700 bg-white cursor-pointer"
+                  className={`flex-1 text-center text-[10px] font-semibold py-2 rounded-lg border-2 border-amber-500 text-amber-700 bg-white cursor-pointer ${
+                    changes ? "" : "opacity-40"
+                  }`}
                 >
                   Request changes
                 </div>
@@ -1268,7 +1266,7 @@ const REVIEW_SCENES: DemoScene[] = [
   },
   {
     title: "Your review",
-    text: "Type your name and tap it, tick the 9 checks, add notes, then decide. Here something needs fixing: write it in Comments — the worker sees exactly what you write — and tap Request changes.",
+    text: "Type your name and tap it, tick the 9 checks, add notes, then decide. Here something needs fixing: write it in Comments — the worker sees exactly what you write — and tap Request changes. Request changes stays grey until there's a comment.",
     target: "changes",
     wait: 11400,
     render: () => <ReviewPanel mode="changes" />,
