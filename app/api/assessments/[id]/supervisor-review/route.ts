@@ -25,6 +25,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       { status: 400 }
     );
   }
+  // Sending it back for changes needs a comment saying what to change.
+  if (decision === "changes_required" && !comments?.trim()) {
+    return NextResponse.json(
+      { error: "Write what needs to change in Comments before requesting changes." },
+      { status: 400 }
+    );
+  }
   const assessment = await prisma.assessment.findUnique({ where: { id: params.id } });
   if (!assessment) {
     return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
