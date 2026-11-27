@@ -18,7 +18,6 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
   const [selectedSupervisorId, setSelectedSupervisorId] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState("");
-  const [additionalControls, setAdditionalControls] = useState("");
   const [decision, setDecision] = useState<"approved" | "changes_required" | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -72,11 +71,17 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
 
   const checklistComplete = SUPERVISOR_CHECKLIST.every((c) => checklist[c.key]);
   const canApprove = checklistComplete;
-  const canRequestChanges = true; // changes can be requested even with an incomplete checklist
+  // Changes can be requested even with an incomplete checklist, but the
+  // worker has to be told what to change.
+  const canRequestChanges = comments.trim().length > 0;
   const checkedCount = SUPERVISOR_CHECKLIST.filter((c) => checklist[c.key]).length;
 
   const submitDecision = (finalDecision: "approved" | "changes_required") => async (dataUrl: string) => {
     if (!selectedSupervisorId) return;
+    if (finalDecision === "changes_required" && !comments.trim()) {
+      setSubmitError("Write what needs to change in Comments before requesting changes.");
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -87,7 +92,6 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
           supervisorId: selectedSupervisorId,
           checklist,
           comments,
-          additionalControls,
           decision: finalDecision,
           signatureData: dataUrl,
         }),
@@ -214,22 +218,13 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
               <div className="space-y-3">
                 <p className="text-sm font-semibold text-neutral-800">3. Notes</p>
                 <label className="block text-xs font-semibold text-neutral-600">
-                  Comments (optional)
+                  Comments (required to request changes)
                   <textarea
                     value={comments}
                     onChange={(e) => setComments(e.target.value)}
-                    rows={3}
+                    rows={4}
                     className={`${field} mt-1 font-normal text-sm`}
-                    placeholder="Any notes for the worker, especially if requesting changes..."
-                  />
-                </label>
-                <label className="block text-xs font-semibold text-neutral-600">
-                  Additional controls (optional)
-                  <textarea
-                    value={additionalControls}
-                    onChange={(e) => setAdditionalControls(e.target.value)}
-                    rows={3}
-                    className={`${field} mt-1 font-normal text-sm`}
+                    placeholder="What needs to change, or any extra controls? The worker sees exactly what you write."
                   />
                 </label>
               </div>
@@ -256,12 +251,6 @@ export default function SupervisorReviewPage({ params }: { params: { id: string 
                       Approve
                     </button>
                   </div>
-                  {!canApprove && (
-                    <p className="text-xs text-neutral-500 mt-2 text-center">
-                      Tick every checklist item to approve. You can still request changes without
-                      it.
-                    </p>
-                  )}
                 </div>
               )}
 
