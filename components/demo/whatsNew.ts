@@ -123,4 +123,11 @@ export const WHATS_NEW: WhatsNew[] = [
     text: "Take 5 changed after you signed it? It now shows which version you're signing, and anyone who signed the old version can sign the new one with one tap.",
     until: "2027-01-31",
   },
+  {
+    demo: "jsafe-demo-supervisor",
+    chapter: "review",
+    id: "2026-11-supervisor-changes-need-comment",
+    text: "Requesting changes now needs a comment, so the worker always knows what to fix. Request changes stays grey until you write one.",
+    until: "2027-01-31",
+  },
 ];
