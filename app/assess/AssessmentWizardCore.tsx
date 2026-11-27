@@ -103,6 +103,9 @@ export function AssessmentWizardCore({ id }: { id: string }) {
   if (!assessment || !project) return <CenteredMessage text="Assessment not found." isError />;
 
   const readOnly = forceViewOnly || (assessment.status !== "draft" && assessment.status !== "changes_required");
+  // Once it's submitted (or approved), anyone can still add their signature on
+  // the Team sign-on step, whichever link they opened it from.
+  const canTeamSign = assessment.status === "awaiting_supervisor_review" || assessment.status === "approved";
   const step = STEPS[stepIndex];
 
   const isCriticalStep = CRITICAL_STEPS.includes(step);
@@ -235,6 +238,7 @@ export function AssessmentWizardCore({ id }: { id: string }) {
           <div className="mb-4 rounded-lg bg-amber-50 border border-amber-300 p-3 text-amber-800 text-sm font-medium">
             This assessment is {assessment.status.replace(/_/g, " ")} and can no longer be
             edited here.
+            {canTeamSign && " You can still add your signature on the Team sign-on step."}
           </div>
         )}
 
@@ -343,7 +347,7 @@ export function AssessmentWizardCore({ id }: { id: string }) {
                 assessment={assessment}
                 project={project}
                 reload={reloadAssessment}
-                readOnly={forceViewOnly ? false : readOnly}
+                readOnly={forceViewOnly || canTeamSign ? false : readOnly}
               />
             </div>
 
